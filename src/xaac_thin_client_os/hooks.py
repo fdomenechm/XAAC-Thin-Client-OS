@@ -80,7 +80,7 @@ class HookRunner:
 
         hooks: list[Path] = []
         for path in sorted(phase_dir.iterdir(), key=lambda item: item.name):
-            if path.name.startswith(".") or not path.is_file():
+            if path.name.startswith(".") or path.name == "README.md" or not path.is_file():
                 continue
             if path.is_symlink():
                 raise HookPermissionError(f"No es permeten hooks simbòlics: {path}")

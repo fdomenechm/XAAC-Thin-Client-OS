@@ -1,3 +1,9 @@
+# Correcció estructural prèvia a la fase 11.1
+
+- Afegits fitxers `README.md` als directoris estructurals que podien estar buits.
+- Garantida la persistència en Git dels directoris `builder`, `hooks`, `recovery` i `tools`, inclosos els seus subdirectoris reservats.
+- Afegida una prova de regressió que comprova l'existència dels README estructurals.
+
 # Fase 10.7 — Desplegament per anells
 
 - Afegits els anells ordenats `laboratory`, `pilot` i `production`.
