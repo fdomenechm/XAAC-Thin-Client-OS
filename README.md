@@ -955,3 +955,14 @@ xaac-os --root . configure-factory-reset
 ```
 
 El procés exigeix administrador local, presència física i confirmació textual exacta; conserva la identitat i l'enrolament, restaura des de la partició signada i executa un primer inici auditable.
+
+### Fase 11.7 — Recuperació USB
+
+La recuperació des d'un mitjà extraïble signat es configura amb:
+
+```bash
+xaac-os --root . configure-usb-recovery --dry-run
+xaac-os --root . configure-usb-recovery
+```
+
+Només s'accepta l'etiqueta `XAAC_RECOVERY_USB` en un dispositiu extraïble. Abans de reinstal·lar es validen manifest, signatura, hashes, producte, perfil del Wyse 3040 i versió; la reinstal·lació és transaccional i conserva identitat i enrolament. Consulteu `docs/PHASE_11_7.md`.

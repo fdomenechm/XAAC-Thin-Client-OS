@@ -945,3 +945,11 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Incorporada la conservació selectiva d'identitat, enrolament, auditoria i xarxa mínima.
 - Afegides confirmació reforçada, verificació de la imatge signada i restauració transaccional.
 - Incorporat el servei de primer inici posterior al reset i proves de regressió.
+
+## Fase 11.7 — Recuperació USB
+
+- Afegida la detecció estricta de mitjans extraïbles amb etiqueta `XAAC_RECOVERY_USB`.
+- Incorporades verificació del manifest, signatura, SHA-256, producte, perfil de maquinari i versió.
+- Afegida reinstal·lació transaccional amb verificació anterior i posterior, conservant identitat i enrolament.
+- Incorporats rebuig del mitjà incorrecte, registre persistent, notificació a l'Agent i comportament *fail-closed*.
+- Afegits regla udev, servei systemd endurit, ordre `configure-usb-recovery`, documentació i proves.
