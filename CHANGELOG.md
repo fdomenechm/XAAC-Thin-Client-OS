@@ -889,3 +889,15 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Validació posterior fail-closed de paquets, configuració, serveis, client i Agent.
 - Registre persistent i bloqueig de versions defectuoses amb motiu i transacció.
 - Conservació d'evidències, servei systemd endurit i ordre `configure-package-rollback`.
+
+## [0.1.0] - Fase 11.1
+
+### Afegit
+
+- Model declaratiu d'estats de recuperació per a fallades d'aplicació, sessió, actualització i integritat.
+- Comptadors amb finestres temporals i llindars estrictament creixents.
+- Estats `healthy`, `degraded`, `recovering`, `safe` i `manual_intervention` amb classificació determinista.
+- Accions i notificacions obligatòries a XAAC Agent i XMS segons la severitat.
+- Política *fail-closed*, conservació d'evidències i prohibició del `factory reset` automàtic.
+- Estat persistent amb permisos restrictius, escriptures atòmiques i protecció contra symlinks.
+- Ordre `configure-recovery-model`, documentació i proves positives, negatives i d'idempotència.

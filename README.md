@@ -896,3 +896,14 @@ xaac-os-build configure-update-rings
 ```
 
 La política defineix els anells `laboratory`, `pilot` i `production`, selecció determinista per percentatge, promoció manual seqüencial, períodes d'observació, llindars d'èxit i controls de pausa, represa i cancel·lació. Consulteu `docs/PHASE_10_7.md`.
+
+### Fase 11.1 — Model d'estats de recuperació
+
+`config/recovery-model.yaml` defineix les classes de fallada, comptadors, finestres, llindars, estats segurs, accions i notificacions de recuperació.
+
+```bash
+xaac-os --root . configure-recovery-model --dry-run
+xaac-os --root . configure-recovery-model
+```
+
+El model és *fail-closed*, conserva evidències, notifica XAAC Agent i XMS en els estats crítics i prohibeix el `factory reset` automàtic. Consulteu `docs/PHASE_11_1.md`.
