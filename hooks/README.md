@@ -12,3 +12,5 @@ Cada subdirectori correspon a una etapa definida pel sistema de hooks:
 - `post-image/`
 
 Els directoris han d'existir encara que una etapa no tinga hooks configurats.
+
+Consulteu també la [referència de configuració](../docs/reference/configuration.md).

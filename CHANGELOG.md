@@ -1073,3 +1073,10 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Recollida d’inventari, PCI, USB i journal com a evidència de laboratori.
 - Llista manual per a operacions destructives i informe JSON validable.
 - Ordre `build-hardware-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+## Documentació reorganitzada després de 1.0.0
+
+- Reescrit el `README.md` com a portada de la versió estable.
+- Creat un índex general i una jerarquia per a primers passos, administració, arquitectura, desenvolupament, referència, release i històric.
+- Agrupats els documents de fase per blocs sense modificar el codi ni el comportament del sistema.
+- Afegides referències de CLI, configuració, release i criteris editorials.
+

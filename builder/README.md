@@ -56,3 +56,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.12 — Release 1.0.0
 
 `xaac-os-build build-final-release` prepara el manifest, les notes, l'anunci i els scripts de publicació i verificació de la versió estable 1.0.0. La publicació exigeix aprovació de la RC, tots els artefactes finals i `XAAC_SIGNING_KEY`.
+
+## Documentació general
+
+Consulteu [`docs/getting-started/build.md`](../docs/getting-started/build.md) i [`docs/reference/`](../docs/reference/README.md).
