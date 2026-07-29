@@ -22,3 +22,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.3 — Paquet PXE
 
 `config/pxe-builder.yaml` i l’ordre `xaac-os build-pxe` preparen el bundle d’arrencada i instal·lació desatesa per xarxa, inclosos el manifest, l’script iPXE i els hashes SHA-256.
+
+## Fase 12.4 — Instal·lador
+
+`config/installer-builder.yaml` i l’ordre `xaac-os build-installer` preparen l’instal·lador de producció. El flux exigeix selecció explícita del disc, frase `INSTALL XAAC`, verificació SHA-256, particionat GPT, còpia del rootfs, instal·lació GRUB UEFI i resum final estructurat.

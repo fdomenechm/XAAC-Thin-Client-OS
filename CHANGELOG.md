@@ -992,3 +992,16 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Ordre `build-iso` amb mode `--dry-run`.
 - Proves positives, negatives, d’idempotència, CLI, permisos, rutes i protecció contra symlinks.
 - Iniciat el Bloc 12 — Imatge de producció.
+
+## [0.1.0] - Fase 12.4
+
+### Afegit
+
+- Constructor declaratiu de l’instal·lador de producció per al Dell Wyse 3040.
+- Selecció explícita del disc i confirmació destructiva exacta `INSTALL XAAC`.
+- Rebuig de discs muntats, del sistema en execució, dispositius no admesos i discs insuficients.
+- Comprovació d’alimentació AC abans del particionat.
+- Particionat GPT amb `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY`.
+- Verificació SHA-256 del rootfs, extracció i instal·lació de GRUB UEFI amb fallback extraïble.
+- Resum final JSON, esquema de validació i gestió d’errors *fail-closed*.
+- Ordre `build-installer`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
