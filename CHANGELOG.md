@@ -1,3 +1,12 @@
+# Fase 11.3 — Reparació de paquets
+
+- Afegida comprovació fail-closed amb `dpkg --audit`, `apt-get check` i verificació de fitxers.
+- Incorporada reinstal·lació controlada dels paquets XAAC i reparació de dependències des de repositoris signats.
+- Afegida restauració atòmica de configuració amb protecció d'identitat, enrolament i política activa.
+- Incorporats diagnòstics persistents, notificacions a Agent/XMS i validació final obligatòria.
+- Afegida l'ordre `configure-package-repair` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
 # Correcció estructural prèvia a la fase 11.1
 
 - Afegits fitxers `README.md` als directoris estructurals que podien estar buits.

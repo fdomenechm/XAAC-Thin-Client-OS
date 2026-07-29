@@ -918,3 +918,14 @@ xaac-os --root . configure-application-recovery
 ```
 
 La política aplica recuperació escalonada, neteja únicament estat efímer, conserva diagnòstics i permet restaurar només una política anterior validada.
+
+### Fase 11.3 — Reparació de paquets
+
+La comprovació i reparació controlada de paquets es configura amb:
+
+```bash
+xaac-os --root . configure-package-repair --dry-run
+xaac-os --root . configure-package-repair
+```
+
+La política audita `dpkg` i APT, verifica els fitxers instal·lats, reinstal·la només paquets gestionats des de repositoris signats, repara dependències, restaura configuració de manera atòmica i exigeix una validació final completa. Consulteu `docs/PHASE_11_3.md`.
