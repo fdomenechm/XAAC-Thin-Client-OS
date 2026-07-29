@@ -1,0 +1,27 @@
+schema_version: 1
+profile: wyse3040
+alsa:
+  required: true
+  cards_file: /proc/asound/cards
+  modules:
+    - snd_hda_intel
+    - snd_hdmi_lpe_audio
+outputs:
+  required_types:
+    - hdmi
+  optional_types:
+    - analog
+inputs:
+  optional_types:
+    - microphone
+pipewire:
+  enabled: true
+  packages:
+    - alsa-utils
+    - pipewire
+    - pipewire-alsa
+    - wireplumber
+configuration:
+  modules_file: /etc/modules-load.d/xaac-audio.conf
+  modprobe_file: /etc/modprobe.d/xaac-audio.conf
+  profile_file: /etc/xaac/audio.conf

@@ -1,0 +1,36 @@
+schema_version: 1
+transaction_id: xaac-transactional-update
+hardware_profile: wyse3040
+recovery_point:
+  required: true
+  root: /var/lib/xaac-update/recovery-points
+  include_package_state: true
+  include_configuration: true
+installation:
+  require_verified_staging: true
+  atomic_component_sets: true
+  noninteractive: true
+  lock_timeout_seconds: 300
+services:
+  restart_only_changed: true
+  allowed_units:
+    - xaac-thin-client.service
+    - xaac-agent.service
+    - rustdesk-xaac.service
+validation:
+  required: true
+  fail_closed: true
+  timeout_seconds: 300
+  checks: [packages, services, client_session, agent_health]
+confirmation:
+  explicit: true
+  remove_recovery_point_on_success: true
+failure:
+  mark_failed: true
+  preserve_evidence: true
+  automatic_rollback: true
+outputs:
+  policy: /etc/xaac/update/transactional-installation.json
+  state: /var/lib/xaac-update/transaction-state.json
+  installer: /usr/libexec/xaac-update-install-transaction
+  service: /etc/systemd/system/xaac-update-install.service

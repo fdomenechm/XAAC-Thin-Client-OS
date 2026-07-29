@@ -1,0 +1,10 @@
+schema_version: 1
+backend: systemd-networkd
+interface_match: "en*"
+dhcp4: true
+dhcp6: false
+ipv6_accept_ra: false
+required_for_online: true
+dns:
+  use_resolved: true
+  fallback: []

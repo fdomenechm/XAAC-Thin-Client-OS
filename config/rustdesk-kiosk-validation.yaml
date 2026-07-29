@@ -1,0 +1,32 @@
+schema_version: 1
+validation:
+  display_backends: [wayland, x11]
+  capture:
+    required: true
+    mechanisms: [pipewire, xdg-desktop-portal, x11]
+  input:
+    keyboard: true
+    pointer: true
+    mechanisms: [uinput, x11]
+  multimonitor:
+    required: true
+    minimum_monitors: 1
+    maximum_monitors: 2
+    dynamic_reconfiguration: true
+  kiosk_lockdown:
+    required: true
+    forbidden_escape_actions:
+      - launch-terminal
+      - switch-application
+      - close-kiosk
+      - open-system-menu
+  performance:
+    maximum_startup_seconds: 10.0
+    maximum_idle_rss_mib: 180
+    maximum_active_cpu_percent: 35.0
+    maximum_input_latency_ms: 200
+outputs:
+  policy: /usr/share/xaac/rustdesk/kiosk-validation-policy.json
+  checklist: /usr/share/xaac/rustdesk/kiosk-validation-checklist.json
+  report: /var/lib/xaac-agent/rustdesk/kiosk-validation-report.json
+  state: /var/lib/xaac-agent/rustdesk/kiosk-validation-state.json

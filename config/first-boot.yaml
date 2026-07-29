@@ -1,0 +1,24 @@
+schema_version: 1
+service:
+  unit_path: /usr/lib/systemd/system/xaac-first-boot.service
+  executable_path: /usr/libexec/xaac-first-boot
+  configuration_path: /etc/xaac/first-boot.yaml
+  state_path: /var/lib/xaac-agent/first-boot/state.json
+  completed_marker: /var/lib/xaac-agent/first-boot/completed
+  identity_profile: /etc/xaac/device-identity.yaml
+  wanted_by: multi-user.target
+hardware:
+  product_name_paths:
+    - /sys/class/dmi/id/product_name
+    - /sys/devices/virtual/dmi/id/product_name
+  accepted_products:
+    - Wyse 3040 Thin Client
+    - Dell Wyse 3040
+  meminfo_path: /proc/meminfo
+  minimum_ram_mib: 1800
+  emmc_globs:
+    - /sys/block/mmcblk*
+security:
+  directory_mode: "0750"
+  state_mode: "0640"
+  configuration_mode: "0640"

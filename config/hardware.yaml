@@ -1,0 +1,42 @@
+schema_version: 1
+profile: wyse3040
+identity:
+  manufacturer_patterns:
+    - Dell
+    - Dell Inc.
+  product_patterns:
+    - Wyse 3040
+    - Wyse 3040 Thin Client
+cpu:
+  architecture: x86_64
+  model_patterns:
+    - Intel(R) Atom(TM) x5-Z8350
+  minimum_cores: 4
+memory:
+  minimum_mib: 1800
+  expected_mib: 2048
+storage:
+  bus: mmc
+  minimum_mib: 7000
+  variants_mib:
+    - 8192
+    - 16384
+graphics:
+  pci_vendor: "8086"
+  driver: i915
+  connectors:
+    - DisplayPort
+  minimum_outputs: 2
+network:
+  kind: ethernet
+  minimum_speed_mbps: 1000
+  required: true
+audio:
+  required: true
+usb:
+  minimum_usb2_controllers: 3
+  minimum_usb3_ports: 1
+firmware:
+  uefi_required: true
+sensors:
+  temperature_optional: true

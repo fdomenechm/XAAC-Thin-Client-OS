@@ -1,0 +1,15 @@
+schema_version: 1
+enrollment:
+  format: xaac-xms-enrollment
+  version: 1
+  server_url: https://xms.example.invalid/api/v1
+  approval_required: true
+  certificate_renewal_days: 30
+  safe_failure: true
+paths:
+  identity: /var/lib/xaac-agent/identity/device.json
+  state: /var/lib/xaac-agent/enrollment/state.json
+  request: /var/lib/xaac-agent/enrollment/request.json
+  certificate: /var/lib/xaac-agent/enrollment/device.crt
+  ca_certificate: /var/lib/xaac-agent/enrollment/xms-ca.crt
+  manifest: /etc/xaac/xms-enrollment-manifest.json

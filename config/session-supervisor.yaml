@@ -1,0 +1,26 @@
+schema_version: 1
+profile: xaac-session-supervisor
+supervision:
+  user: xaac-kiosk
+  client_command: /usr/local/libexec/xaac-thin-client-launch
+  supervisor_command: /usr/local/libexec/xaac-session-supervisor
+  error_screen_command: /usr/local/libexec/xaac-session-error
+  max_restarts: 5
+  restart_window_seconds: 60
+  initial_backoff_seconds: 2
+  maximum_backoff_seconds: 30
+  reset_after_seconds: 300
+  status_file: /run/user/xaac-kiosk/xaac-session-supervisor.json
+  agent_socket: /run/xaac-agent/session-events.sock
+  notify_agent: true
+  voluntary_exit_codes: [0]
+packages:
+  required:
+    - python3.13
+    - python3-gi
+    - gir1.2-gtk-4.0
+files:
+  supervisor: /usr/local/libexec/xaac-session-supervisor
+  error_screen: /usr/local/libexec/xaac-session-error
+  policy: /etc/xaac/session/session-supervisor-policy.json
+  labwc_autostart: /etc/xaac/labwc/autostart

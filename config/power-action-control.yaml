@@ -1,0 +1,46 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-power-actions
+  default_decision: deny
+  enforcement_mode: enforce
+  kiosk_user: xaac-kiosk
+
+actions:
+  poweroff:
+    kiosk_user: request-agent
+    confirmation_required: true
+  reboot:
+    kiosk_user: request-agent
+    confirmation_required: true
+  suspend:
+    kiosk_user: deny
+    confirmation_required: false
+  hibernate:
+    kiosk_user: deny
+    confirmation_required: false
+
+agent:
+  service: xaac-agent.service
+  request_socket: /run/xaac-agent/power-control.sock
+  allowed_operations: [poweroff, reboot]
+  request_timeout_seconds: 10
+  fail_closed: true
+
+protection:
+  inhibit_key_handling: true
+  inhibit_lid_handling: true
+  minimum_confirmation_seconds: 3
+  maximum_pending_seconds: 30
+  reject_duplicate_requests: true
+
+recovery:
+  restart_session_after_client_failure: true
+  reboot_after_supervisor_failure: false
+  maximum_session_restarts: 5
+  restart_window_seconds: 300
+
+files:
+  logind: /etc/systemd/logind.conf.d/40-xaac-power-control.conf
+  polkit: /etc/polkit-1/rules.d/90-xaac-kiosk-power.rules
+  request_helper: /usr/local/libexec/xaac/request-power-action
+  policy: /etc/xaac/kiosk/power-action-control.json

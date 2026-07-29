@@ -1,0 +1,15 @@
+schema_version: 1
+inventory:
+  format: xaac-device-inventory
+  version: 1
+  include_packages: true
+  include_peripherals: true
+  maximum_packages: 4096
+xaac_packages:
+  - xaac-thin-client
+  - xaac-agent
+  - xaac-rustdesk
+paths:
+  output: /var/lib/xaac-agent/inventory/inventory.json
+  state: /var/lib/xaac-agent/inventory/state.json
+  manifest: /etc/xaac/device-inventory-manifest.json

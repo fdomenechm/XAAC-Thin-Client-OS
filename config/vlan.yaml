@@ -1,0 +1,17 @@
+schema_version: 1
+backend: systemd-networkd
+allowed_sources:
+  - local
+  - remote
+policy:
+  minimum_id: 1
+  maximum_id: 4094
+  maximum_vlans: 16
+  parent_match: "en*"
+  fallback_to_parent: true
+paths:
+  network_dir: /etc/systemd/network
+  state: /var/lib/xaac-agent/network/vlan.json
+  snapshot: /var/lib/xaac-agent/network/vlan-snapshot.json
+  pending: /var/lib/xaac-agent/network/vlan-pending.json
+  diagnostics: /var/lib/xaac-agent/network/vlan-diagnostics.json

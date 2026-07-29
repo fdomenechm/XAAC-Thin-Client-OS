@@ -1,0 +1,28 @@
+schema_version: 1
+transport:
+  type: unix_socket
+  path: /run/xaac/agent.sock
+  socket_mode: "0660"
+  owner: xaac-agent
+  group: xaac-ipc
+  backlog: 16
+protocol:
+  name: xaac-local-ipc
+  version: 1
+  maximum_message_bytes: 65536
+  request_timeout_seconds: 10
+  allowed_message_types:
+    - ping
+    - get_status
+    - power_action
+    - report_client_state
+security:
+  client_user: xaac-kiosk
+  agent_user: xaac-agent
+  require_peer_credentials: true
+  reject_unknown_messages: true
+  runtime_directory_mode: "0750"
+paths:
+  configuration: /etc/xaac/ipc.yaml
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-ipc.conf
+  manifest: /etc/xaac/ipc-manifest.json

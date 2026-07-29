@@ -1,0 +1,21 @@
+schema_version: 1
+activation:
+  service: rustdesk-xaac.service
+  allowed_sources:
+    - local
+    - xms
+  default_duration_minutes: 30
+  minimum_duration_minutes: 5
+  maximum_duration_minutes: 240
+  close_on_expiry: true
+token:
+  minimum_length: 24
+  hash_algorithm: sha256
+  single_use: true
+outputs:
+  policy: /etc/xaac/rustdesk/activation-policy.json
+  helper: /usr/libexec/xaac-rustdesk-access
+  expiry_service: /etc/systemd/system/rustdesk-xaac-expiry.service
+  expiry_timer: /etc/systemd/system/rustdesk-xaac-expiry.timer
+  state: /var/lib/xaac-agent/services/rustdesk-activation.json
+  request: /run/xaac/rustdesk/activation-request.json

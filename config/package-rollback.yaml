@@ -1,0 +1,37 @@
+schema_version: 1
+rollback_id: xaac-package-rollback
+hardware_profile: wyse3040
+source:
+  require_failed_transaction: true
+  require_recovery_point: true
+  require_previous_versions: true
+restore:
+  packages: true
+  configuration: true
+  transaction_state: true
+  noninteractive: true
+  lock_timeout_seconds: 300
+services:
+  restart_only_affected: true
+  allowed_units:
+    - xaac-thin-client.service
+    - xaac-agent.service
+    - rustdesk-xaac.service
+validation:
+  required: true
+  fail_closed: true
+  timeout_seconds: 300
+  checks: [packages, configuration, services, client_session, agent_health]
+failed_versions:
+  block: true
+  registry: /var/lib/xaac-update/blocked-versions.json
+  require_reason: true
+  require_transaction_id: true
+evidence:
+  preserve: true
+  root: /var/lib/xaac-update/rollback-evidence
+outputs:
+  policy: /etc/xaac/update/package-rollback.json
+  state: /var/lib/xaac-update/rollback-state.json
+  runner: /usr/libexec/xaac-update-rollback-packages
+  service: /etc/systemd/system/xaac-update-rollback.service

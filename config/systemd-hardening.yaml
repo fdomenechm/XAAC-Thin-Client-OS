@@ -1,0 +1,49 @@
+schema_version: 1
+policy_id: xaac-systemd-hardening-v1
+defaults:
+  no_new_privileges: true
+  private_tmp: true
+  protect_system: strict
+  protect_home: true
+  protect_kernel_tunables: true
+  protect_kernel_modules: true
+  protect_control_groups: true
+  restrict_suid_sgid: true
+  lock_personality: true
+  memory_deny_write_execute: true
+  restrict_realtime: true
+  restrict_namespaces: true
+  capability_bounding_set: []
+  ambient_capabilities: []
+  device_policy: closed
+  system_call_architectures: native
+  system_call_filter:
+    - "@system-service"
+    - "~@mount"
+    - "~@reboot"
+    - "~@swap"
+services:
+  - unit: xaac-agent.service
+    writable_paths: [/var/lib/xaac-agent, /run/xaac-agent, /var/log/xaac-agent]
+    address_families: [AF_UNIX, AF_INET, AF_INET6, AF_NETLINK]
+    capabilities: [CAP_NET_ADMIN]
+    devices: []
+  - unit: xaac-rustdesk.service
+    writable_paths: [/var/lib/xaac-rustdesk, /run/xaac-rustdesk, /var/log/xaac-rustdesk]
+    address_families: [AF_UNIX, AF_INET, AF_INET6]
+    capabilities: []
+    devices: [/dev/dri/renderD128, /dev/uinput]
+  - unit: xaac-thin-client.service
+    writable_paths: [/run/xaac-thin-client, /var/lib/xaac-thin-client]
+    address_families: [AF_UNIX, AF_INET, AF_INET6]
+    capabilities: []
+    devices: [/dev/dri/renderD128, /dev/snd]
+  - unit: xaac-session-supervisor.service
+    writable_paths: [/run/xaac-session-supervisor, /var/lib/xaac-session-supervisor]
+    address_families: [AF_UNIX]
+    capabilities: []
+    devices: []
+outputs:
+  dropin_root: /etc/systemd/system
+  policy: /etc/xaac/security/systemd-hardening.json
+  state: /var/lib/xaac-agent/security/systemd-hardening-state.json

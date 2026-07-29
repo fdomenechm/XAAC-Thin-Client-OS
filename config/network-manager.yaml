@@ -1,0 +1,24 @@
+schema_version: 1
+manager:
+  backend: systemd-networkd
+  renderer: networkd
+  wait_online: true
+  manage_ethernet: true
+  exclusive: true
+ethernet:
+  match: "en*"
+  dhcp: ipv4
+  required_for_online: true
+  link_local: ipv6
+agent:
+  integration: status-file
+  status_format: xaac-network-status
+  status_version: 1
+  notify_on_change: true
+paths:
+  network_file: /etc/systemd/network/20-xaac-ethernet.network
+  link_file: /etc/systemd/network/20-xaac-ethernet.link
+  manager_manifest: /etc/xaac/network-manager.json
+  agent_status: /run/xaac-agent/network/status.json
+  agent_watch: /etc/xaac-agent/network-status.env
+  service_dropin: /etc/systemd/system/xaac-agent.service.d/20-network-manager.conf

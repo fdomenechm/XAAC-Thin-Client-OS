@@ -1,0 +1,12 @@
+name: wyse3040
+description: Dell Wyse 3040 amb Intel Atom x5-Z8350, 2 GB de RAM i 8 GB eMMC
+extends: common
+architecture: amd64
+memory_mib: 2048
+storage_mib: 8192
+kernel_parameters:
+  - intel_idle.max_cstate=1
+packages:
+  - firmware-linux
+  - firmware-misc-nonfree
+exclude_packages: []

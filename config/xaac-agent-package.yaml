@@ -1,0 +1,27 @@
+schema_version: 1
+package:
+  name: xaac-agent
+  architecture: amd64
+  version: "1.0.0"
+  artifact: packages/xaac-agent_1.0.0_amd64.deb
+  sha256: null
+  dependencies:
+    - python3
+installation:
+  cache_path: /var/cache/xaac/packages/xaac-agent.deb
+  configuration_path: /etc/xaac/agent/agent.yaml
+  state_directory: /var/lib/xaac-agent
+  log_directory: /var/log/xaac-agent
+service:
+  user: xaac-agent
+  group: xaac-agent
+  unit: xaac-agent.service
+  executable: /usr/bin/xaac-agent
+  restart: on-failure
+  restart_sec: 5
+  enabled: true
+security:
+  shell: /usr/sbin/nologin
+  home: /var/lib/xaac-agent
+  configuration_mode: "0640"
+  directory_mode: "0750"

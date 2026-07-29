@@ -1,0 +1,10 @@
+repositories:
+  - name: debian
+    uri: https://deb.debian.org/debian
+    suites:
+      - trixie
+    components:
+      - main
+      - non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    enabled: true

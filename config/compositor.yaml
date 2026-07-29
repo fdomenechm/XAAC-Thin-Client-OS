@@ -1,0 +1,43 @@
+schema_version: 1
+profile: minimal-kiosk
+wayland:
+  compositor: labwc
+  command: /usr/bin/labwc
+  config_dir: /etc/xaac/labwc
+x11:
+  enabled: true
+  window_manager: openbox
+  command: /usr/bin/openbox
+  config_dir: /etc/xaac/openbox
+packages:
+  required:
+    - labwc
+    - openbox
+    - xwayland
+    - wlr-randr
+  forbidden:
+    - waybar
+    - tint2
+    - rofi
+    - wofi
+    - pcmanfm
+kiosk:
+  fullscreen: true
+  decorations: false
+  menus: false
+  keybindings: false
+  cursor_hide_seconds: 5
+outputs:
+  allow_multiple: true
+  minimum_width: 1024
+  minimum_height: 768
+restart:
+  enabled: true
+  max_attempts: 5
+  window_seconds: 60
+  backoff_seconds: 2
+files:
+  labwc_rc: /etc/xaac/labwc/rc.xml
+  labwc_autostart: /etc/xaac/labwc/autostart
+  openbox_rc: /etc/xaac/openbox/rc.xml
+  policy: /etc/xaac/session/compositor-policy.json

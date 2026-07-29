@@ -1,0 +1,40 @@
+schema_version: 1
+policy_id: xaac-apparmor-v1
+defaults:
+  attach_disconnected: true
+  mediate_deleted: true
+  audit_denied: true
+  deny_write_exec: true
+profiles:
+  - name: usr.sbin.xaac-agent
+    executable: /usr/sbin/xaac-agent
+    mode: enforce
+    abstractions: [base, nameservice]
+    read_paths: [/etc/xaac/**, /etc/machine-id, /sys/class/**, /proc/sys/kernel/random/boot_id]
+    write_paths: [/var/lib/xaac-agent/**, /run/xaac-agent/**, /var/log/xaac-agent/**]
+    network: [inet, inet6, netlink]
+    capabilities: [net_admin]
+    signals: [send, receive]
+  - name: usr.bin.xaac-thin-client
+    executable: /usr/bin/xaac-thin-client
+    mode: enforce
+    abstractions: [base, nameservice, fonts]
+    read_paths: [/etc/xaac/**, /usr/share/fonts/**, /usr/share/icons/**, /sys/class/drm/**]
+    write_paths: [/var/lib/xaac-thin-client/**, /run/xaac-thin-client/**]
+    network: [inet, inet6]
+    capabilities: []
+    signals: [send, receive]
+  - name: usr.bin.xaac-rustdesk
+    executable: /usr/bin/xaac-rustdesk
+    mode: complain
+    abstractions: [base, nameservice, fonts]
+    read_paths: [/etc/xaac/rustdesk/**, /usr/share/xaac-rustdesk/**, /sys/class/drm/**]
+    write_paths: [/var/lib/xaac-rustdesk/**, /run/xaac-rustdesk/**, /var/log/xaac-rustdesk/**]
+    network: [inet, inet6]
+    capabilities: []
+    signals: [send, receive]
+outputs:
+  profiles_root: /etc/apparmor.d
+  complain_root: /etc/apparmor.d/force-complain
+  policy: /etc/xaac/security/apparmor-policy.json
+  state: /var/lib/xaac-agent/security/apparmor-state.json

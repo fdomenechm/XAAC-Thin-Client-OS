@@ -1,0 +1,27 @@
+schema_version: 2
+enabled: true
+policy:
+  input: drop
+  forward: drop
+  output: accept
+allow:
+  loopback: true
+  established: true
+  dhcp_client: true
+  icmp: true
+management:
+  sources:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  ssh_from_config: true
+  agent:
+    enabled: false
+    tcp_ports: []
+    udp_ports: []
+  rustdesk:
+    enabled: false
+    tcp_ports: []
+    udp_ports: []
+state:
+  path: /var/lib/xaac-agent/network/firewall.json

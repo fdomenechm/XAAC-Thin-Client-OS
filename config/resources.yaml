@@ -1,0 +1,41 @@
+schema_version: 1
+profile: wyse3040
+memory:
+  minimum_total_mib: 1800
+  maximum_idle_used_mib: 650
+  zram:
+    enabled: true
+    size_percent: 50
+    algorithm: zstd
+    priority: 100
+  swappiness: 100
+storage:
+  root_minimum_free_mib: 512
+  require_noatime: true
+  trim_timer: true
+journald:
+  storage: volatile
+  runtime_max_use_mib: 32
+  runtime_keep_free_mib: 64
+  max_file_sec: 1day
+tmpfs:
+  tmp_size_mib: 128
+  run_size_percent: 10
+cleanup:
+  enabled: true
+  age_days: 7
+services:
+  disabled:
+    - apt-daily.service
+    - apt-daily-upgrade.service
+    - man-db.timer
+configuration:
+  zram_generator_file: /etc/systemd/zram-generator.conf
+  sysctl_file: /etc/sysctl.d/70-xaac-memory.conf
+  journald_file: /etc/systemd/journald.conf.d/xaac-limits.conf
+  tmp_mount_file: /etc/systemd/system/tmp.mount.d/xaac-limits.conf
+  fstab_dropin: /etc/xaac/fstab-optimizations.conf
+  tmpfiles_file: /etc/tmpfiles.d/xaac-cleanup.conf
+  policy_file: /etc/xaac/resource-policy.json
+packages:
+  - systemd-zram-generator

@@ -1,0 +1,28 @@
+schema_version: 1
+policy_id: xaac-package-signing-v1
+repository:
+  name: XAAC
+  suite: stable
+  components: [main]
+  source_uri: https://packages.xaac.local/debian
+  signed_by: /usr/share/keyrings/xaac-archive-keyring.gpg
+keys:
+  active:
+    fingerprint: 0123456789ABCDEF0123456789ABCDEF01234567
+    public_key: /usr/share/xaac/keys/xaac-archive-current.asc
+  trusted_previous:
+    - fingerprint: 89ABCDEF0123456789ABCDEF0123456789ABCDEF
+      public_key: /usr/share/xaac/keys/xaac-archive-previous.asc
+  revoked:
+    - FEDCBA9876543210FEDCBA9876543210FEDCBA98
+verification:
+  require_signed_release: true
+  require_valid_until: true
+  allow_weak_digest: false
+  offline_bundle_manifest: manifest.json
+outputs:
+  policy: /usr/share/xaac/security/package-signing-policy.json
+  source: /etc/apt/sources.list.d/xaac.sources
+  apt_conf: /etc/apt/apt.conf.d/99xaac-signature-policy
+  verifier: /usr/local/libexec/xaac/verify-xaac-package-bundle
+  state: /var/lib/xaac-agent/security/package-signing.json

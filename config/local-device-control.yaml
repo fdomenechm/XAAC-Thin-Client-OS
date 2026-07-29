@@ -1,0 +1,34 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-local-devices-v1
+  default_decision: deny
+  enforcement_mode: enforce
+  kiosk_user: xaac-kiosk
+usb:
+  default_action: deny
+  allow_hid: true
+  allow_smartcard: true
+  allow_printers: true
+  allow_cameras: false
+  allow_mass_storage: false
+  authorized_vid_pid: []
+storage:
+  automount: false
+  removable_mounts: false
+  executable_content: false
+  filesystem_allowlist: []
+cameras:
+  enabled: false
+  access_group: video
+smartcards:
+  enabled: true
+  access_group: scard
+  pcsc_service: pcscd.service
+printers:
+  enabled: true
+  access_group: lp
+  cups_service: cups.service
+files:
+  udev_rules: /etc/udev/rules.d/80-xaac-kiosk-local-devices.rules
+  udisks_policy: /etc/polkit-1/rules.d/80-xaac-kiosk-udisks.rules
+  policy: /etc/xaac/kiosk/local-device-control.json

@@ -1,0 +1,74 @@
+schema_version: 1
+model_id: xaac-update-model-1
+hardware_profile: wyse3040
+components:
+  - id: xaac-thin-client-os
+    package: xaac-thin-client-os
+    kind: operating-system
+    restart: reboot
+    critical: true
+  - id: xaac-thin-client
+    package: xaac-thin-client
+    kind: application
+    restart: xaac-thin-client.service
+    critical: true
+  - id: xaac-agent
+    package: xaac-agent
+    kind: agent
+    restart: xaac-agent.service
+    critical: true
+  - id: rustdesk-xaac
+    package: rustdesk-xaac
+    kind: remote-support
+    restart: rustdesk-xaac.service
+    critical: false
+channels:
+  - id: laboratory
+    priority: 10
+    promotion_target: pilot
+    automatic: true
+  - id: pilot
+    priority: 20
+    promotion_target: production
+    automatic: false
+  - id: production
+    priority: 30
+    promotion_target: null
+    automatic: false
+maintenance_windows:
+  timezone: Europe/Madrid
+  default:
+    days: [tuesday, wednesday, thursday]
+    start: "02:00"
+    duration_minutes: 180
+  emergency_updates_bypass_window: true
+version_policy:
+  format: semver
+  allow_downgrade: false
+  allow_prerelease_in: [laboratory, pilot]
+  minimum_os_version: 0.1.0
+  blocked_versions: []
+dependency_policy:
+  require_declared_dependencies: true
+  reject_cycles: true
+  atomic_component_sets:
+    - [xaac-thin-client, xaac-agent]
+states:
+  initial: idle
+  terminal: [confirmed, rolled-back, failed, cancelled]
+  transitions:
+    idle: [checking]
+    checking: [available, idle, failed]
+    available: [downloading, cancelled]
+    downloading: [staged, failed, cancelled]
+    staged: [installing, cancelled]
+    installing: [validating, rolling-back, failed]
+    validating: [confirmed, rolling-back, failed]
+    rolling-back: [rolled-back, failed]
+    confirmed: [idle]
+    rolled-back: [idle]
+    failed: [idle]
+    cancelled: [idle]
+outputs:
+  policy: /usr/share/xaac/update/update-model.json
+  state: /var/lib/xaac-agent/update/state.json

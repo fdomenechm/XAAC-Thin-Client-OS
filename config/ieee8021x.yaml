@@ -1,0 +1,17 @@
+schema_version: 1
+backend: wpa_supplicant
+allowed_sources: [local, remote]
+policy:
+  interface_match: "en*"
+  allowed_eap: [tls, peap]
+  require_ca_certificate: true
+  maximum_identity_length: 128
+paths:
+  supplicant: /etc/wpa_supplicant/wpa_supplicant-xaac-wired.conf
+  credentials: /etc/xaac/network/ieee8021x-credentials.env
+  service: /etc/systemd/system/wpa_supplicant@.service.d/xaac-wired.conf
+  state: /var/lib/xaac-agent/network/ieee8021x.json
+  snapshot: /var/lib/xaac-agent/network/ieee8021x-snapshot.json
+  pending: /var/lib/xaac-agent/network/ieee8021x-pending.json
+  renewal: /var/lib/xaac-agent/network/ieee8021x-renewal.json
+  diagnostics: /var/lib/xaac-agent/network/ieee8021x-diagnostics.json

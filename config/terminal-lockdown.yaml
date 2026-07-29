@@ -1,0 +1,76 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-terminal-lockdown
+  kiosk_user: xaac-kiosk
+  default_decision: deny
+  enforcement_mode: enforce
+
+terminal_emulators:
+  forbidden_packages:
+    - foot
+    - gnome-terminal
+    - konsole
+    - mate-terminal
+    - rxvt-unicode
+    - tilix
+    - weston
+    - xfce4-terminal
+    - xterm
+  forbidden_executables:
+    - foot
+    - gnome-terminal
+    - konsole
+    - mate-terminal
+    - rxvt
+    - tilix
+    - urxvt
+    - weston-terminal
+    - xfce4-terminal
+    - xterm
+
+command_execution:
+  allowed_executables:
+    - /usr/bin/xaac-session-supervisor
+    - /usr/bin/xaac-thin-client
+    - /usr/bin/labwc
+  forbidden_shells:
+    - /bin/bash
+    - /bin/dash
+    - /bin/sh
+    - /usr/bin/bash
+    - /usr/bin/dash
+    - /usr/bin/env
+    - /usr/bin/sh
+  forbid_interpreters_from_launchers: true
+  forbid_user_desktop_files: true
+
+uri:
+  allowed_schemes:
+    - xaac
+  forbidden_schemes:
+    - file
+    - ftp
+    - http
+    - https
+    - mailto
+    - smb
+    - ssh
+  disable_generic_openers: true
+
+path:
+  value: /usr/local/libexec/xaac:/usr/libexec/xaac
+  require_absolute_entries: true
+  forbid_empty_entries: true
+  forbid_writable_entries: true
+  forbidden_entries:
+    - /bin
+    - /sbin
+    - /usr/bin
+    - /usr/local/bin
+    - /usr/local/sbin
+    - /usr/sbin
+
+files:
+  environment: /etc/xaac/kiosk/environment.d/20-terminal-lockdown.conf
+  mimeapps: /etc/xaac/kiosk/mimeapps.list
+  policy: /etc/xaac/kiosk/terminal-lockdown.json

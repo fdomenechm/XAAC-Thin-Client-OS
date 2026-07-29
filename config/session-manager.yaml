@@ -1,0 +1,34 @@
+schema_version: 1
+profile: xaac-kiosk-session
+manager:
+  name: greetd
+  command: /usr/sbin/greetd
+  config: /etc/greetd/config.toml
+session:
+  name: xaac-kiosk
+  user: xaac-kiosk
+  backend: wayland
+  command: /usr/local/libexec/xaac-session
+  compositor_command: /usr/bin/labwc --config /etc/xaac/labwc/rc.xml
+autologin:
+  enabled: true
+  once: false
+restrictions:
+  allowed_user: xaac-kiosk
+  allow_other_sessions: false
+  allow_interactive_greeter: false
+  vt: 1
+packages:
+  required:
+    - greetd
+  forbidden:
+    - gdm3
+    - lightdm
+    - sddm
+    - xdm
+files:
+  greetd_config: /etc/greetd/config.toml
+  session_launcher: /usr/local/libexec/xaac-session
+  wayland_session: /usr/share/wayland-sessions/xaac-kiosk.desktop
+  environment: /etc/xaac/session/session-manager.env
+  policy: /etc/xaac/session/session-manager-policy.json

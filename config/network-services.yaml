@@ -1,0 +1,26 @@
+schema_version: 1
+backend:
+  dns: systemd-resolved
+  ntp: systemd-timesyncd
+allowed_sources:
+  - local
+  - remote
+limits:
+  dns_servers: 3
+  search_domains: 6
+  ntp_servers: 4
+  proxy_exceptions: 16
+defaults:
+  dnssec: allow-downgrade
+  dns_over_tls: opportunistic
+  fallback_ntp:
+    - 0.debian.pool.ntp.org
+    - 1.debian.pool.ntp.org
+paths:
+  resolved: /etc/systemd/resolved.conf.d/20-xaac.conf
+  timesyncd: /etc/systemd/timesyncd.conf.d/20-xaac.conf
+  proxy_environment: /etc/xaac/network/proxy.env
+  apt_proxy: /etc/apt/apt.conf.d/80xaac-proxy
+  state: /var/lib/xaac-agent/network/services.json
+  diagnostics: /var/lib/xaac-agent/network/diagnostics.json
+  snapshot: /var/lib/xaac-agent/network/services-snapshot.json

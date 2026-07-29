@@ -1,0 +1,7 @@
+XAAC_OS_NAME="{{ project.name }}"
+XAAC_OS_VERSION="{{ project.version }}"
+XAAC_OS_PROFILE="{{ build.profile }}"
+XAAC_OS_ARCHITECTURE="{{ build.architecture }}"
+XAAC_OS_CHANNEL="{{ build.channel }}"
+XAAC_OS_BUILD_ID="{{ build.id }}"
+DEBIAN_SUITE="{{ debian.suite }}"

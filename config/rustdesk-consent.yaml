@@ -1,0 +1,28 @@
+schema_version: 1
+consent:
+  default_mode: required
+  allowed_modes:
+    - required
+    - authorized-unattended
+  unattended:
+    allowed_sources:
+      - xms
+    require_managed_device: true
+    require_policy_authorization: true
+  prompt_timeout_seconds: 60
+  allow_user_cancel: true
+notification:
+  show_operator: true
+  show_reason: true
+  show_expiry: true
+  channel: kiosk-overlay
+logging:
+  record_requests: true
+  record_decisions: true
+  record_cancellations: true
+outputs:
+  policy: /etc/xaac/rustdesk/consent-policy.json
+  notifier: /usr/libexec/xaac-rustdesk-consent-notify
+  state: /var/lib/xaac-agent/services/rustdesk-consent.json
+  request: /run/xaac/rustdesk/consent-request.json
+  audit_log: /var/log/xaac/rustdesk-consent.jsonl
