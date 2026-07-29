@@ -1,0 +1,32 @@
+schema_version: 1
+package_id: xaac-production-pxe-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+package:
+  format: pxe-bundle
+  loader: ipxe
+  transport: http
+boot:
+  kernel_arguments:
+    - boot=live
+    - ro
+    - quiet
+    - xaac.install=unattended
+    - xaac.profile=wyse3040
+unattended_install:
+  enabled: true
+  require_confirmation_token: true
+  wipe_target_disk: true
+  target_profile: wyse3040
+sources:
+  kernel: .build/image/vmlinuz
+  initramfs: .build/image/initrd.img
+  rootfs: .build/image/rootfs.squashfs
+outputs:
+  bundle: .build/pxe/bundle
+  manifest: .build/pxe/manifest.json
+  ipxe_script: .build/pxe/boot.ipxe
+  unattended_config: .build/pxe/unattended.json
+  build_script: .build/pxe/build-pxe.sh
+  checksum: .build/pxe/bundle.sha256

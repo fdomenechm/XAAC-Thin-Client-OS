@@ -18,3 +18,7 @@ La fase 12.1 incorpora `config/iso-builder.yaml` i l’ordre `xaac-os build-iso`
 ## IMG de producció
 
 La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`. La preparació genera el constructor RAW, el manifest i el servei de primer inici per expandir la partició arrel i regenerar la identitat després d'una clonació.
+
+## Fase 12.3 — Paquet PXE
+
+`config/pxe-builder.yaml` i l’ordre `xaac-os build-pxe` preparen el bundle d’arrencada i instal·lació desatesa per xarxa, inclosos el manifest, l’script iPXE i els hashes SHA-256.

@@ -1,3 +1,11 @@
+# Fase 12.3 — Paquet PXE
+
+- Afegit constructor del bundle PXE amb kernel, initramfs i rootfs SquashFS.
+- Incorporat script iPXE amb arguments controlats i token de confirmació.
+- Afegida configuració d’instal·lació desatesa específica per al Dell Wyse 3040.
+- Incorporats manifest, hashes SHA-256, documentació i ordre `build-pxe`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
 # Fase 12.2 — Constructor IMG
 
 - Afegit constructor d’imatge RAW amb GPT i UEFI per al Dell Wyse 3040.
