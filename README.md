@@ -966,3 +966,16 @@ xaac-os --root . configure-usb-recovery
 ```
 
 Només s'accepta l'etiqueta `XAAC_RECOVERY_USB` en un dispositiu extraïble. Abans de reinstal·lar es validen manifest, signatura, hashes, producte, perfil del Wyse 3040 i versió; la reinstal·lació és transaccional i conserva identitat i enrolament. Consulteu `docs/PHASE_11_7.md`.
+
+### Fase 11.8 — Recuperació PXE i remota
+
+La recuperació per xarxa autoritzada per XMS es configura amb:
+
+```bash
+xaac-os --root . configure-pxe-recovery --dry-run
+xaac-os --root . configure-pxe-recovery
+```
+
+La política només admet Ethernet i iPXE sobre HTTPS, exigeix una ordre `recovery.pxe` d’un sol ús, valida identitat, nonce, caducitat, TLS, manifest, signatura i SHA-256, i requereix confirmació física abans d’escriure al dispositiu. El procés és transaccional, conserva identitat i enrolament i informa XMS del progrés i del resultat. Consulteu `docs/PHASE_11_8.md`.
+
+Amb aquesta fase queda completat el bloc 11 — Recuperació.

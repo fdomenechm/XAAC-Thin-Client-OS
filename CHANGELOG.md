@@ -953,3 +953,13 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Afegida reinstal·lació transaccional amb verificació anterior i posterior, conservant identitat i enrolament.
 - Incorporats rebuig del mitjà incorrecte, registre persistent, notificació a l'Agent i comportament *fail-closed*.
 - Afegits regla udev, servei systemd endurit, ordre `configure-usb-recovery`, documentació i proves.
+
+## Fase 11.8 — Recuperació PXE i remota
+
+- Afegida una política declarativa d’arrencada de recuperació mitjançant Ethernet i iPXE.
+- Exigides descàrregues HTTPS amb validació TLS, manifest signat i hashes SHA-256.
+- Incorporada autorització XMS mitjançant ordres `recovery.pxe` autenticades, amb nonce, caducitat i ús únic.
+- Afegida confirmació local amb presència física, frase exacta, temps limitat i alimentació elèctrica.
+- Incorporats estat persistent, progrés periòdic, notificacions a l’Agent i XMS, límit de fallades i comportament *fail-closed*.
+- Afegits script iPXE, servei systemd endurit, llançador restringit, unitat Ethernet, ordre `configure-pxe-recovery`, documentació i proves.
+- Tancat el bloc 11: recuperació local, USB i per xarxa.

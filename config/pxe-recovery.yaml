@@ -1,0 +1,60 @@
+schema_version: 1
+recovery_id: xaac-pxe-recovery-1
+hardware_profile: wyse3040
+network_boot:
+  protocol: https
+  pxe_loader: ipxe
+  require_wired_network: true
+  allow_plain_http: false
+  dhcp_timeout_seconds: 45
+  image_url: https://xms.example.invalid/recovery/wyse3040/recovery-rootfs.squashfs
+  kernel_url: https://xms.example.invalid/recovery/wyse3040/vmlinuz
+  initramfs_url: https://xms.example.invalid/recovery/wyse3040/initrd.img
+trust:
+  require_manifest: true
+  require_signature: true
+  trusted_keyring: /usr/share/keyrings/xaac-recovery.gpg
+  hash_algorithm: sha256
+  require_tls_validation: true
+authorization:
+  require_xms_order: true
+  order_type: recovery.pxe
+  require_device_identity: true
+  require_nonce: true
+  maximum_order_age_seconds: 300
+  single_use_order: true
+  fail_closed: true
+confirmation:
+  require_local_confirmation: true
+  confirmation_phrase: RECOVER XAAC DEVICE
+  timeout_seconds: 120
+  require_ac_power: true
+recovery:
+  transactional: true
+  verify_before_write: true
+  verify_after_write: true
+  preserve_device_identity: true
+  preserve_enrollment: true
+  allow_downgrade: false
+  notify_xms: true
+state:
+  persistent: true
+  report_progress: true
+  progress_interval_seconds: 15
+  terminal_states:
+    - completed
+    - failed
+    - cancelled
+errors:
+  persistent_log: true
+  notify_agent: true
+  notify_xms: true
+  disable_on_repeated_failure: true
+  maximum_failures: 3
+outputs:
+  policy: /etc/xaac/recovery/pxe-recovery.json
+  state: /var/lib/xaac-recovery/pxe-recovery-state.json
+  ipxe_script: /usr/share/xaac-recovery/xaac-recovery.ipxe
+  service: /usr/lib/systemd/system/xaac-pxe-recovery.service
+  runner: /usr/libexec/xaac-pxe-recovery
+  network: /etc/systemd/network/80-xaac-pxe-recovery.network
