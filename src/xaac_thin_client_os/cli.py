@@ -174,6 +174,9 @@ from xaac_thin_client_os.image_test_suite import (
 from xaac_thin_client_os.hardware_final_tests import (
     HardwareFinalTestsBuilder, HardwareFinalTestsError, create_hardware_final_tests_plan,
 )
+from xaac_thin_client_os.performance_stability import (
+    PerformanceStabilityBuilder, PerformanceStabilityError, create_performance_stability_plan,
+)
 from xaac_thin_client_os.application_recovery import (
     ApplicationRecoveryError, ApplicationRecoveryInstaller, create_application_recovery_plan,
 )
@@ -460,6 +463,8 @@ def build_parser() -> argparse.ArgumentParser:
     image_tests.add_argument("--dry-run", action="store_true")
     hardware_tests = subparsers.add_parser("build-hardware-tests", help="Prepara les proves finals de maquinari")
     hardware_tests.add_argument("--dry-run", action="store_true")
+    performance_tests = subparsers.add_parser("build-performance-tests", help="Prepara les proves de rendiment i estabilitat")
+    performance_tests.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
     update_service = subparsers.add_parser("configure-update-service", help="Configura el servei de comprovació, descàrrega i staging")
@@ -2064,6 +2069,13 @@ def _build_hardware_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
     _emit(payload, as_json=as_json)
     return 0
 
+def _build_performance_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_performance_stability_plan(root, root / 'config/performance-stability.yaml')
+    paths = PerformanceStabilityBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Proves de rendiment planificades' if dry_run else 'Proves de rendiment preparades', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
 
 def _configure_xaac_apt_repository(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_xaac_apt_repository_plan(root / ".build/rootfs", root / "config/xaac-apt-repository.yaml")
@@ -2557,6 +2569,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _build_image_tests(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "build-hardware-tests":
             return _build_hardware_tests(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-performance-tests":
+            return _build_performance_tests(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-xaac-apt-repository":
             return _configure_xaac_apt_repository(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-service":
@@ -2658,7 +2672,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

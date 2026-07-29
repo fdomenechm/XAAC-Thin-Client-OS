@@ -1,3 +1,11 @@
+# Fase 12.8 — Rendiment i estabilitat
+
+- Afegida suite de mètriques per a temps d'arrencada, RAM, CPU, disc i temperatura.
+- Incorporada validació de sessió prolongada i recuperació amb xarxa intermitent.
+- Afegits llindars declaratius, manifest, runner, esquema JSON i guia d'execució.
+- Afegida l'ordre `build-performance-tests` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
 # Fase 12.3 — Paquet PXE
 
 - Afegit constructor del bundle PXE amb kernel, initramfs i rootfs SquashFS.

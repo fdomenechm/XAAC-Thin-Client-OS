@@ -38,3 +38,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.7 — Proves finals de maquinari
 
 `config/hardware-final-tests.yaml` i l’ordre `xaac-os build-hardware-tests` preparen el manifest, l’executor, la llista manual i l’esquema de resultats per validar un Dell Wyse 3040 real.
+
+## Fase 12.8 — Rendiment i estabilitat
+
+`xaac-os-build build-performance-tests` prepara la suite de rendiment per al Dell Wyse 3040.
