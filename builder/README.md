@@ -10,3 +10,7 @@ Els subdirectoris es conserven versionats encara que temporalment no continguen 
 - `templates/`: plantilles utilitzades per generar artefactes d'imatge.
 
 No s'ha d'eliminar cap d'aquests directoris, perquè formen part del contracte estructural verificat pels tests del repositori.
+
+## ISO de producció
+
+La fase 12.1 incorpora `config/iso-builder.yaml` i l’ordre `xaac-os build-iso`. La preparació genera `.build/iso/build-iso.sh`, que construeix la ISO híbrida, el hash SHA-256 i la signatura separada.

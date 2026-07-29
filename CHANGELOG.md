@@ -963,3 +963,16 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Incorporats estat persistent, progrés periòdic, notificacions a l’Agent i XMS, límit de fallades i comportament *fail-closed*.
 - Afegits script iPXE, servei systemd endurit, llançador restringit, unitat Ethernet, ordre `configure-pxe-recovery`, documentació i proves.
 - Tancat el bloc 11: recuperació local, USB i per xarxa.
+
+## [0.1.0] - Fase 12.1
+
+### Afegit
+
+- Constructor declaratiu d’ISO híbrida per a `amd64` i Dell Wyse 3040.
+- Arrencada UEFI i BIOS de compatibilitat mitjançant GRUB 2.
+- Entrada d’instal·lació per defecte i mode live de diagnòstic separat, immutable i sense persistència.
+- Preparació determinista de l’arbre ISO, manifest i script `xorriso` fail-closed.
+- Generació obligatòria de hash SHA-256 i signatura OpenPGP separada.
+- Ordre `build-iso` amb mode `--dry-run`.
+- Proves positives, negatives, d’idempotència, CLI, permisos, rutes i protecció contra symlinks.
+- Iniciat el Bloc 12 — Imatge de producció.
