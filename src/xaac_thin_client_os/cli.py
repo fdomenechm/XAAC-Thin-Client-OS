@@ -153,6 +153,9 @@ from xaac_thin_client_os.package_rollback import (
 from xaac_thin_client_os.update_rings import (
     UpdateRingsError, UpdateRingsInstaller, create_update_rings_plan,
 )
+from xaac_thin_client_os.update_sources import (
+    UpdateSourcesError, UpdateSourcesInstaller, create_update_sources_plan,
+)
 from xaac_thin_client_os.device_identity import (
     DeviceIdentityError, DeviceIdentityManager,
 )
@@ -399,6 +402,8 @@ def build_parser() -> argparse.ArgumentParser:
     package_rollback.add_argument("--dry-run", action="store_true")
     update_rings = subparsers.add_parser("configure-update-rings", help="Configura el desplegament progressiu per anells")
     update_rings.add_argument("--dry-run", action="store_true")
+    update_sources = subparsers.add_parser("configure-update-sources", help="Configura les fonts d’actualització XMS i USB")
+    update_sources.add_argument("--dry-run", action="store_true")
     device_identity = subparsers.add_parser("configure-device-identity", help="Genera o valida la identitat persistent del dispositiu")
     device_identity.add_argument("--dry-run", action="store_true", help="Planifica la identitat sense escriure-la")
     first_boot = subparsers.add_parser("configure-first-boot", help="Configura el servei idempotent de primer inici")
@@ -1925,6 +1930,20 @@ def _configure_update_rings(root: Path, *, dry_run: bool, as_json: bool) -> int:
     return 0
 
 
+def _configure_update_sources(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_update_sources_plan(root / ".build/rootfs", root / "config/update-sources.yaml")
+    paths = UpdateSourcesInstaller().install(plan, dry_run=dry_run)
+    payload = {
+        "status": "planned" if dry_run else "ok",
+        "message": "Fonts d’actualització planificades" if dry_run else "Fonts d’actualització configurades",
+        "executed": not dry_run,
+        **plan.manifest(),
+        "files": [str(path) for path in paths],
+    }
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_device_identity(root: Path, *, dry_run: bool, as_json: bool) -> int:
     identity = DeviceIdentityManager().create(
         root / ".build/rootfs", root / "config/device-identity.yaml", dry_run=dry_run
@@ -2340,6 +2359,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_package_rollback(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-rings":
             return _configure_update_rings(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-update-sources":
+            return _configure_update_sources(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-device-identity":
             return _configure_device_identity(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-first-boot":
@@ -2427,7 +2448,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

@@ -901,3 +901,5 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Política *fail-closed*, conservació d'evidències i prohibició del `factory reset` automàtic.
 - Estat persistent amb permisos restrictius, escriptures atòmiques i protecció contra symlinks.
 - Ordre `configure-recovery-model`, documentació i proves positives, negatives i d'idempotència.
+
+- Correcció de regressió CLI: restaurada l’ordre `configure-update-sources` de la fase 10.8.
