@@ -1,3 +1,10 @@
+# Fase 12.9 — Documentació
+
+- Afegits manuals d’instal·lació, administració, xarxa, seguretat, actualització, recuperació, desenvolupament i troubleshooting.
+- Incorporats perfil declaratiu, validació del conjunt, índex i manifest determinista.
+- Afegida l’ordre `build-documentation` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
 # Fase 12.8 — Rendiment i estabilitat
 
 - Afegida suite de mètriques per a temps d'arrencada, RAM, CPU, disc i temperatura.
