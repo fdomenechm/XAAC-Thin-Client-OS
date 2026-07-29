@@ -34,3 +34,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.6 — Proves automatitzades d’imatge
 
 `config/image-tests.yaml` i l’ordre `xaac-os build-image-tests` generen l’executor de validació integral de la imatge, el manifest i l’esquema de l’informe JSON.
+
+## Fase 12.7 — Proves finals de maquinari
+
+`config/hardware-final-tests.yaml` i l’ordre `xaac-os build-hardware-tests` preparen el manifest, l’executor, la llista manual i l’esquema de resultats per validar un Dell Wyse 3040 real.

@@ -171,6 +171,9 @@ from xaac_thin_client_os.mass_cloning import (
 from xaac_thin_client_os.image_test_suite import (
     ImageTestSuiteBuilder, ImageTestSuiteError, create_image_test_suite_plan,
 )
+from xaac_thin_client_os.hardware_final_tests import (
+    HardwareFinalTestsBuilder, HardwareFinalTestsError, create_hardware_final_tests_plan,
+)
 from xaac_thin_client_os.application_recovery import (
     ApplicationRecoveryError, ApplicationRecoveryInstaller, create_application_recovery_plan,
 )
@@ -455,6 +458,8 @@ def build_parser() -> argparse.ArgumentParser:
     cloning_builder.add_argument("--dry-run", action="store_true")
     image_tests = subparsers.add_parser("build-image-tests", help="Prepara les proves automatitzades de la imatge")
     image_tests.add_argument("--dry-run", action="store_true")
+    hardware_tests = subparsers.add_parser("build-hardware-tests", help="Prepara les proves finals de maquinari")
+    hardware_tests.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
     update_service = subparsers.add_parser("configure-update-service", help="Configura el servei de comprovació, descàrrega i staging")
@@ -2052,6 +2057,14 @@ def _build_image_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
     return 0
 
 
+def _build_hardware_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_hardware_final_tests_plan(root, root / 'config/hardware-final-tests.yaml')
+    paths = HardwareFinalTestsBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Proves finals de maquinari planificades' if dry_run else 'Proves finals de maquinari preparades', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_xaac_apt_repository(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_xaac_apt_repository_plan(root / ".build/rootfs", root / "config/xaac-apt-repository.yaml")
     paths = XaacAptRepositoryInstaller().install(plan, dry_run=dry_run)
@@ -2542,6 +2555,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _build_cloning(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "build-image-tests":
             return _build_image_tests(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-hardware-tests":
+            return _build_hardware_tests(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-xaac-apt-repository":
             return _configure_xaac_apt_repository(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-service":
@@ -2643,7 +2658,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

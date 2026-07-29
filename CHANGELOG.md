@@ -1027,3 +1027,13 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Executor que recull totes les comprovacions i retorna error si qualsevol validació falla.
 - Informe JSON validable mitjançant esquema i manifest determinista de la suite.
 - Ordre `build-image-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.7
+
+### Afegit
+
+- Suite declarativa de proves finals sobre maquinari Dell Wyse 3040 real.
+- Validacions d’instal·lació, ús continu, RDP, perifèrics, actualització, factory reset i recuperació.
+- Recollida d’inventari, PCI, USB i journal com a evidència de laboratori.
+- Llista manual per a operacions destructives i informe JSON validable.
+- Ordre `build-hardware-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
