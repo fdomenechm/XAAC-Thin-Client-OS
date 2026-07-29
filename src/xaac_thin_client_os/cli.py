@@ -144,6 +144,9 @@ from xaac_thin_client_os.local_recovery import (
 from xaac_thin_client_os.recovery_partition import (
     RecoveryPartitionError, RecoveryPartitionInstaller, create_recovery_partition_plan,
 )
+from xaac_thin_client_os.factory_reset import (
+    FactoryResetError, FactoryResetInstaller, create_factory_reset_plan,
+)
 from xaac_thin_client_os.application_recovery import (
     ApplicationRecoveryError, ApplicationRecoveryInstaller, create_application_recovery_plan,
 )
@@ -410,6 +413,8 @@ def build_parser() -> argparse.ArgumentParser:
     local_recovery.add_argument("--dry-run", action="store_true")
     recovery_partition = subparsers.add_parser("configure-recovery-partition", help="Configura la partició local de recuperació protegida")
     recovery_partition.add_argument("--dry-run", action="store_true")
+    factory_reset = subparsers.add_parser("configure-factory-reset", help="Configura el factory reset local, confirmat i auditable")
+    factory_reset.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
     update_service = subparsers.add_parser("configure-update-service", help="Configura el servei de comprovació, descàrrega i staging")
@@ -1935,6 +1940,14 @@ def _configure_recovery_partition(root: Path, *, dry_run: bool, as_json: bool) -
     return 0
 
 
+def _configure_factory_reset(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_factory_reset_plan(root / ".build/rootfs", root / "config/factory-reset.yaml")
+    paths = FactoryResetInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Factory reset planificat" if dry_run else "Factory reset configurat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_xaac_apt_repository(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_xaac_apt_repository_plan(root / ".build/rootfs", root / "config/xaac-apt-repository.yaml")
     paths = XaacAptRepositoryInstaller().install(plan, dry_run=dry_run)
@@ -2407,6 +2420,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_local_recovery(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-recovery-partition":
             return _configure_recovery_partition(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-factory-reset":
+            return _configure_factory_reset(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-xaac-apt-repository":
             return _configure_xaac_apt_repository(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-service":
@@ -2508,7 +2523,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

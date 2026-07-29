@@ -938,3 +938,10 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Definides una imatge SquashFS immutable i signada, kernel, initramfs i eines mínimes de recuperació.
 - Incorporats muntatge només de lectura, verificació en arrencada, servei systemd endurit i entrada GRUB dedicada.
 - Afegida l'ordre `configure-recovery-partition`, documentació i proves positives, negatives, d'idempotència, permisos i symlinks.
+
+## Fase 11.6 — Factory reset
+
+- Afegida una política declarativa de restauració de fàbrica segura i auditable.
+- Incorporada la conservació selectiva d'identitat, enrolament, auditoria i xarxa mínima.
+- Afegides confirmació reforçada, verificació de la imatge signada i restauració transaccional.
+- Incorporat el servei de primer inici posterior al reset i proves de regressió.

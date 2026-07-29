@@ -944,3 +944,14 @@ xaac-os --root . configure-recovery-partition
 ```
 
 La partició es munta només en lectura i la verificació falla de manera segura si la imatge, la signatura, el kernel o l'initramfs no són coherents.
+
+## Factory reset controlat
+
+La fase 11.6 configura una restauració de fàbrica local amb:
+
+```bash
+xaac-os --root . configure-factory-reset --dry-run
+xaac-os --root . configure-factory-reset
+```
+
+El procés exigeix administrador local, presència física i confirmació textual exacta; conserva la identitat i l'enrolament, restaura des de la partició signada i executa un primer inici auditable.
