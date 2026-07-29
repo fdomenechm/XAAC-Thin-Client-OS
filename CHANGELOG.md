@@ -924,3 +924,10 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Recopilació persistent de diagnòstics del client, sessió, Agent i política.
 - Notificacions a XAAC Agent i XMS, conservació d'evidències i comportament *fail-closed*.
 - Servei systemd endurit, ordre `configure-application-recovery` i proves de regressió.
+
+## Fase 11.4 — Mode de recuperació local
+
+- Afegida una entrada GRUB dedicada per iniciar `xaac-recovery.target`.
+- Incorporat un entorn mínim autenticat amb menú restringit i registre persistent.
+- La xarxa queda desactivada per defecte i només s'activa explícitament.
+- Afegides proves positives, negatives, d'idempotència, permisos i seguretat.

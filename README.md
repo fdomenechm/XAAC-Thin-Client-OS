@@ -929,3 +929,7 @@ xaac-os --root . configure-package-repair
 ```
 
 La política audita `dpkg` i APT, verifica els fitxers instal·lats, reinstal·la només paquets gestionats des de repositoris signats, repara dependències, restaura configuració de manera atòmica i exigeix una validació final completa. Consulteu `docs/PHASE_11_3.md`.
+
+### Fase 11.4 — Mode de recuperació local
+
+El sistema pot instal·lar una entrada GRUB de recuperació, un target systemd mínim i un menú autenticat mitjançant `configure-local-recovery`.

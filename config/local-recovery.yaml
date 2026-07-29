@@ -1,0 +1,54 @@
+schema_version: 1
+recovery_id: xaac-local-recovery-1
+hardware_profile: wyse3040
+boot:
+  grub_entry: XAAC Thin Client OS Recovery
+  kernel_arguments:
+    - systemd.unit=xaac-recovery.target
+    - ro
+  require_signed_kernel: true
+  hide_from_default_menu: false
+environment:
+  target: xaac-recovery.target
+  shell: /usr/libexec/xaac-local-recovery
+  read_only_root: true
+  allow_network: optional
+  network_default: disabled
+authentication:
+  required: true
+  allowed_users:
+    - xaac-admin
+  max_attempts: 3
+  lockout_seconds: 300
+menu:
+  actions:
+    - diagnostics
+    - restart-client
+    - restart-session
+    - repair-packages
+    - rollback-policy
+    - reboot
+    - poweroff
+  destructive_actions_require_confirmation: true
+logging:
+  journal_namespace: xaac-recovery
+  persistent_directory: /var/log/xaac-recovery
+  preserve_on_success: true
+network:
+  optional: true
+  require_explicit_enable: true
+  permitted_interfaces:
+    - ethernet
+safety:
+  automatic_factory_reset: false
+  preserve_identity: true
+  preserve_enrollment: true
+  preserve_active_policy: true
+  fail_closed: true
+outputs:
+  policy: /etc/xaac/recovery/local-recovery.json
+  state: /var/lib/xaac-recovery/local-recovery-state.json
+  runner: /usr/libexec/xaac-local-recovery
+  service: /etc/systemd/system/xaac-local-recovery.service
+  target: /etc/systemd/system/xaac-recovery.target
+  grub: /etc/grub.d/42_xaac_recovery
