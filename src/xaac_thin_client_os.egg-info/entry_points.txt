@@ -1,0 +1,2 @@
+[console_scripts]
+xaac-os = xaac_thin_client_os.cli:main

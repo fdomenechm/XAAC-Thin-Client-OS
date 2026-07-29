@@ -903,3 +903,15 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Ordre `configure-recovery-model`, documentació i proves positives, negatives i d'idempotència.
 
 - Correcció de regressió CLI: restaurada l’ordre `configure-update-sources` de la fase 10.8.
+
+## [0.1.0] - Fase 11.2
+
+### Afegit
+
+- Política declarativa de recuperació escalonada de XAAC Thin Client i la sessió de quiosc.
+- Reinici controlat del client i escalat al reinici de sessió amb límits i temps d'espera.
+- Neteja segura d'estat efímer amb preservació d'identitat, enrolament i política activa.
+- Restauració atòmica de la política anterior amb validació obligatòria de signatura i esquema.
+- Recopilació persistent de diagnòstics del client, sessió, Agent i política.
+- Notificacions a XAAC Agent i XMS, conservació d'evidències i comportament *fail-closed*.
+- Servei systemd endurit, ordre `configure-application-recovery` i proves de regressió.
