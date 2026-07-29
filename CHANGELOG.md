@@ -1017,3 +1017,13 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Rebuig de destinacions muntades o insegures i verificació byte a byte posterior a l'escriptura.
 - Validació GPT i de les quatre etiquetes de partició de producció.
 - Ordre `build-cloning`, documentació i 12 proves positives, negatives, d'idempotència i seguretat.
+
+## [0.1.0] - Fase 12.6
+
+### Afegit
+
+- Suite declarativa de proves automatitzades sobre la imatge de producció.
+- Validacions d’arrencada, serveis, particions, usuaris, paquets, seguretat, actualització i recuperació.
+- Executor que recull totes les comprovacions i retorna error si qualsevol validació falla.
+- Informe JSON validable mitjançant esquema i manifest determinista de la suite.
+- Ordre `build-image-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.

@@ -30,3 +30,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.5 — Clonació massiva
 
 `config/mass-cloning.yaml` i l’ordre `xaac-os build-cloning` preparen el sanejament de la imatge mestra, els scripts de clonació múltiple i la verificació final. Cada clon regenera la seua identitat al primer inici.
+
+## Fase 12.6 — Proves automatitzades d’imatge
+
+`config/image-tests.yaml` i l’ordre `xaac-os build-image-tests` generen l’executor de validació integral de la imatge, el manifest i l’esquema de l’informe JSON.
