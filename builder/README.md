@@ -42,3 +42,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.8 — Rendiment i estabilitat
 
 `xaac-os-build build-performance-tests` prepara la suite de rendiment per al Dell Wyse 3040.
+
+## Fase 12.10 — Packaging i repositoris
+
+`xaac-os-build build-production-packaging` prepara el manifest, la configuració `reprepro` i el script de publicació signada per als canals laboratory, pilot i production.

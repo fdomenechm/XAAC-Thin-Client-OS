@@ -1,3 +1,10 @@
+# Fase 12.10 — Packaging i repositoris
+
+- Consolidats paquets Debian i metapaquet de sistema.
+- Afegits canals laboratory, pilot i production amb publicació signada.
+- Incorporats perfil declaratiu, manifest, configuració reprepro i ordre `build-production-packaging`.
+- Afegides 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
 # Fase 12.9 — Documentació
 
 - Afegits manuals d’instal·lació, administració, xarxa, seguretat, actualització, recuperació, desenvolupament i troubleshooting.
