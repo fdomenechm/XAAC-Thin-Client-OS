@@ -1,3 +1,11 @@
+# Fase 12.2 — Constructor IMG
+
+- Afegit constructor d’imatge RAW amb GPT i UEFI per al Dell Wyse 3040.
+- Incorporades particions EFI, arrel, dades i recuperació.
+- Afegides expansió de l’arrel i regeneració d’identificadors al primer inici.
+- Incorporades neteja d’identitat per a clonació, compressió XZ i hashes SHA-256.
+- Afegida l’ordre `build-img`, documentació i proves automatitzades.
+
 # Fase 11.3 — Reparació de paquets
 
 - Afegida comprovació fail-closed amb `dpkg --audit`, `apt-get check` i verificació de fitxers.

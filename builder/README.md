@@ -14,3 +14,7 @@ No s'ha d'eliminar cap d'aquests directoris, perquè formen part del contracte e
 ## ISO de producció
 
 La fase 12.1 incorpora `config/iso-builder.yaml` i l’ordre `xaac-os build-iso`. La preparació genera `.build/iso/build-iso.sh`, que construeix la ISO híbrida, el hash SHA-256 i la signatura separada.
+
+## IMG de producció
+
+La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`. La preparació genera el constructor RAW, el manifest i el servei de primer inici per expandir la partició arrel i regenerar la identitat després d'una clonació.
