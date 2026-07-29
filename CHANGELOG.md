@@ -1,3 +1,10 @@
+# Fase 12.11 — Release candidate
+
+- Congelada la versió `1.0.0-rc.1` amb política explícita de canvis admesos.
+- Afegides portes de qualitat per a proves, imatge, maquinari, rendiment, documentació i packaging.
+- Incorporats manifest, notes de versió, estat d’aprovació i script de verificació.
+- Afegida l’ordre `build-release-candidate` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
 # Fase 12.10 — Packaging i repositoris
 
 - Consolidats paquets Debian i metapaquet de sistema.

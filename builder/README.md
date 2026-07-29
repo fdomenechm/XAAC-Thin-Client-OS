@@ -46,3 +46,8 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.10 — Packaging i repositoris
 
 `xaac-os-build build-production-packaging` prepara el manifest, la configuració `reprepro` i el script de publicació signada per als canals laboratory, pilot i production.
+
+
+## Fase 12.11 — Release candidate
+
+`xaac-os-build build-release-candidate` congela `1.0.0-rc.1` i prepara el manifest, les notes, les portes de qualitat i l’estat d’aprovació bloquejant.
