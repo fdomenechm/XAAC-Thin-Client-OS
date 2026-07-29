@@ -186,6 +186,9 @@ from xaac_thin_client_os.production_packaging import (
 from xaac_thin_client_os.release_candidate import (
     ReleaseCandidateBuilder, ReleaseCandidateError, create_release_candidate_plan,
 )
+from xaac_thin_client_os.final_release import (
+    FinalReleaseBuilder, FinalReleaseError, create_final_release_plan,
+)
 from xaac_thin_client_os.application_recovery import (
     ApplicationRecoveryError, ApplicationRecoveryInstaller, create_application_recovery_plan,
 )
@@ -480,6 +483,8 @@ def build_parser() -> argparse.ArgumentParser:
     production_packaging.add_argument("--dry-run", action="store_true")
     release_candidate = subparsers.add_parser("build-release-candidate", help="Prepara i congela la release candidate")
     release_candidate.add_argument("--dry-run", action="store_true")
+    final_release = subparsers.add_parser("build-final-release", help="Prepara la release estable 1.0.0")
+    final_release.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
     update_service = subparsers.add_parser("configure-update-service", help="Configura el servei de comprovació, descàrrega i staging")
@@ -2116,6 +2121,14 @@ def _build_release_candidate(root: Path, *, dry_run: bool, as_json: bool) -> int
     return 0
 
 
+def _build_final_release(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_final_release_plan(root, root / "config/final-release.yaml")
+    paths = FinalReleaseBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Release final planificada" if dry_run else "Release estable 1.0.0 preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_xaac_apt_repository(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_xaac_apt_repository_plan(root / ".build/rootfs", root / "config/xaac-apt-repository.yaml")
     paths = XaacAptRepositoryInstaller().install(plan, dry_run=dry_run)
@@ -2616,6 +2629,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _build_production_packaging(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "build-release-candidate":
             return _build_release_candidate(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-final-release":
+            return _build_final_release(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-xaac-apt-repository":
             return _configure_xaac_apt_repository(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-service":
@@ -2717,7 +2732,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

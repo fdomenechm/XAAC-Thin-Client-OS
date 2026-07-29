@@ -1,3 +1,10 @@
+# Fase 12.12 — Release 1.0.0
+
+- Fixada la versió definitiva del projecte en `1.0.0`.
+- Afegit el pla final per a ISO, IMG, recovery IMG, PXE, paquets i documentació.
+- Incorporats hashes SHA-256, signatures separades, manifest, notes i anunci de publicació.
+- Afegida l’ordre `build-final-release` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
 # Fase 12.11 — Release candidate
 
 - Congelada la versió `1.0.0-rc.1` amb política explícita de canvis admesos.

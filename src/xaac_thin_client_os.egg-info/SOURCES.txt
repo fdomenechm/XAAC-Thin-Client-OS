@@ -182,4 +182,5 @@ tests/test_workspace.py
 tests/test_xaac_agent_package.py
 tests/test_xaac_apt_repository.py
 tests/test_xaac_thin_client_package.py
-tests/test_xms_enrollment.py
+tests/test_xms_enrollment.pysrc/xaac_thin_client_os/final_release.py
+tests/test_final_release.py
