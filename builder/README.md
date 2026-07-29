@@ -26,3 +26,7 @@ La fase 12.2 incorpora `config/img-builder.yaml` i l’ordre `xaac-os build-img`
 ## Fase 12.4 — Instal·lador
 
 `config/installer-builder.yaml` i l’ordre `xaac-os build-installer` preparen l’instal·lador de producció. El flux exigeix selecció explícita del disc, frase `INSTALL XAAC`, verificació SHA-256, particionat GPT, còpia del rootfs, instal·lació GRUB UEFI i resum final estructurat.
+
+## Fase 12.5 — Clonació massiva
+
+`config/mass-cloning.yaml` i l’ordre `xaac-os build-cloning` preparen el sanejament de la imatge mestra, els scripts de clonació múltiple i la verificació final. Cada clon regenera la seua identitat al primer inici.

@@ -1005,3 +1005,15 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Verificació SHA-256 del rootfs, extracció i instal·lació de GRUB UEFI amb fallback extraïble.
 - Resum final JSON, esquema de validació i gestió d’errors *fail-closed*.
 - Ordre `build-installer`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.5
+
+### Afegit
+
+- Constructor declaratiu per sanejar i publicar una imatge mestra de clonació massiva.
+- Eliminació fora de línia de `machine-id`, claus SSH, identitat XAAC, enrolament XMS, logs i llavor aleatòria.
+- Marca de primer inici per regenerar identificadors únics, UUID, claus SSH i identitat XAAC en cada clon.
+- Escriptura sobre múltiples dispositius explícits amb confirmació exacta `CLONE XAAC`.
+- Rebuig de destinacions muntades o insegures i verificació byte a byte posterior a l'escriptura.
+- Validació GPT i de les quatre etiquetes de partició de producció.
+- Ordre `build-cloning`, documentació i 12 proves positives, negatives, d'idempotència i seguretat.

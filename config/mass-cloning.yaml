@@ -1,0 +1,44 @@
+schema_version: 1
+profile_id: xaac-mass-cloning-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+master_image:
+  source: xaac-thin-client-os.img
+  checksum: xaac-thin-client-os.img.sha256
+  verify_sha256: true
+sanitization:
+  require_offline_rootfs: true
+  remove_machine_id: true
+  remove_ssh_host_keys: true
+  remove_xaac_identity: true
+  remove_xms_enrollment: true
+  clear_logs: true
+  clear_random_seed: true
+  mark_first_boot: true
+first_boot:
+  regenerate_machine_id: true
+  regenerate_ssh_host_keys: true
+  regenerate_xaac_identity: true
+  regenerate_filesystem_uuid: true
+  require_unique_identity: true
+verification:
+  verify_partition_table: true
+  required_labels:
+    - XAAC_EFI
+    - XAAC_ROOT
+    - XAAC_DATA
+    - XAAC_RECOVERY
+  verify_bootloader: true
+  verify_sanitized_identity: true
+deployment:
+  parallel_jobs: 4
+  exact_confirmation_phrase: CLONE XAAC
+  reject_source_device: true
+  reject_mounted_targets: true
+  verify_after_write: true
+outputs:
+  manifest: .build/cloning/manifest.json
+  sanitize_script: .build/cloning/sanitize-master
+  clone_script: .build/cloning/xaac-clone
+  verify_script: .build/cloning/verify-clone
