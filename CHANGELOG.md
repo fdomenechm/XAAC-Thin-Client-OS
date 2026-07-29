@@ -931,3 +931,10 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Incorporat un entorn mínim autenticat amb menú restringit i registre persistent.
 - La xarxa queda desactivada per defecte i només s'activa explícitament.
 - Afegides proves positives, negatives, d'idempotència, permisos i seguretat.
+
+## Fase 11.5 — Partició de recuperació
+
+- Afegida la política declarativa de la partició `XAAC_RECOVERY` adaptada a l'eMMC del Wyse 3040.
+- Definides una imatge SquashFS immutable i signada, kernel, initramfs i eines mínimes de recuperació.
+- Incorporats muntatge només de lectura, verificació en arrencada, servei systemd endurit i entrada GRUB dedicada.
+- Afegida l'ordre `configure-recovery-partition`, documentació i proves positives, negatives, d'idempotència, permisos i symlinks.

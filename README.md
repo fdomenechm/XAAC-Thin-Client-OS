@@ -933,3 +933,14 @@ La política audita `dpkg` i APT, verifica els fitxers instal·lats, reinstal·l
 ### Fase 11.4 — Mode de recuperació local
 
 El sistema pot instal·lar una entrada GRUB de recuperació, un target systemd mínim i un menú autenticat mitjançant `configure-local-recovery`.
+
+### Fase 11.5 — Partició de recuperació
+
+La partició local protegida, la verificació de la imatge signada i l'entrada GRUB associada es configuren amb:
+
+```bash
+xaac-os --root . configure-recovery-partition --dry-run
+xaac-os --root . configure-recovery-partition
+```
+
+La partició es munta només en lectura i la verificació falla de manera segura si la imatge, la signatura, el kernel o l'initramfs no són coherents.
