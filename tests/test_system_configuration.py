@@ -108,3 +108,18 @@ def test_locale_gen_error_is_wrapped(tmp_path: Path) -> None:
         raise subprocess.CalledProcessError(1, command)
     with pytest.raises(SystemConfigurationError, match="codi 1"):
         SystemConfigurator(geteuid=lambda: 0, runner=runner).execute(plan, tmp_path / "log")
+
+
+def test_default_locale_internal_symlink_is_supported(tmp_path: Path) -> None:
+    plan = _plan(tmp_path)
+    _prepare(plan)
+    target = plan.rootfs / "etc/default/locale"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.symlink_to("/etc/locale.conf")
+    calls = []
+    def runner(command, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(tuple(command))
+        return subprocess.CompletedProcess(command, 0)
+    SystemConfigurator(geteuid=lambda: 0, runner=runner).execute(plan, tmp_path / "log")
+    assert target.is_symlink()
+    assert 'LANG="ca_ES.UTF-8"' in (plan.rootfs / "etc/locale.conf").read_text()

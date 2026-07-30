@@ -97,13 +97,27 @@ class SystemConfigurator:
         self._runner = runner
 
     @staticmethod
-    def _write_atomic(path: Path, content: str) -> None:
-        if path.is_symlink():
+    def _safe_write_target(rootfs: Path, path: Path) -> Path:
+        """Resolve an existing symlink only when it remains inside the rootfs."""
+        if not path.is_symlink():
+            return path
+        link = Path(os.readlink(path))
+        candidate = (rootfs / link.relative_to("/")) if link.is_absolute() else (path.parent / link)
+        candidate = candidate.resolve(strict=False)
+        allowed = (rootfs / "etc/locale.conf").resolve(strict=False)
+        if path != rootfs / "etc/default/locale" or candidate != allowed:
             raise SystemConfigurationError(f"No s'escriurà sobre l'enllaç simbòlic {path}")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(path.name + ".tmp")
+        return candidate
+
+    @classmethod
+    def _write_atomic(cls, rootfs: Path, path: Path, content: str) -> None:
+        target = cls._safe_write_target(rootfs, path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(target.name + ".tmp")
+        if temporary.is_symlink():
+            raise SystemConfigurationError(f"No s'escriurà sobre l'enllaç simbòlic {temporary}")
         temporary.write_text(content, encoding="utf-8")
-        temporary.replace(path)
+        temporary.replace(target)
 
     def execute(
         self, plan: SystemConfigurationPlan, log_path: Path, *, dry_run: bool = False
@@ -133,17 +147,17 @@ class SystemConfigurator:
             missing = [str(path) for path in required if not path.exists()]
             if missing:
                 raise SystemConfigurationError("Al rootfs falten requisits: " + ", ".join(missing))
-            self._write_atomic(plan.rootfs / "etc/hostname", plan.hostname + "\n")
+            self._write_atomic(plan.rootfs, plan.rootfs / "etc/hostname", plan.hostname + "\n")
             self._write_atomic(
-                plan.rootfs / "etc/hosts",
+                plan.rootfs, plan.rootfs / "etc/hosts",
                 "127.0.0.1\tlocalhost\n127.0.1.1\t" + plan.hostname + "\n\n::1\tlocalhost ip6-localhost ip6-loopback\n",
             )
             self._write_atomic(
-                plan.rootfs / "etc/locale.gen",
+                plan.rootfs, plan.rootfs / "etc/locale.gen",
                 "".join(f"{item} UTF-8\n" for item in plan.locales),
             )
-            self._write_atomic(plan.rootfs / "etc/default/locale", f'LANG="{plan.locale}"\n')
-            self._write_atomic(plan.rootfs / "etc/timezone", plan.timezone + "\n")
+            self._write_atomic(plan.rootfs, plan.rootfs / "etc/default/locale", f'LANG="{plan.locale}"\n')
+            self._write_atomic(plan.rootfs, plan.rootfs / "etc/timezone", plan.timezone + "\n")
             localtime = plan.rootfs / "etc/localtime"
             if localtime.exists() or localtime.is_symlink():
                 localtime.unlink()

@@ -1,5 +1,14 @@
 # Fase 12.12 — Release 1.0.0
 
+
+
+## Correcció del constructor ISO — 2026-07-30
+
+- Corregida la configuració de localització del rootfs Debian 13 quan `/etc/default/locale` és un enllaç simbòlic a `/etc/locale.conf`.
+- Es manté la protecció contra enllaços simbòlics arbitraris o que apunten fora del destí permés.
+- Afegides proves de regressió per a `SystemConfigurator` i `LocalizationConfigurator`.
+- Suite completa: 1342 proves superades.
+
 - Fixada la versió definitiva del projecte en `1.0.0`.
 - Afegit el pla final per a ISO, IMG, recovery IMG, PXE, paquets i documentació.
 - Incorporats hashes SHA-256, signatures separades, manifest, notes i anunci de publicació.

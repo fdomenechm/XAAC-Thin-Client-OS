@@ -69,9 +69,21 @@ class LocalizationConfigurator:
     def __init__(self, *, geteuid: Callable[[],int]=os.geteuid, runner: Callable[...,subprocess.CompletedProcess[str]]=subprocess.run):
         self._geteuid=geteuid; self._runner=runner
     @staticmethod
-    def _write(path: Path, content: str) -> None:
-        if path.is_symlink(): raise LocalizationError(f"No s'escriurà sobre l'enllaç simbòlic {path}")
-        path.parent.mkdir(parents=True,exist_ok=True); tmp=path.with_name(path.name+'.tmp'); tmp.write_text(content,encoding='utf-8'); tmp.replace(path)
+    def _safe_write_target(rootfs: Path, path: Path) -> Path:
+        if not path.is_symlink(): return path
+        link=Path(os.readlink(path))
+        candidate=(rootfs/link.relative_to('/')) if link.is_absolute() else (path.parent/link)
+        candidate=candidate.resolve(strict=False)
+        allowed=(rootfs/'etc/locale.conf').resolve(strict=False)
+        if path != rootfs/'etc/default/locale' or candidate != allowed:
+            raise LocalizationError(f"No s'escriurà sobre l'enllaç simbòlic {path}")
+        return candidate
+    @classmethod
+    def _write(cls, rootfs: Path, path: Path, content: str) -> None:
+        target=cls._safe_write_target(rootfs,path)
+        target.parent.mkdir(parents=True,exist_ok=True); tmp=target.with_name(target.name+'.tmp')
+        if tmp.is_symlink(): raise LocalizationError(f"No s'escriurà sobre l'enllaç simbòlic {tmp}")
+        tmp.write_text(content,encoding='utf-8'); tmp.replace(target)
     def execute(self, plan: LocalizationPlan, log_path: Path, *, dry_run: bool=False) -> LocalizationResult:
         files=(plan.rootfs/'etc/locale.gen',plan.rootfs/'etc/default/locale',plan.rootfs/'etc/default/keyboard',
                plan.rootfs/'etc/default/console-setup',plan.rootfs/'etc/timezone',plan.rootfs/'etc/localtime')
@@ -84,11 +96,11 @@ class LocalizationConfigurator:
             required=(plan.rootfs/'etc/debian_version',plan.rootfs/'usr/sbin/locale-gen',plan.rootfs/'usr/sbin/update-locale',plan.rootfs/'usr/share/zoneinfo'/plan.timezone)
             missing=[str(p) for p in required if not p.exists()]
             if missing: raise LocalizationError('Al rootfs falten requisits: '+', '.join(missing))
-            self._write(files[0],''.join(f'{x} UTF-8\n' for x in plan.locales))
-            self._write(files[1],f'LANG="{plan.locale}"\nLANGUAGE="{plan.locale.split(".")[0]}"\n')
-            self._write(files[2],f'XKBMODEL="{plan.keyboard_model}"\nXKBLAYOUT="{plan.keyboard_layout}"\nXKBVARIANT="{plan.keyboard_variant}"\nXKBOPTIONS="{",".join(plan.keyboard_options)}"\nBACKSPACE="guess"\n')
-            self._write(files[3],f'CHARMAP="{plan.console_charmap}"\nCODESET="guess"\nFONTFACE="Fixed"\nFONTSIZE="16"\nFONT="{plan.console_font}"\n')
-            self._write(files[4],plan.timezone+'\n')
+            self._write(plan.rootfs,files[0],''.join(f'{x} UTF-8\n' for x in plan.locales))
+            self._write(plan.rootfs,files[1],f'LANG="{plan.locale}"\nLANGUAGE="{plan.locale.split(".")[0]}"\n')
+            self._write(plan.rootfs,files[2],f'XKBMODEL="{plan.keyboard_model}"\nXKBLAYOUT="{plan.keyboard_layout}"\nXKBVARIANT="{plan.keyboard_variant}"\nXKBOPTIONS="{",".join(plan.keyboard_options)}"\nBACKSPACE="guess"\n')
+            self._write(plan.rootfs,files[3],f'CHARMAP="{plan.console_charmap}"\nCODESET="guess"\nFONTFACE="Fixed"\nFONTSIZE="16"\nFONT="{plan.console_font}"\n')
+            self._write(plan.rootfs,files[4],plan.timezone+'\n')
             if files[5].exists() or files[5].is_symlink(): files[5].unlink()
             files[5].symlink_to(Path('/usr/share/zoneinfo')/plan.timezone)
             count=0

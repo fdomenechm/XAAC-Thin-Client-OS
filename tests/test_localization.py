@@ -71,3 +71,12 @@ def test_command_error_wrapped(tmp_path):
     p=_plan(tmp_path); _prepare(p)
     def runner(command,**kwargs): raise subprocess.CalledProcessError(5,command)
     with pytest.raises(LocalizationError,match='codi 5'): LocalizationConfigurator(geteuid=lambda:0,runner=runner).execute(p,tmp_path/'log')
+
+
+def test_default_locale_internal_symlink_is_supported(tmp_path):
+    p=_plan(tmp_path); _prepare(p)
+    target=p.rootfs/'etc/default/locale'; target.parent.mkdir(parents=True,exist_ok=True); target.symlink_to('/etc/locale.conf')
+    def runner(command,**kwargs): return subprocess.CompletedProcess(command,0)
+    LocalizationConfigurator(geteuid=lambda:0,runner=runner).execute(p,tmp_path/'log')
+    assert target.is_symlink()
+    assert 'LANG="ca_ES.UTF-8"' in (p.rootfs/'etc/locale.conf').read_text()
