@@ -153,6 +153,10 @@ class CommandRunner:
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
+        # The workspace may have been removed by --clean after the runner was
+        # created. Recreate the log directory immediately before every command
+        # so each phase can always record its diagnostics.
+        self.logs.mkdir(parents=True, exist_ok=True)
         log_path = self.logs / f"{phase}.log"
         rendered = " ".join(command)
         if self.dry_run:

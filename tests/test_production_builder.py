@@ -44,6 +44,15 @@ def test_command_runner_dry_run_records_command(tmp_path: Path) -> None:
     assert (tmp_path / "logs/sample.log").read_text(encoding="utf-8") == "$ echo hello\n"
 
 
+def test_command_runner_recreates_logs_after_workspace_cleanup(tmp_path: Path) -> None:
+    logs = tmp_path / "production/logs"
+    runner = CommandRunner(logs, dry_run=True)
+    import shutil
+    shutil.rmtree(logs.parent)
+    runner.run(["echo", "hello"], phase="after-clean")
+    assert (logs / "after-clean.log").read_text(encoding="utf-8") == "$ echo hello\n"
+
+
 def test_inside_never_uses_host_system_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = minimal_project(tmp_path)
     builder = object.__new__(ProductionIsoBuilder)

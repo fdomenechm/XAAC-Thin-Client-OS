@@ -1106,3 +1106,9 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - La ISO es crea amb `grub-mkrescue`; no s'executa `grub-install` dins del chroot.
 - Totes les escriptures de configuració queden confinades a `.build/production/rootfs`.
 - S'han afegit muntatges de chroot amb neteja garantida i logs independents per fase.
+
+## Correcció del constructor ISO de producció
+
+- El directori de logs es recrea abans de cada ordre externa.
+- `--clean` ja no elimina el directori de logs de manera que la fase `rootfs` falle abans d'executar `debootstrap`.
+- Afegida una prova de regressió específica per a la seqüència `--clean` seguida de construcció.
