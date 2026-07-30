@@ -12,7 +12,7 @@ Agent i el client personalitzat XAAC Remote Support basat en RustDesk.
 - Arquitectura objectiu: **amd64**
 - Maquinari principal: **Dell Wyse 3040**
 - Entorn de desenvolupament: **Python 3.13**
-- Llicència: **GNU GPL v3.0 o posterior**
+- Llicència: **EUPL v1.2 o posterior**
 
 El calendari inicial de desenvolupament està complet. L'històric de les fases es
 conserva a [`docs/phases/`](docs/phases/README.md).
@@ -94,4 +94,4 @@ fora del codi font.
 
 ## Llicència
 
-GNU General Public License v3.0 o posterior.
+European Union Public Licence (EUPL) v1.2 o posterior.

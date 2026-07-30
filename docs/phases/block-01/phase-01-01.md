@@ -14,7 +14,7 @@ La fase estableix la base tècnica del projecte XAAC Thin Client OS.
 - CLI inicial `xaac-os`.
 - Metadades i versió canònica en `VERSION`.
 - Estructura inicial de constructor, perfils, paquets, configuració i recuperació.
-- Llicència GPL-3.0-or-later.
+- Llicència EUPL-1.2-or-later.
 - Scripts operatius estàndard en `scripts/`.
 - `Makefile` per executar les operacions habituals.
 
