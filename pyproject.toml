@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Build and integration tooling for XAAC Thin Client OS"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
-license = { text = "GPL-3.0-or-later" }
+license = { text = "EUPL-1.2-or-later" }
 authors = [
   { name = "XAAC Project" }
 ]
@@ -16,7 +16,7 @@ classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Environment :: Console",
   "Intended Audience :: System Administrators",
-  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.13",
