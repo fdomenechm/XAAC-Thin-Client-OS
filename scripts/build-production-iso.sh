@@ -28,7 +28,7 @@ for command in debootstrap mksquashfs grub-mkrescue xorriso rsync sha256sum; do
 done
 
 printf '\n[1/5] Construint el rootfs i la imatge base...\n'
-"$PYTHON" -m xaac_thin_client_os --root "$PROJECT_ROOT" build-image
+"$PYTHON" -m xaac_thin_client_os --root "$PROJECT_ROOT" build-rootfs
 
 BUILD_ID="$(tr -d '\r\n' < .build/current)"
 RUN_DIR="$PROJECT_ROOT/.build/runs/$BUILD_ID"

@@ -363,3 +363,37 @@ def test_parser_accepts_emmc_commands() -> None:
     configure_args = parser.parse_args(["configure-emmc", "--dry-run"])
     assert configure_args.command == "configure-emmc"
     assert configure_args.dry_run is True
+
+
+def test_build_rootfs_command_is_available() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["build-rootfs", "--dry-run"])
+    assert args.command == "build-rootfs"
+    assert args.dry_run is True
+
+
+def test_build_rootfs_dry_run_stops_before_disk_image(project_root: Path, tmp_path: Path, capsys) -> None:
+    import shutil
+    from xaac_thin_client_os.workspace import WorkspaceManager
+
+    project_copy = tmp_path / "project-rootfs"
+    shutil.copytree(
+        project_root,
+        project_copy,
+        ignore=shutil.ignore_patterns(".build", ".git", ".pytest_cache", "__pycache__", ".coverage"),
+    )
+    manager = WorkspaceManager(project_copy)
+    with manager:
+        workspace = manager.prepare({"schema_version": 1})
+    workspace.rootfs_dir.mkdir(parents=True)
+
+    result = main(["--root", str(project_copy), "--json", "build-rootfs", "--dry-run"])
+
+    assert result == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["executed"] is False
+    assert payload["rootfs"].endswith("/rootfs")
+    manifest = json.loads(workspace.manifest_path.read_text())
+    assert manifest["status"] == "rootfs-ready"
+    assert "bootable_image" not in manifest
+    assert "uefi_boot" not in manifest

@@ -638,8 +638,14 @@ def build_parser() -> argparse.ArgumentParser:
     configure_localization.add_argument(
         "--dry-run", action="store_true", help="Registra el pla sense modificar el rootfs"
     )
+    build_rootfs = subparsers.add_parser(
+        "build-rootfs", help="Construeix només el rootfs reutilitzable per ISO, IMG i PXE"
+    )
+    build_rootfs.add_argument(
+        "--dry-run", action="store_true", help="Planifica el rootfs sense modificar-lo"
+    )
     build_image = subparsers.add_parser(
-        "build-image", help="Genera la primera imatge completa arrencable"
+        "build-image", help="Genera una imatge de disc completa i arrencable"
     )
     build_image.add_argument(
         "--dry-run", action="store_true", help="Planifica la imatge sense crear artefactes"
@@ -1273,7 +1279,7 @@ def _configure_firewall(root: Path, *, dry_run: bool, as_json: bool) -> int:
 
 
 
-def _build_image(root: Path, *, dry_run: bool, as_json: bool) -> int:
+def _build_image(root: Path, *, dry_run: bool, as_json: bool, rootfs_only: bool = False) -> int:
     """Build a complete image from scratch or reuse a complete current rootfs.
 
     A real ``build-image`` invocation is intentionally self-contained: when the
@@ -1391,18 +1397,42 @@ def _build_image(root: Path, *, dry_run: bool, as_json: bool) -> int:
             }
             pipeline_files.append(partition_plan.fstab_path)
 
-            uefi_plan = create_uefi_boot_plan(
-                workspace.rootfs_dir, root / "config/uefi.yaml"
-            )
-            uefi_result = UefiBootConfigurator().execute(
-                uefi_plan, workspace.logs_dir / "uefi-boot.log"
-            )
-            manifest["uefi_boot"] = {**uefi_plan.to_manifest(), "executed": True}
-            pipeline_logs.append(uefi_result.log_path)
-            pipeline_files.extend(uefi_result.files_written)
+            # La instal·lació de GRUB sobre un dispositiu pertany al constructor
+            # d'imatges de disc. Una ISO reutilitza el rootfs però genera la seua
+            # pròpia arrencada amb grub-mkrescue, sense grub-install en chroot.
+            if not rootfs_only:
+                uefi_plan = create_uefi_boot_plan(
+                    workspace.rootfs_dir, root / "config/uefi.yaml"
+                )
+                uefi_result = UefiBootConfigurator().execute(
+                    uefi_plan, workspace.logs_dir / "uefi-boot.log"
+                )
+                manifest["uefi_boot"] = {**uefi_plan.to_manifest(), "executed": True}
+                pipeline_logs.append(uefi_result.log_path)
+                pipeline_files.extend(uefi_result.files_written)
 
             manifest["status"] = "rootfs-ready"
             manager._write_json_atomic(workspace.manifest_path, manifest)
+
+        if rootfs_only:
+            current_manifest = json.loads(workspace.manifest_path.read_text(encoding="utf-8"))
+            current_manifest["status"] = "rootfs-ready"
+            final_manifest = finalize_manifest(
+                current_manifest, rendered_files=tuple(pipeline_files),
+                hook_logs=tuple(pipeline_logs), root=root,
+            )
+            manager._write_json_atomic(workspace.manifest_path, final_manifest)
+            _emit(
+                {
+                    "status": "ok",
+                    "message": f"Rootfs generat: {workspace.build_id}",
+                    "build_id": workspace.build_id,
+                    "executed": not dry_run,
+                    "rootfs": str(workspace.rootfs_dir.relative_to(root)),
+                },
+                as_json=as_json,
+            )
+            return 0
 
         plan = create_bootable_image_plan(
             workspace.rootfs_dir, workspace.artifacts_dir, workspace.temporary_dir,
@@ -2709,6 +2739,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_systemd(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-localization":
             return _configure_localization(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-rootfs":
+            return _build_image(root, dry_run=args.dry_run, as_json=args.json, rootfs_only=True)
         if args.command == "build-image":
             return _build_image(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-system":

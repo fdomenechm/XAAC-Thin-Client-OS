@@ -1,3 +1,11 @@
+## Refactorització del constructor ISO
+
+- Afegida l'ordre `build-rootfs` per construir un rootfs reutilitzable sense instal·lar cap carregador sobre un dispositiu.
+- Separada la construcció ISO de la construcció d'imatges de disc.
+- `build-production-iso.sh` ja no executa `grub-install` dins del `chroot`; l'arrencada híbrida es genera amb `grub-mkrescue`.
+- Mantingut `build-image` per a artefactes de disc, on la instal·lació UEFI sí que correspon.
+- Afegides proves del nou flux i documentació operativa.
+
 # Fase 12.12 — Release 1.0.0
 
 

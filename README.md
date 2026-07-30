@@ -105,9 +105,14 @@ sudo ./scripts/install-build-dependencies.sh
 ./scripts/build-production-iso.sh
 ```
 
-El segon script eleva privilegis amb `sudo`, construeix el rootfs Debian 13,
-genera el SquashFS, prepara GRUB i crea la ISO híbrida BIOS/UEFI. L'artefacte
-final queda en:
+El segon script eleva privilegis amb `sudo` i usa una cadena separada per responsabilitats:
+
+1. `build-rootfs` construeix el sistema Debian reutilitzable sense instal·lar GRUB sobre cap disc.
+2. `mksquashfs` genera el sistema de fitxers comprimit de la ISO.
+3. `build-iso` prepara l'arbre ISO i `grub-mkrescue` genera l'arrencada híbrida BIOS/UEFI.
+
+Aquesta separació evita executar `grub-install` dins del `chroot`, operació reservada
+a les imatges de disc instal·lables. L'artefacte final queda en:
 
 ```text
 .build/artifacts/xaac-thin-client-os-amd64.iso
