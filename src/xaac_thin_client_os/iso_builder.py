@@ -180,14 +180,21 @@ install -Dm0644 "$ROOT/{p['sources']['initramfs']}" "$STAGING/live/initrd.img"
 install -Dm0644 "$ROOT/{p['sources']['rootfs']}" "$STAGING/live/filesystem.squashfs"
 install -Dm0755 "$ROOT/{p['sources']['installer']}" "$STAGING/install/xaac-installer"
 mkdir -p "$(dirname "$ISO")"
-xorriso -as mkisofs -r -J -joliet-long -V '{p['image']['volume_id']}' \
-  -o "$ISO" -isohybrid-mbr "$ROOT/{p['sources']['bios_image']}" \
-  -partition_offset 16 -append_partition 2 0xef "$ROOT/{p['sources']['efi_image']}" \
-  -appended_part_as_gpt -iso_mbr_part_type a2a0d0ebe5b9334487c068b6b72699c7 \
-  -c boot/boot.cat -b boot/grub/i386-pc/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table \
-  -eltorito-alt-boot -e --interval:appended_partition_2:all:: -no-emul-boot -isohybrid-gpt-basdat "$STAGING"
+# grub-mkrescue usa xorriso internament i genera una ISO híbrida BIOS/UEFI.
+# Les fonts efi_image i bios_image es mantenen validades per compatibilitat
+# amb el manifest de producció, però GRUB regenera les estructures d'arrencada.
+grub-mkrescue -o "$ISO" "$STAGING" -- -V '{p['image']['volume_id']}'
 sha256sum "$ISO" > "$CHECKSUM"
-gpg --batch --yes --local-user '{p['integrity']['signing_key_id']}' --detach-sign --armor --output "$SIGNATURE" "$ISO"
+SIGNING_KEY=${{XAAC_ISO_SIGNING_KEY:-'{p['integrity']['signing_key_id']}'}}
+if gpg --batch --list-secret-keys "$SIGNING_KEY" >/dev/null 2>&1; then
+  gpg --batch --yes --local-user "$SIGNING_KEY" --detach-sign --armor --output "$SIGNATURE" "$ISO"
+elif [ "${{XAAC_REQUIRE_ISO_SIGNATURE:-0}}" = 1 ]; then
+  echo "No s'ha trobat la clau privada de signatura ISO: $SIGNING_KEY" >&2
+  exit 3
+else
+  rm -f "$SIGNATURE"
+  echo "Avís: ISO de desenvolupament generada sense signatura GPG." >&2
+fi
 """
         self._write(plan.output("build_script"), script, 0o750)
         return targets

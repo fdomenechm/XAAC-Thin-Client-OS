@@ -26,6 +26,9 @@ fi
     rsync \
     grub-efi-amd64-bin \
     grub2-common \
+    grub-pc-bin \
+    xorriso \
+    squashfs-tools \
     util-linux \
     coreutils
 

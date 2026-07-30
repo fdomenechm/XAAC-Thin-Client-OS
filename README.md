@@ -95,3 +95,27 @@ fora del codi font.
 ## Llicència
 
 European Union Public Licence (EUPL) v1.2 o posterior.
+
+## Generació de la ISO des de PyCharm
+
+Des del terminal integrat de PyCharm, situat a l'arrel del projecte:
+
+```bash
+sudo ./scripts/install-build-dependencies.sh
+./scripts/build-production-iso.sh
+```
+
+El segon script eleva privilegis amb `sudo`, construeix el rootfs Debian 13,
+genera el SquashFS, prepara GRUB i crea la ISO híbrida BIOS/UEFI. L'artefacte
+final queda en:
+
+```text
+.build/artifacts/xaac-thin-client-os-amd64.iso
+```
+
+La ISO de desenvolupament es pot generar sense clau GPG. Per exigir signatura:
+
+```bash
+XAAC_ISO_SIGNING_KEY=<ID_CLAU> XAAC_REQUIRE_ISO_SIGNATURE=1 \
+  ./scripts/build-production-iso.sh
+```
