@@ -43,6 +43,16 @@ def test_discovery_is_sorted_and_ignores_hidden_files(tmp_path: Path) -> None:
     assert [item.name for item in found] == ["10-first", "20-second"]
 
 
+def test_discovery_ignores_directory_readme(tmp_path: Path) -> None:
+    phase_dir = tmp_path / "hooks" / HookPhase.PRE_IMAGE.value
+    phase_dir.mkdir(parents=True)
+    (phase_dir / "README.md").write_text("# Hooks\n", encoding="utf-8")
+
+    found = HookRunner(tmp_path, tmp_path / "logs").discover(HookPhase.PRE_IMAGE)
+
+    assert found == ()
+
+
 def test_non_executable_hook_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "hooks/pre-image/hook"
     path.parent.mkdir(parents=True)

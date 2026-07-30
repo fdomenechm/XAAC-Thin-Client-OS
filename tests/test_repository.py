@@ -26,6 +26,28 @@ def test_required_repository_paths_exist() -> None:
     assert not missing, f"Rutes obligatòries absents: {missing}"
 
 
+def test_required_structural_directories_are_versionable() -> None:
+    required_readmes = (
+        "builder/README.md",
+        "builder/auto/README.md",
+        "builder/hooks/README.md",
+        "builder/scripts/README.md",
+        "builder/templates/README.md",
+        "hooks/README.md",
+        "hooks/pre-bootstrap/README.md",
+        "hooks/post-bootstrap/README.md",
+        "hooks/pre-packages/README.md",
+        "hooks/post-packages/README.md",
+        "hooks/pre-image/README.md",
+        "hooks/post-image/README.md",
+        "recovery/README.md",
+        "tools/README.md",
+    )
+    missing = [path for path in required_readmes if not Path(path).is_file()]
+    assert not missing, f"README estructurals absents: {missing}"
+
+
+
 def test_local_venv_is_ignored() -> None:
     gitignore = Path(".gitignore").read_text(encoding="utf-8")
     assert ".venv/" in gitignore

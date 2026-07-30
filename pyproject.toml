@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xaac-thin-client-os"
-version = "0.1.0"
+version = "1.0.0"
 description = "Build and integration tooling for XAAC Thin Client OS"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"

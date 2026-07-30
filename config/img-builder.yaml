@@ -1,0 +1,30 @@
+schema_version: 1
+image_id: xaac-production-img-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+image:
+  format: raw-img
+  size_mib: 7680
+  partition_table: gpt
+  boot_mode: uefi
+partitions:
+  - {id: efi, size_mib: 256, filesystem: vfat, label: XAAC_EFI}
+  - {id: root, size_mib: 4096, filesystem: ext4, label: XAAC_ROOT, expand_on_first_boot: true}
+  - {id: data, size_mib: 1024, filesystem: ext4, label: XAAC_DATA}
+  - {id: recovery, size_mib: 1536, filesystem: raw, label: XAAC_RECOVERY}
+cloning:
+  master_image: true
+  remove_identity_before_publish: true
+  regenerate_on_first_boot: [machine-id, device-uuid, ssh-host-keys, filesystem-uuids]
+sources:
+  rootfs: .build/image/rootfs.tar
+  efi_tree: .build/boot/efi-tree
+  recovery_image: .build/recovery/recovery.img
+outputs:
+  image: .build/artifacts/xaac-thin-client-os-amd64.img
+  compressed: .build/artifacts/xaac-thin-client-os-amd64.img.xz
+  checksum: .build/artifacts/xaac-thin-client-os-amd64.img.sha256
+  manifest: .build/img/manifest.json
+  build_script: .build/img/build-img.sh
+  first_boot_script: .build/img/xaac-img-first-boot

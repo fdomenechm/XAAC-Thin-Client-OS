@@ -22,7 +22,7 @@ def test_build_id_is_sortable_and_unique(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_prepare_creates_isolated_workspace(tmp_path: Path) -> None:
     manager = WorkspaceManager(tmp_path)
     with manager:
-        workspace = manager.prepare({"project": "XAAC", "version": "0.1.0"})
+        workspace = manager.prepare({"project": "XAAC", "version": "1.0.0"})
         assert workspace.logs_dir.is_dir()
         assert workspace.artifacts_dir.is_dir()
         assert workspace.temporary_dir.is_dir()

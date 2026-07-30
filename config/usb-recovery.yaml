@@ -1,0 +1,51 @@
+schema_version: 1
+recovery_id: xaac-usb-recovery-1
+hardware_profile: wyse3040
+detection:
+  filesystem_labels:
+    - XAAC_RECOVERY_USB
+  removable_only: true
+  read_only_mount: true
+  mount_options:
+    - ro
+    - nodev
+    - nosuid
+    - noexec
+trust:
+  require_manifest: true
+  require_signature: true
+  trusted_keyring: /usr/share/keyrings/xaac-recovery.gpg
+  hash_algorithm: sha256
+version:
+  require_product: xaac-thin-client-os
+  allow_downgrade: false
+  require_hardware_profile: true
+  minimum_schema: 1
+reinstallation:
+  image: recovery-rootfs.squashfs
+  kernel: vmlinuz
+  initramfs: initrd.img
+  transactional: true
+  verify_before_write: true
+  verify_after_write: true
+  preserve_device_identity: true
+  preserve_enrollment: true
+  require_ac_power: true
+errors:
+  fail_closed: true
+  persistent_log: true
+  notify_agent: true
+  eject_on_failure: false
+incorrect_media:
+  reject_unknown_label: true
+  reject_non_removable: true
+  reject_unsigned: true
+  reject_wrong_product: true
+  reject_wrong_hardware: true
+  reject_unsupported_version: true
+outputs:
+  policy: /etc/xaac/recovery/usb-recovery.json
+  state: /var/lib/xaac-recovery/usb-recovery-state.json
+  udev_rule: /usr/lib/udev/rules.d/90-xaac-recovery-usb.rules
+  service: /usr/lib/systemd/system/xaac-usb-recovery@.service
+  runner: /usr/libexec/xaac-usb-recovery

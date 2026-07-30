@@ -1,3 +1,70 @@
+# Fase 12.12 — Release 1.0.0
+
+- Fixada la versió definitiva del projecte en `1.0.0`.
+- Afegit el pla final per a ISO, IMG, recovery IMG, PXE, paquets i documentació.
+- Incorporats hashes SHA-256, signatures separades, manifest, notes i anunci de publicació.
+- Afegida l’ordre `build-final-release` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.11 — Release candidate
+
+- Congelada la versió `1.0.0-rc.1` amb política explícita de canvis admesos.
+- Afegides portes de qualitat per a proves, imatge, maquinari, rendiment, documentació i packaging.
+- Incorporats manifest, notes de versió, estat d’aprovació i script de verificació.
+- Afegida l’ordre `build-release-candidate` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.10 — Packaging i repositoris
+
+- Consolidats paquets Debian i metapaquet de sistema.
+- Afegits canals laboratory, pilot i production amb publicació signada.
+- Incorporats perfil declaratiu, manifest, configuració reprepro i ordre `build-production-packaging`.
+- Afegides 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.9 — Documentació
+
+- Afegits manuals d’instal·lació, administració, xarxa, seguretat, actualització, recuperació, desenvolupament i troubleshooting.
+- Incorporats perfil declaratiu, validació del conjunt, índex i manifest determinista.
+- Afegida l’ordre `build-documentation` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.8 — Rendiment i estabilitat
+
+- Afegida suite de mètriques per a temps d'arrencada, RAM, CPU, disc i temperatura.
+- Incorporada validació de sessió prolongada i recuperació amb xarxa intermitent.
+- Afegits llindars declaratius, manifest, runner, esquema JSON i guia d'execució.
+- Afegida l'ordre `build-performance-tests` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
+# Fase 12.3 — Paquet PXE
+
+- Afegit constructor del bundle PXE amb kernel, initramfs i rootfs SquashFS.
+- Incorporat script iPXE amb arguments controlats i token de confirmació.
+- Afegida configuració d’instal·lació desatesa específica per al Dell Wyse 3040.
+- Incorporats manifest, hashes SHA-256, documentació i ordre `build-pxe`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.2 — Constructor IMG
+
+- Afegit constructor d’imatge RAW amb GPT i UEFI per al Dell Wyse 3040.
+- Incorporades particions EFI, arrel, dades i recuperació.
+- Afegides expansió de l’arrel i regeneració d’identificadors al primer inici.
+- Incorporades neteja d’identitat per a clonació, compressió XZ i hashes SHA-256.
+- Afegida l’ordre `build-img`, documentació i proves automatitzades.
+
+# Fase 11.3 — Reparació de paquets
+
+- Afegida comprovació fail-closed amb `dpkg --audit`, `apt-get check` i verificació de fitxers.
+- Incorporada reinstal·lació controlada dels paquets XAAC i reparació de dependències des de repositoris signats.
+- Afegida restauració atòmica de configuració amb protecció d'identitat, enrolament i política activa.
+- Incorporats diagnòstics persistents, notificacions a Agent/XMS i validació final obligatòria.
+- Afegida l'ordre `configure-package-repair` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
+# Correcció estructural prèvia a la fase 11.1
+
+- Afegits fitxers `README.md` als directoris estructurals que podien estar buits.
+- Garantida la persistència en Git dels directoris `builder`, `hooks`, `recovery` i `tools`, inclosos els seus subdirectoris reservats.
+- Afegida una prova de regressió que comprova l'existència dels README estructurals.
+
 # Fase 10.7 — Desplegament per anells
 
 - Afegits els anells ordenats `laboratory`, `pilot` i `production`.
@@ -883,3 +950,133 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Validació posterior fail-closed de paquets, configuració, serveis, client i Agent.
 - Registre persistent i bloqueig de versions defectuoses amb motiu i transacció.
 - Conservació d'evidències, servei systemd endurit i ordre `configure-package-rollback`.
+
+## [0.1.0] - Fase 11.1
+
+### Afegit
+
+- Model declaratiu d'estats de recuperació per a fallades d'aplicació, sessió, actualització i integritat.
+- Comptadors amb finestres temporals i llindars estrictament creixents.
+- Estats `healthy`, `degraded`, `recovering`, `safe` i `manual_intervention` amb classificació determinista.
+- Accions i notificacions obligatòries a XAAC Agent i XMS segons la severitat.
+- Política *fail-closed*, conservació d'evidències i prohibició del `factory reset` automàtic.
+- Estat persistent amb permisos restrictius, escriptures atòmiques i protecció contra symlinks.
+- Ordre `configure-recovery-model`, documentació i proves positives, negatives i d'idempotència.
+
+- Correcció de regressió CLI: restaurada l’ordre `configure-update-sources` de la fase 10.8.
+
+## [0.1.0] - Fase 11.2
+
+### Afegit
+
+- Política declarativa de recuperació escalonada de XAAC Thin Client i la sessió de quiosc.
+- Reinici controlat del client i escalat al reinici de sessió amb límits i temps d'espera.
+- Neteja segura d'estat efímer amb preservació d'identitat, enrolament i política activa.
+- Restauració atòmica de la política anterior amb validació obligatòria de signatura i esquema.
+- Recopilació persistent de diagnòstics del client, sessió, Agent i política.
+- Notificacions a XAAC Agent i XMS, conservació d'evidències i comportament *fail-closed*.
+- Servei systemd endurit, ordre `configure-application-recovery` i proves de regressió.
+
+## Fase 11.4 — Mode de recuperació local
+
+- Afegida una entrada GRUB dedicada per iniciar `xaac-recovery.target`.
+- Incorporat un entorn mínim autenticat amb menú restringit i registre persistent.
+- La xarxa queda desactivada per defecte i només s'activa explícitament.
+- Afegides proves positives, negatives, d'idempotència, permisos i seguretat.
+
+## Fase 11.5 — Partició de recuperació
+
+- Afegida la política declarativa de la partició `XAAC_RECOVERY` adaptada a l'eMMC del Wyse 3040.
+- Definides una imatge SquashFS immutable i signada, kernel, initramfs i eines mínimes de recuperació.
+- Incorporats muntatge només de lectura, verificació en arrencada, servei systemd endurit i entrada GRUB dedicada.
+- Afegida l'ordre `configure-recovery-partition`, documentació i proves positives, negatives, d'idempotència, permisos i symlinks.
+
+## Fase 11.6 — Factory reset
+
+- Afegida una política declarativa de restauració de fàbrica segura i auditable.
+- Incorporada la conservació selectiva d'identitat, enrolament, auditoria i xarxa mínima.
+- Afegides confirmació reforçada, verificació de la imatge signada i restauració transaccional.
+- Incorporat el servei de primer inici posterior al reset i proves de regressió.
+
+## Fase 11.7 — Recuperació USB
+
+- Afegida la detecció estricta de mitjans extraïbles amb etiqueta `XAAC_RECOVERY_USB`.
+- Incorporades verificació del manifest, signatura, SHA-256, producte, perfil de maquinari i versió.
+- Afegida reinstal·lació transaccional amb verificació anterior i posterior, conservant identitat i enrolament.
+- Incorporats rebuig del mitjà incorrecte, registre persistent, notificació a l'Agent i comportament *fail-closed*.
+- Afegits regla udev, servei systemd endurit, ordre `configure-usb-recovery`, documentació i proves.
+
+## Fase 11.8 — Recuperació PXE i remota
+
+- Afegida una política declarativa d’arrencada de recuperació mitjançant Ethernet i iPXE.
+- Exigides descàrregues HTTPS amb validació TLS, manifest signat i hashes SHA-256.
+- Incorporada autorització XMS mitjançant ordres `recovery.pxe` autenticades, amb nonce, caducitat i ús únic.
+- Afegida confirmació local amb presència física, frase exacta, temps limitat i alimentació elèctrica.
+- Incorporats estat persistent, progrés periòdic, notificacions a l’Agent i XMS, límit de fallades i comportament *fail-closed*.
+- Afegits script iPXE, servei systemd endurit, llançador restringit, unitat Ethernet, ordre `configure-pxe-recovery`, documentació i proves.
+- Tancat el bloc 11: recuperació local, USB i per xarxa.
+
+## [0.1.0] - Fase 12.1
+
+### Afegit
+
+- Constructor declaratiu d’ISO híbrida per a `amd64` i Dell Wyse 3040.
+- Arrencada UEFI i BIOS de compatibilitat mitjançant GRUB 2.
+- Entrada d’instal·lació per defecte i mode live de diagnòstic separat, immutable i sense persistència.
+- Preparació determinista de l’arbre ISO, manifest i script `xorriso` fail-closed.
+- Generació obligatòria de hash SHA-256 i signatura OpenPGP separada.
+- Ordre `build-iso` amb mode `--dry-run`.
+- Proves positives, negatives, d’idempotència, CLI, permisos, rutes i protecció contra symlinks.
+- Iniciat el Bloc 12 — Imatge de producció.
+
+## [0.1.0] - Fase 12.4
+
+### Afegit
+
+- Constructor declaratiu de l’instal·lador de producció per al Dell Wyse 3040.
+- Selecció explícita del disc i confirmació destructiva exacta `INSTALL XAAC`.
+- Rebuig de discs muntats, del sistema en execució, dispositius no admesos i discs insuficients.
+- Comprovació d’alimentació AC abans del particionat.
+- Particionat GPT amb `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY`.
+- Verificació SHA-256 del rootfs, extracció i instal·lació de GRUB UEFI amb fallback extraïble.
+- Resum final JSON, esquema de validació i gestió d’errors *fail-closed*.
+- Ordre `build-installer`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.5
+
+### Afegit
+
+- Constructor declaratiu per sanejar i publicar una imatge mestra de clonació massiva.
+- Eliminació fora de línia de `machine-id`, claus SSH, identitat XAAC, enrolament XMS, logs i llavor aleatòria.
+- Marca de primer inici per regenerar identificadors únics, UUID, claus SSH i identitat XAAC en cada clon.
+- Escriptura sobre múltiples dispositius explícits amb confirmació exacta `CLONE XAAC`.
+- Rebuig de destinacions muntades o insegures i verificació byte a byte posterior a l'escriptura.
+- Validació GPT i de les quatre etiquetes de partició de producció.
+- Ordre `build-cloning`, documentació i 12 proves positives, negatives, d'idempotència i seguretat.
+
+## [0.1.0] - Fase 12.6
+
+### Afegit
+
+- Suite declarativa de proves automatitzades sobre la imatge de producció.
+- Validacions d’arrencada, serveis, particions, usuaris, paquets, seguretat, actualització i recuperació.
+- Executor que recull totes les comprovacions i retorna error si qualsevol validació falla.
+- Informe JSON validable mitjançant esquema i manifest determinista de la suite.
+- Ordre `build-image-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.7
+
+### Afegit
+
+- Suite declarativa de proves finals sobre maquinari Dell Wyse 3040 real.
+- Validacions d’instal·lació, ús continu, RDP, perifèrics, actualització, factory reset i recuperació.
+- Recollida d’inventari, PCI, USB i journal com a evidència de laboratori.
+- Llista manual per a operacions destructives i informe JSON validable.
+- Ordre `build-hardware-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+## Documentació reorganitzada després de 1.0.0
+
+- Reescrit el `README.md` com a portada de la versió estable.
+- Creat un índex general i una jerarquia per a primers passos, administració, arquitectura, desenvolupament, referència, release i històric.
+- Agrupats els documents de fase per blocs sense modificar el codi ni el comportament del sistema.
+- Afegides referències de CLI, configuració, release i criteris editorials.
+

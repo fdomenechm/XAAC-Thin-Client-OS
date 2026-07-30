@@ -55,7 +55,7 @@ def test_cross_validation_rejects_version_mismatch(tmp_path: Path) -> None:
     shutil.copytree("config", tmp_path / "config")
     shutil.copytree("profiles", tmp_path / "profiles")
     build = tmp_path / "config" / "build.yaml"
-    build.write_text(build.read_text(encoding="utf-8").replace("0.1.0", "9.9.9"), encoding="utf-8")
+    build.write_text(build.read_text(encoding="utf-8").replace("1.0.0", "9.9.9"), encoding="utf-8")
     with pytest.raises(ConfigurationValidationError, match="no coincideix amb VERSION"):
         load_project_configuration(tmp_path)
 

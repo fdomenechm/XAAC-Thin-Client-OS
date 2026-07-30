@@ -18,7 +18,7 @@ def valid_build() -> dict[str, object]:
     return {
         "schema_version": 1,
         "project": "XAAC Thin Client OS",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "architecture": "amd64",
         "channel": "development",
         "profile": "wyse3040",

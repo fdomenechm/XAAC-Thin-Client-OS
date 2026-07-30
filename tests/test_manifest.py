@@ -35,7 +35,7 @@ def test_create_manifest_contains_traceability(project_root: Path) -> None:
     packages = resolve_packages(project_root, configuration)
     manifest = create_manifest(project_root, configuration, packages)
     assert manifest["schema_version"] == 1
-    assert manifest["project"]["version"] == "0.1.0"
+    assert manifest["project"]["version"] == "1.0.0"
     assert manifest["target"]["profile_chain"] == ["common", "wyse3040"]
     assert manifest["packages"]["package_count"] == len(packages.packages)
     assert "config/build.yaml" in manifest["source"]["files"]

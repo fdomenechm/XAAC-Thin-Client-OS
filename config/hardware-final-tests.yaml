@@ -1,0 +1,55 @@
+schema_version: 1
+profile_id: xaac-hardware-final-tests-1
+product: XAAC Thin Client OS
+hardware_profile: wyse3040
+require_real_hardware: true
+categories:
+  installation:
+    enabled: true
+    checks:
+      - test "$(cat /sys/class/dmi/id/product_name)" = "Wyse 3040 Thin Client"
+      - test -d /sys/firmware/efi
+      - test "$(findmnt -nro LABEL /)" = XAAC_ROOT
+  continuous_use:
+    enabled: true
+    checks:
+      - systemctl is-system-running --wait
+      - test "$(awk '{print int($1/3600)}' /proc/uptime)" -ge 24
+      - test "$(systemctl --failed --no-legend | wc -l)" -eq 0
+  rdp:
+    enabled: true
+    checks:
+      - pgrep -x xaac-thin-client
+      - journalctl -b -u xaac-thin-client.service --grep=RDP --quiet
+  peripherals:
+    enabled: true
+    checks:
+      - test -n "$(lsusb)"
+      - test -d /dev/input/by-id
+      - test -n "$(aplay -l 2>/dev/null)"
+  update:
+    enabled: true
+    checks:
+      - systemctl is-enabled --quiet xaac-update.timer
+      - test -r /var/lib/xaac/update/state.json
+  factory_reset:
+    enabled: true
+    checks:
+      - test -x /usr/libexec/xaac/factory-reset
+      - test -f /var/lib/xaac/first-boot.pending
+  recovery:
+    enabled: true
+    checks:
+      - blkid -L XAAC_RECOVERY
+      - test -x /usr/libexec/xaac/recovery-menu
+      - test -r /boot/grub/grub.cfg
+execution:
+  fail_fast: false
+  collect_inventory: true
+  collect_journal: true
+  continuous_use_hours: 24
+outputs:
+  manifest: .build/hardware-final-tests/manifest.json
+  runner: .build/hardware-final-tests/run-hardware-final-tests
+  checklist: .build/hardware-final-tests/CHECKLIST.md
+  report_schema: .build/hardware-final-tests/report.schema.json

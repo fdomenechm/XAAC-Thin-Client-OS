@@ -135,6 +135,66 @@ from xaac_thin_client_os.xaac_apt_repository import (
 from xaac_thin_client_os.update_model import (
     UpdateModelError, UpdateModelInstaller, create_update_model_plan,
 )
+from xaac_thin_client_os.recovery_model import (
+    RecoveryModelError, RecoveryModelInstaller, create_recovery_model_plan,
+)
+from xaac_thin_client_os.local_recovery import (
+    LocalRecoveryError, LocalRecoveryInstaller, create_local_recovery_plan,
+)
+from xaac_thin_client_os.recovery_partition import (
+    RecoveryPartitionError, RecoveryPartitionInstaller, create_recovery_partition_plan,
+)
+from xaac_thin_client_os.factory_reset import (
+    FactoryResetError, FactoryResetInstaller, create_factory_reset_plan,
+)
+from xaac_thin_client_os.usb_recovery import (
+    UsbRecoveryError, UsbRecoveryInstaller, create_usb_recovery_plan,
+)
+from xaac_thin_client_os.pxe_recovery import (
+    PxeRecoveryError, PxeRecoveryInstaller, create_pxe_recovery_plan,
+)
+from xaac_thin_client_os.iso_builder import (
+    IsoBuilder, IsoBuilderError, create_iso_build_plan,
+)
+from xaac_thin_client_os.img_builder import (
+    ImgBuilder, ImgBuilderError, create_img_build_plan,
+)
+from xaac_thin_client_os.pxe_builder import (
+    PxeBuilder, PxeBuilderError, create_pxe_build_plan,
+)
+from xaac_thin_client_os.installer_builder import (
+    InstallerBuilder, InstallerBuilderError, create_installer_build_plan,
+)
+from xaac_thin_client_os.mass_cloning import (
+    MassCloningBuilder, MassCloningError, create_mass_cloning_plan,
+)
+from xaac_thin_client_os.image_test_suite import (
+    ImageTestSuiteBuilder, ImageTestSuiteError, create_image_test_suite_plan,
+)
+from xaac_thin_client_os.hardware_final_tests import (
+    HardwareFinalTestsBuilder, HardwareFinalTestsError, create_hardware_final_tests_plan,
+)
+from xaac_thin_client_os.performance_stability import (
+    PerformanceStabilityBuilder, PerformanceStabilityError, create_performance_stability_plan,
+)
+from xaac_thin_client_os.documentation import (
+    DocumentationBuilder, DocumentationError, create_documentation_plan,
+)
+from xaac_thin_client_os.production_packaging import (
+    ProductionPackagingBuilder, ProductionPackagingError, create_production_packaging_plan,
+)
+from xaac_thin_client_os.release_candidate import (
+    ReleaseCandidateBuilder, ReleaseCandidateError, create_release_candidate_plan,
+)
+from xaac_thin_client_os.final_release import (
+    FinalReleaseBuilder, FinalReleaseError, create_final_release_plan,
+)
+from xaac_thin_client_os.application_recovery import (
+    ApplicationRecoveryError, ApplicationRecoveryInstaller, create_application_recovery_plan,
+)
+from xaac_thin_client_os.package_repair import (
+    PackageRepairError, PackageRepairInstaller, create_package_repair_plan,
+)
 from xaac_thin_client_os.update_service import (
     UpdateServiceError, UpdateServiceInstaller, create_update_service_plan,
 )
@@ -149,6 +209,9 @@ from xaac_thin_client_os.package_rollback import (
 )
 from xaac_thin_client_os.update_rings import (
     UpdateRingsError, UpdateRingsInstaller, create_update_rings_plan,
+)
+from xaac_thin_client_os.update_sources import (
+    UpdateSourcesError, UpdateSourcesInstaller, create_update_sources_plan,
 )
 from xaac_thin_client_os.device_identity import (
     DeviceIdentityError, DeviceIdentityManager,
@@ -382,6 +445,46 @@ def build_parser() -> argparse.ArgumentParser:
     secure_boot_tpm.add_argument("--dry-run", action="store_true")
     update_model = subparsers.add_parser("configure-update-model", help="Configura el model declaratiu d’actualitzacions")
     update_model.add_argument("--dry-run", action="store_true")
+    recovery_model = subparsers.add_parser("configure-recovery-model", help="Configura el model declaratiu d’estats de recuperació")
+    recovery_model.add_argument("--dry-run", action="store_true")
+    application_recovery = subparsers.add_parser("configure-application-recovery", help="Configura la recuperació del client i de la sessió")
+    application_recovery.add_argument("--dry-run", action="store_true")
+    package_repair = subparsers.add_parser("configure-package-repair", help="Configura la comprovació i reparació segura de paquets")
+    package_repair.add_argument("--dry-run", action="store_true")
+    local_recovery = subparsers.add_parser("configure-local-recovery", help="Configura el mode de recuperació local autenticat")
+    local_recovery.add_argument("--dry-run", action="store_true")
+    recovery_partition = subparsers.add_parser("configure-recovery-partition", help="Configura la partició local de recuperació protegida")
+    recovery_partition.add_argument("--dry-run", action="store_true")
+    factory_reset = subparsers.add_parser("configure-factory-reset", help="Configura el factory reset local, confirmat i auditable")
+    factory_reset.add_argument("--dry-run", action="store_true")
+    usb_recovery = subparsers.add_parser("configure-usb-recovery", help="Configura la recuperació mitjançant USB signat")
+    usb_recovery.add_argument("--dry-run", action="store_true")
+    pxe_recovery = subparsers.add_parser("configure-pxe-recovery", help="Configura la recuperació PXE i remota autoritzada per XMS")
+    pxe_recovery.add_argument("--dry-run", action="store_true")
+    iso_builder = subparsers.add_parser("build-iso", help="Prepara el constructor de la ISO híbrida de producció")
+    iso_builder.add_argument("--dry-run", action="store_true")
+    img_builder = subparsers.add_parser("build-img", help="Prepara el constructor de la imatge IMG directa")
+    img_builder.add_argument("--dry-run", action="store_true")
+    pxe_builder = subparsers.add_parser("build-pxe", help="Prepara el paquet PXE de producció")
+    pxe_builder.add_argument("--dry-run", action="store_true")
+    installer_builder = subparsers.add_parser("build-installer", help="Prepara l'instal·lador de producció")
+    installer_builder.add_argument("--dry-run", action="store_true")
+    cloning_builder = subparsers.add_parser("build-cloning", help="Prepara la clonació massiva de la imatge mestra")
+    cloning_builder.add_argument("--dry-run", action="store_true")
+    image_tests = subparsers.add_parser("build-image-tests", help="Prepara les proves automatitzades de la imatge")
+    image_tests.add_argument("--dry-run", action="store_true")
+    hardware_tests = subparsers.add_parser("build-hardware-tests", help="Prepara les proves finals de maquinari")
+    hardware_tests.add_argument("--dry-run", action="store_true")
+    performance_tests = subparsers.add_parser("build-performance-tests", help="Prepara les proves de rendiment i estabilitat")
+    performance_tests.add_argument("--dry-run", action="store_true")
+    documentation = subparsers.add_parser("build-documentation", help="Valida i prepara la documentació de producció")
+    documentation.add_argument("--dry-run", action="store_true")
+    production_packaging = subparsers.add_parser("build-production-packaging", help="Prepara paquets i repositoris de producció")
+    production_packaging.add_argument("--dry-run", action="store_true")
+    release_candidate = subparsers.add_parser("build-release-candidate", help="Prepara i congela la release candidate")
+    release_candidate.add_argument("--dry-run", action="store_true")
+    final_release = subparsers.add_parser("build-final-release", help="Prepara la release estable 1.0.0")
+    final_release.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
     update_service = subparsers.add_parser("configure-update-service", help="Configura el servei de comprovació, descàrrega i staging")
@@ -394,6 +497,8 @@ def build_parser() -> argparse.ArgumentParser:
     package_rollback.add_argument("--dry-run", action="store_true")
     update_rings = subparsers.add_parser("configure-update-rings", help="Configura el desplegament progressiu per anells")
     update_rings.add_argument("--dry-run", action="store_true")
+    update_sources = subparsers.add_parser("configure-update-sources", help="Configura les fonts d’actualització XMS i USB")
+    update_sources.add_argument("--dry-run", action="store_true")
     device_identity = subparsers.add_parser("configure-device-identity", help="Genera o valida la identitat persistent del dispositiu")
     device_identity.add_argument("--dry-run", action="store_true", help="Planifica la identitat sense escriure-la")
     first_boot = subparsers.add_parser("configure-first-boot", help="Configura el servei idempotent de primer inici")
@@ -1865,6 +1970,165 @@ def _configure_update_model(root: Path, *, dry_run: bool, as_json: bool) -> int:
     return 0
 
 
+def _configure_recovery_model(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_recovery_model_plan(root / ".build/rootfs", root / "config/recovery-model.yaml")
+    paths = RecoveryModelInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Model de recuperació planificat" if dry_run else "Model de recuperació instal·lat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_application_recovery(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_application_recovery_plan(root / ".build/rootfs", root / "config/application-recovery.yaml")
+    paths = ApplicationRecoveryInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Recuperació d’aplicació planificada" if dry_run else "Recuperació d’aplicació instal·lada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_package_repair(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_package_repair_plan(root / ".build/rootfs", root / "config/package-repair.yaml")
+    paths = PackageRepairInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Reparació de paquets planificada" if dry_run else "Reparació de paquets configurada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_local_recovery(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_local_recovery_plan(root / ".build/rootfs", root / "config/local-recovery.yaml")
+    paths = LocalRecoveryInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Mode de recuperació local planificat" if dry_run else "Mode de recuperació local configurat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_recovery_partition(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_recovery_partition_plan(root / ".build/rootfs", root / "config/recovery-partition.yaml")
+    paths = RecoveryPartitionInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Partició de recuperació planificada" if dry_run else "Partició de recuperació configurada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_factory_reset(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_factory_reset_plan(root / ".build/rootfs", root / "config/factory-reset.yaml")
+    paths = FactoryResetInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Factory reset planificat" if dry_run else "Factory reset configurat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_usb_recovery(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_usb_recovery_plan(root / ".build/rootfs", root / "config/usb-recovery.yaml")
+    paths = UsbRecoveryInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Recuperació USB planificada" if dry_run else "Recuperació USB configurada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_pxe_recovery(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_pxe_recovery_plan(root / ".build/rootfs", root / "config/pxe-recovery.yaml")
+    paths = PxeRecoveryInstaller().install(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Recuperació PXE planificada" if dry_run else "Recuperació PXE configurada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_iso(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_iso_build_plan(root, root / "config/iso-builder.yaml")
+    paths = IsoBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Constructor ISO planificat" if dry_run else "Constructor ISO preparat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_img(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_img_build_plan(root, root / "config/img-builder.yaml")
+    paths = ImgBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Constructor IMG planificat" if dry_run else "Constructor IMG preparat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_pxe(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_pxe_build_plan(root, root / "config/pxe-builder.yaml")
+    paths = PxeBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Paquet PXE planificat" if dry_run else "Paquet PXE preparat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_installer(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_installer_build_plan(root, root / "config/installer-builder.yaml")
+    paths = InstallerBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Instal·lador planificat" if dry_run else "Instal·lador preparat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_cloning(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_mass_cloning_plan(root, root / "config/mass-cloning.yaml")
+    paths = MassCloningBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Clonació massiva planificada" if dry_run else "Clonació massiva preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_image_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_image_test_suite_plan(root, root / 'config/image-tests.yaml')
+    paths = ImageTestSuiteBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Proves d’imatge planificades' if dry_run else 'Proves d’imatge preparades', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_hardware_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_hardware_final_tests_plan(root, root / 'config/hardware-final-tests.yaml')
+    paths = HardwareFinalTestsBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Proves finals de maquinari planificades' if dry_run else 'Proves finals de maquinari preparades', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+def _build_performance_tests(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_performance_stability_plan(root, root / 'config/performance-stability.yaml')
+    paths = PerformanceStabilityBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Proves de rendiment planificades' if dry_run else 'Proves de rendiment preparades', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_documentation(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_documentation_plan(root, root / 'config/documentation.yaml')
+    paths = DocumentationBuilder().prepare(plan, dry_run=dry_run)
+    payload = {'status': 'planned' if dry_run else 'ok', 'message': 'Documentació planificada' if dry_run else 'Documentació preparada', 'executed': not dry_run, **plan.manifest(), 'files': [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_production_packaging(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_production_packaging_plan(root, root / "config/production-packaging.yaml")
+    paths = ProductionPackagingBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Packaging de producció planificat" if dry_run else "Packaging de producció preparat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_release_candidate(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_release_candidate_plan(root, root / "config/release-candidate.yaml")
+    paths = ReleaseCandidateBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Release candidate planificada" if dry_run else "Release candidate congelada i preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _build_final_release(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_final_release_plan(root, root / "config/final-release.yaml")
+    paths = FinalReleaseBuilder().prepare(plan, dry_run=dry_run)
+    payload = {"status": "planned" if dry_run else "ok", "message": "Release final planificada" if dry_run else "Release estable 1.0.0 preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_xaac_apt_repository(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_xaac_apt_repository_plan(root / ".build/rootfs", root / "config/xaac-apt-repository.yaml")
     paths = XaacAptRepositoryInstaller().install(plan, dry_run=dry_run)
@@ -1908,6 +2172,20 @@ def _configure_update_rings(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_update_rings_plan(root / ".build/rootfs", root / "config/update-rings.yaml")
     paths = UpdateRingsInstaller().install(plan, dry_run=dry_run)
     payload = {"status": "planned" if dry_run else "ok", "message": "Desplegament per anells planificat" if dry_run else "Desplegament per anells configurat", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    _emit(payload, as_json=as_json)
+    return 0
+
+
+def _configure_update_sources(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = create_update_sources_plan(root / ".build/rootfs", root / "config/update-sources.yaml")
+    paths = UpdateSourcesInstaller().install(plan, dry_run=dry_run)
+    payload = {
+        "status": "planned" if dry_run else "ok",
+        "message": "Fonts d’actualització planificades" if dry_run else "Fonts d’actualització configurades",
+        "executed": not dry_run,
+        **plan.manifest(),
+        "files": [str(path) for path in paths],
+    }
     _emit(payload, as_json=as_json)
     return 0
 
@@ -2313,6 +2591,46 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_secure_boot_tpm(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-model":
             return _configure_update_model(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-recovery-model":
+            return _configure_recovery_model(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-application-recovery":
+            return _configure_application_recovery(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-package-repair":
+            return _configure_package_repair(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-local-recovery":
+            return _configure_local_recovery(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-recovery-partition":
+            return _configure_recovery_partition(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-factory-reset":
+            return _configure_factory_reset(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-usb-recovery":
+            return _configure_usb_recovery(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-pxe-recovery":
+            return _configure_pxe_recovery(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-iso":
+            return _build_iso(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-img":
+            return _build_img(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-pxe":
+            return _build_pxe(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-installer":
+            return _build_installer(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-cloning":
+            return _build_cloning(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-image-tests":
+            return _build_image_tests(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-hardware-tests":
+            return _build_hardware_tests(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-performance-tests":
+            return _build_performance_tests(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-documentation":
+            return _build_documentation(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-production-packaging":
+            return _build_production_packaging(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-release-candidate":
+            return _build_release_candidate(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "build-final-release":
+            return _build_final_release(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-xaac-apt-repository":
             return _configure_xaac_apt_repository(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-service":
@@ -2325,6 +2643,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_package_rollback(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-rings":
             return _configure_update_rings(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-update-sources":
+            return _configure_update_sources(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-device-identity":
             return _configure_device_identity(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-first-boot":
@@ -2412,7 +2732,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

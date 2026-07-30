@@ -1,0 +1,56 @@
+schema_version: 1
+profile_id: xaac-performance-stability-1
+product: XAAC Thin Client OS
+hardware_profile: wyse3040
+metrics:
+  boot_time:
+    enabled: true
+    command: systemd-analyze time | sed -n 's/.*= \([0-9.]*\)s.*/\1/p'
+    threshold: 45
+    comparator: max
+    unit: seconds
+  memory:
+    enabled: true
+    command: awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%.0f",(t-a)/1024}' /proc/meminfo
+    threshold: 1536
+    comparator: max
+    unit: MiB
+  cpu:
+    enabled: true
+    command: awk '{printf "%.0f",$1*100}' /proc/loadavg
+    threshold: 200
+    comparator: max
+    unit: percent-single-core
+  disk:
+    enabled: true
+    command: df -Pm / | awk 'NR==2{print $5+0}'
+    threshold: 85
+    comparator: max
+    unit: percent
+  temperature:
+    enabled: true
+    command: awk '{printf "%.0f",$1/1000}' /sys/class/thermal/thermal_zone0/temp
+    threshold: 85
+    comparator: max
+    unit: celsius
+  long_session:
+    enabled: true
+    command: awk '{printf "%.0f",$1/3600}' /proc/uptime
+    threshold: 24
+    comparator: min
+    unit: hours
+  intermittent_network:
+    enabled: true
+    command: journalctl -b -u xaac-thin-client.service --grep='network recovered' --no-pager | wc -l
+    threshold: 1
+    comparator: min
+    unit: recoveries
+execution:
+  fail_fast: false
+  sample_interval_seconds: 60
+  long_session_hours: 24
+outputs:
+  manifest: .build/performance-stability/manifest.json
+  runner: .build/performance-stability/run-performance-stability
+  report_schema: .build/performance-stability/report.schema.json
+  guide: .build/performance-stability/README.md

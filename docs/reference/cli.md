@@ -1,0 +1,117 @@
+# Referència de la CLI
+
+L'executable principal és `xaac-os`. Les ordres operen sobre l'arrel indicada amb
+`--root`; normalment s'utilitza `--root .` des del repositori. Consulteu `--help`
+per a les opcions exactes de cada ordre.
+
+## Ordres disponibles
+
+- `version` — Mostra la versió del projecte.
+- `check-python` — Comprova la versió de Python.
+- `validate` — Valida tota la configuració del constructor.
+- `inspect` — Mostra un resum de la configuració efectiva.
+- `inspect-hardware` — Detecta i valida el maquinari Wyse 3040.
+- `inspect-emmc` — Detecta i valida l'eMMC del Wyse 3040.
+- `configure-emmc` — Configura controladors i TRIM de l'eMMC.
+- `inspect-graphics` — Detecta i valida els gràfics Intel del Wyse 3040.
+- `configure-graphics` — Configura el controlador Intel i915.
+- `configure-graphical-stack` — Configura Wayland, X11, Mesa i GTK 4.
+- `configure-compositor` — Configura labwc i el fallback X11 controlat.
+- `configure-session-manager` — Configura greetd i la sessió dedicada xaac-kiosk.
+- `configure-kiosk-user` — Configura el compte dedicat xaac-kiosk.
+- `configure-thin-client-launcher` — Configura el llançament de XAAC Thin Client.
+- `configure-session-supervisor` — Configura la supervisió de la sessió XAAC.
+- `configure-display-layout` — Configura multimonitor, escalat i FreeRDP.
+- `validate-graphical-session` — Configura la validació completa de la sessió gràfica.
+- `configure-kiosk-restrictions` — Genera el model de restriccions del mode quiosc.
+- `configure-shortcut-lockdown` — Bloqueja les dreceres de la sessió de quiosc.
+- `configure-terminal-lockdown` — Bloqueja terminals, llançadors, URI i PATH del quiosc.
+- `configure-tty-control` — Controla els TTY del quiosc i reserva el TTY administratiu.
+- `configure-kiosk-filesystem` — Configura el sistema de fitxers efímer del quiosc.
+- `configure-local-device-control` — Controla USB, emmagatzematge i perifèrics locals del quiosc.
+- `configure-power-action-control` — Controla apagada, reinici i recuperació del quiosc.
+- `install-xaac-thin-client` — Valida i instal·la el paquet Debian de XAAC Thin Client.
+- `install-xaac-agent` — Instal·la i configura XAAC Thin Client Agent.
+- `install-rustdesk` — Valida i instal·la el paquet RustDesk XAAC.
+- `uninstall-rustdesk` — Desinstal·la completament el paquet RustDesk XAAC.
+- `configure-rustdesk-branding` — Aplica el branding de XAAC Remote Support.
+- `configure-rustdesk-central` — Aplica la configuració centralitzada de RustDesk.
+- `rollback-rustdesk-central` — Restaura la configuració RustDesk anterior.
+- `configure-rustdesk-service` — Configura el servei systemd de RustDesk XAAC.
+- `configure-rustdesk-activation` — Configura l'activació temporal de RustDesk XAAC.
+- `activate-rustdesk-support` — Autoritza una sessió temporal de suport RustDesk.
+- `deactivate-rustdesk-support` — Tanca la sessió temporal de suport RustDesk.
+- `configure-rustdesk-consent` — Configura la política de consentiment RustDesk.
+- `request-rustdesk-consent` — Registra una petició de consentiment RustDesk.
+- `decide-rustdesk-consent` — Aprova, denega o cancel·la una petició RustDesk.
+- `configure-rustdesk-audit` — Configura l'auditoria de sessions RustDesk.
+- `start-rustdesk-audit` — Registra l'inici d'una sessió RustDesk.
+- `end-rustdesk-audit` — Registra la fi d'una sessió RustDesk.
+- `configure-rustdesk-kiosk-validation` — Configura la validació de RustDesk en mode quiosc.
+- `validate-rustdesk-kiosk` — Valida RustDesk amb evidència de sessió i maquinari.
+- `configure-security-policy` — Instal·la la política base de seguretat i el model d'amenaces.
+- `configure-account-permissions` — Aplica la política d'usuaris, grups i permisos sensibles.
+- `configure-systemd-hardening` — Aplica el hardening de serveis systemd.
+- `configure-apparmor` — Instal·la i activa els perfils AppArmor de XAAC.
+- `configure-kernel-hardening` — Aplica el hardening del kernel i de la xarxa.
+- `configure-file-integrity` — Crea el manifest i activa la verificació d’integritat.
+- `verify-file-integrity` — Comprova o repara els fitxers monitorats.
+- `configure-package-signing` — Configura la confiança i verificació dels paquets XAAC.
+- `configure-secure-boot-tpm` — Configura la política i diagnòstic de Secure Boot i TPM.
+- `configure-update-model` — Configura el model declaratiu d’actualitzacions.
+- `configure-recovery-model` — Configura el model declaratiu d’estats de recuperació.
+- `configure-application-recovery` — Configura la recuperació del client i de la sessió.
+- `configure-package-repair` — Configura la comprovació i reparació segura de paquets.
+- `configure-local-recovery` — Configura el mode de recuperació local autenticat.
+- `configure-recovery-partition` — Configura la partició local de recuperació protegida.
+- `configure-factory-reset` — Configura el factory reset local, confirmat i auditable.
+- `configure-usb-recovery` — Configura la recuperació mitjançant USB signat.
+- `configure-pxe-recovery` — Configura la recuperació PXE i remota autoritzada per XMS.
+- `build-iso` — Prepara el constructor de la ISO híbrida de producció.
+- `build-img` — Prepara el constructor de la imatge IMG directa.
+- `build-pxe` — Prepara el paquet PXE de producció.
+- `build-installer` — Prepara l'instal·lador de producció.
+- `build-cloning` — Prepara la clonació massiva de la imatge mestra.
+- `build-image-tests` — Prepara les proves automatitzades de la imatge.
+- `build-hardware-tests` — Prepara les proves finals de maquinari.
+- `build-performance-tests` — Prepara les proves de rendiment i estabilitat.
+- `build-documentation` — Valida i prepara la documentació de producció.
+- `build-production-packaging` — Prepara paquets i repositoris de producció.
+- `build-release-candidate` — Prepara i congela la release candidate.
+- `build-final-release` — Prepara la release estable 1.0.0.
+- `configure-xaac-apt-repository` — Configura l’estructura del repositori APT XAAC.
+- `configure-update-service` — Configura el servei de comprovació, descàrrega i staging.
+- `configure-update-verification` — Configura la verificació d’actualitzacions en staging.
+- `configure-transactional-update` — Configura la instal·lació transaccional d’actualitzacions.
+- `configure-package-rollback` — Configura el rollback segur de paquets.
+- `configure-update-rings` — Configura el desplegament progressiu per anells.
+- `configure-update-sources` — Configura les fonts d’actualització XMS i USB.
+- `configure-device-identity` — Genera o valida la identitat persistent del dispositiu.
+- `configure-first-boot` — Configura el servei idempotent de primer inici.
+- `configure-ipc` — Configura el canal IPC local Client-Agent.
+- `configure-policy-application` — Configura l'aplicació transaccional de polítiques.
+- `collect-device-inventory` — Recull l'inventari complet del dispositiu.
+- `configure-xms-enrollment` — Configura l'enrolament segur del dispositiu en XMS.
+- `configure-network-manager` — Configura el gestor de xarxa definitiu i la integració amb l'Agent.
+- `configure-ip-addressing` — Configura DHCP o IPv4 estàtica de manera transaccional.
+- `configure-network-services` — Configura DNS, NTP i proxy de manera transaccional.
+- `configure-vlan` — Configura una VLAN 802.1Q de manera transaccional.
+- `configure-ieee8021x` — Configura IEEE 802.1X cablejat de manera segura.
+- `configure-local-admin` — Configura el perfil administrador local.
+- `inspect-ethernet` — Detecta i valida Ethernet del Wyse 3040.
+- `configure-ethernet` — Configura Ethernet amb systemd-networkd.
+- `inspect-audio` — Detecta i valida l'àudio del Wyse 3040.
+- `configure-audio` — Configura ALSA i PipeWire.
+- `inspect-usb` — Detecta i valida USB i perifèrics del Wyse 3040.
+- `configure-usb` — Configura mòduls i política USB.
+- `inspect-power` — Detecta energia, temperatura i watchdog.
+- `configure-power` — Configura energia, suspensió i watchdog.
+- `inspect-resources` — Detecta ús de RAM, zram, disc i journald.
+- `configure-resources` — Optimitza RAM i escriptures de disc.
+- `prepare` — Comprova que el projecte està preparat.
+- `build` — Executa la validació prèvia de construcció.
+- `bootstrap` — Crea el sistema Debian 13 minimal.
+- `configure-network` — Configura la xarxa mínima del rootfs.
+- `configure-ssh` — Configura i endureix el servidor SSH.
+- `configure-firewall` — Configura el tallafoc nftables del rootfs.
+- `clean` — Elimina artefactes generats coneguts.
