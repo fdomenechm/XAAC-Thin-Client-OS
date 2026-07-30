@@ -63,6 +63,7 @@ class BuildPaths:
 class BuildSettings:
     suite: str
     mirror: str
+    components: tuple[str, ...]
     architecture: str
     hostname: str
     timezone: str
@@ -121,6 +122,7 @@ class BuildSettings:
         return cls(
             suite=configuration.build.debian.suite,
             mirror=configuration.build.debian.mirror,
+            components=tuple(configuration.build.debian.components),
             architecture=configuration.build.architecture.value,
             hostname=str(system.get("hostname", "xaac-thin-client")),
             timezone=str(localization.get("timezone", "Europe/Madrid")),
@@ -244,20 +246,31 @@ class ProductionIsoBuilder:
             shutil.rmtree(target)
 
     def phase_rootfs(self) -> None:
+        """Bootstrap only the minimal Debian base system.
+
+        Runtime packages are deliberately installed later, from inside the
+        chroot.  This keeps debootstrap focused on the base system and allows
+        packages from contrib/non-free-firmware to be resolved by apt using
+        the configured repository components.
+        """
         self._require_root()
         if self.paths.rootfs.exists():
             shutil.rmtree(self.paths.rootfs)
         self.paths.rootfs.parent.mkdir(parents=True, exist_ok=True)
-        include = ",".join(self.settings.packages)
         command = [
             "debootstrap",
             "--arch", self.settings.architecture,
             "--variant=minbase",
-            f"--include={include}",
+            f"--components={','.join(self.settings.components)}",
+        ]
+        keyring = Path("/usr/share/keyrings/debian-archive-keyring.gpg")
+        if keyring.is_file():
+            command.append(f"--keyring={keyring}")
+        command.extend([
             self.settings.suite,
             str(self.paths.rootfs),
             self.settings.mirror,
-        ]
+        ])
         self.runner.run(command, phase="rootfs-debootstrap")
         self._save_state("rootfs")
 
@@ -306,11 +319,37 @@ class ProductionIsoBuilder:
             copied.append(f"/tmp/xaac-packages/{package.name}")
         return copied
 
+    def _write_apt_sources(self) -> None:
+        components = " ".join(self.settings.components)
+        suite = self.settings.suite
+        mirror = self.settings.mirror.rstrip("/")
+        sources = (
+            f"deb {mirror} {suite} {components}\n"
+            f"deb {mirror} {suite}-updates {components}\n"
+            f"deb https://security.debian.org/debian-security {suite}-security {components}\n"
+        )
+        self._atomic_write(self._inside("/etc/apt/sources.list"), sources)
+
+    def _prepare_chroot_network(self) -> None:
+        host_resolv = Path("/etc/resolv.conf")
+        content = host_resolv.read_text(encoding="utf-8") if host_resolv.exists() else "nameserver 1.1.1.1\n"
+        self._atomic_write(self._inside("/etc/resolv.conf"), content)
+
+    def _install_runtime_packages(self) -> None:
+        self._chroot(["apt-get", "update"], phase="configure-apt-update")
+        self._chroot([
+            "apt-get", "install", "--yes", "--no-install-recommends",
+            *self.settings.packages,
+        ], phase="configure-apt-install")
+
     def phase_configure(self) -> None:
         self._require_root()
         if not (self.paths.rootfs / "etc/debian_version").is_file():
             raise ProductionBuildError("El rootfs no existeix; executa primer la fase rootfs")
 
+        self._write_apt_sources()
+        self._prepare_chroot_network()
+        self._atomic_write(self._inside("/usr/sbin/policy-rc.d"), "#!/bin/sh\nexit 101\n", 0o755)
         self._atomic_write(self._inside("/etc/hostname"), self.settings.hostname + "\n")
         self._atomic_write(
             self._inside("/etc/hosts"),
@@ -334,7 +373,6 @@ class ProductionIsoBuilder:
         with contextlib.suppress(FileNotFoundError):
             localtime.unlink()
         localtime.symlink_to(f"/usr/share/zoneinfo/{self.settings.timezone}")
-        self._atomic_write(self._inside("/usr/sbin/policy-rc.d"), "#!/bin/sh\nexit 101\n", 0o755)
 
         build_id = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
         self._atomic_write(
@@ -359,6 +397,7 @@ class ProductionIsoBuilder:
 
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
+            self._install_runtime_packages()
             self._chroot(["locale-gen"], phase="configure-locales")
             self._chroot(["/bin/sh", "-c", "getent group xaac-admin >/dev/null || groupadd --system xaac-admin"], phase="configure-group-admin")
             self._chroot(["/bin/sh", "-c", "getent group xaac-kiosk >/dev/null || groupadd --system xaac-kiosk"], phase="configure-group-kiosk")

@@ -73,3 +73,40 @@ def test_clean_is_limited_to_production_workspace(tmp_path: Path) -> None:
     (target / "file").write_text("x", encoding="utf-8")
     builder.clean()
     assert not target.exists()
+
+
+def test_rootfs_bootstrap_does_not_install_runtime_packages(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        architecture="amd64",
+        components=("main", "non-free-firmware"),
+        suite="trixie",
+        mirror="https://deb.debian.org/debian",
+    )
+    builder.dry_run = True
+    builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
+    builder._save_state = lambda phase: None  # type: ignore[method-assign]
+    builder.phase_rootfs()
+    command = (builder.paths.logs / "rootfs-debootstrap.log").read_text(encoding="utf-8")
+    assert "--components=main,non-free-firmware" in command
+    assert "--include=" not in command
+    assert "firmware-linux" not in command
+
+
+def test_apt_sources_include_all_configured_components(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        components=("main", "non-free-firmware"),
+        suite="trixie",
+        mirror="https://deb.debian.org/debian",
+    )
+    builder._write_apt_sources()
+    sources = (builder.paths.rootfs / "etc/apt/sources.list").read_text(encoding="utf-8")
+    assert "trixie main non-free-firmware" in sources
+    assert "trixie-security main non-free-firmware" in sources

@@ -1,3 +1,13 @@
+## Constructor ISO definitiu — bootstrap mínim i paquets per APT
+
+- `debootstrap` crea ara només el sistema base mínim i ja no intenta resoldre firmware, kernel ni paquets d'escriptori durant el bootstrap.
+- Els components Debian configurats (`main`, `non-free-firmware`, etc.) es propaguen tant a `debootstrap` com a `/etc/apt/sources.list`.
+- Els paquets de runtime, el kernel i el firmware s'instal·len posteriorment amb `apt-get` dins del chroot.
+- Afegida preparació explícita de DNS i repositoris abans de l'actualització APT.
+- Afegit `debian-archive-keyring` a les dependències de construcció de l'amfitrió.
+- Afegides proves de regressió que impedeixen tornar a introduir `--include` amb paquets de runtime en `debootstrap`.
+- Suite completa: 1353 proves superades.
+
 ## Refactorització del constructor ISO
 
 - Afegida l'ordre `build-rootfs` per construir un rootfs reutilitzable sense instal·lar cap carregador sobre un dispositiu.
