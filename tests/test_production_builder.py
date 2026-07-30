@@ -64,6 +64,29 @@ def test_inside_never_uses_host_system_paths(tmp_path: Path, monkeypatch: pytest
         builder._inside("../../etc/passwd")
 
 
+
+def test_inside_allows_existing_absolute_leaf_symlink(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    etc = builder.paths.rootfs / "etc"
+    etc.mkdir(parents=True)
+    localtime = etc / "localtime"
+    localtime.symlink_to("/usr/share/zoneinfo/Europe/Madrid")
+
+    assert builder._inside("/etc/localtime") == localtime
+
+
+def test_inside_rejects_symlinked_parent_outside_rootfs(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.paths.rootfs.mkdir(parents=True)
+    (builder.paths.rootfs / "etc").symlink_to(tmp_path / "outside")
+
+    with pytest.raises(ProductionBuildError, match="directori pare"):
+        builder._inside("/etc/hostname")
+
 def test_clean_is_limited_to_production_workspace(tmp_path: Path) -> None:
     root = minimal_project(tmp_path)
     builder = object.__new__(ProductionIsoBuilder)

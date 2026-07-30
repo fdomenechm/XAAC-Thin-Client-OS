@@ -214,12 +214,39 @@ class ProductionIsoBuilder:
                 os.unlink(temporary)
 
     def _inside(self, absolute: str) -> Path:
-        if not absolute.startswith("/"):
+        """Return a host path lexically confined to the build rootfs.
+
+        Do not resolve the destination itself: files such as ``/etc/localtime``
+        are legitimate absolute symlinks inside a Debian rootfs. Resolving that
+        leaf from the host would incorrectly turn it into
+        ``/usr/share/zoneinfo/...`` on the host and trigger a false escape.
+
+        Parent directories are still checked when they already exist, so an
+        unexpected symlinked parent cannot redirect writes outside the rootfs.
+        """
+        candidate = Path(absolute)
+        if not candidate.is_absolute():
             raise ProductionBuildError(f"Ruta de rootfs no absoluta: {absolute}")
-        destination = (self.paths.rootfs / absolute.lstrip("/")).resolve(strict=False)
-        rootfs = self.paths.rootfs.resolve(strict=False)
-        if not destination.is_relative_to(rootfs):
+        if ".." in candidate.parts:
             raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}")
+
+        rootfs = self.paths.rootfs.absolute()
+        destination = rootfs.joinpath(*candidate.parts[1:])
+        try:
+            if os.path.commonpath((str(rootfs), str(destination))) != str(rootfs):
+                raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}")
+        except ValueError as exc:
+            raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}") from exc
+
+        current = rootfs
+        for part in candidate.parts[1:-1]:
+            current = current / part
+            if current.is_symlink():
+                resolved_parent = current.resolve(strict=False)
+                if not resolved_parent.is_relative_to(rootfs.resolve(strict=False)):
+                    raise ProductionBuildError(
+                        f"Un directori pare ix fora del rootfs: {absolute}"
+                    )
         return destination
 
     def _save_state(self, phase: str) -> None:

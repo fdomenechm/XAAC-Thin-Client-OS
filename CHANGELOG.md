@@ -1,3 +1,11 @@
+## Correcció del constructor ISO — confinament de rutes i Debian minimal
+
+- Corregida la resolució de rutes dins del rootfs perquè els enllaços simbòlics absoluts vàlids, com `/etc/localtime`, no es resolguen accidentalment contra el sistema amfitrió.
+- Mantinguda la protecció contra `..` i contra directoris pare enllaçats fora del rootfs.
+- El llançador del constructor normalitza ara `PATH` per incloure `/usr/sbin` i `/sbin` en sessions SSH i instal·lacions Debian minimal.
+- Afegides proves de regressió per a `/etc/localtime` i per a pares simbòlics que intenten escapar del rootfs.
+- Suite completa: 1355 proves superades.
+
 ## Constructor ISO definitiu — bootstrap mínim i paquets per APT
 
 - `debootstrap` crea ara només el sistema base mínim i ja no intenta resoldre firmware, kernel ni paquets d'escriptori durant el bootstrap.
