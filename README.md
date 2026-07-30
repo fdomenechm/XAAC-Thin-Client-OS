@@ -124,3 +124,42 @@ La ISO de desenvolupament es pot generar sense clau GPG. Per exigir signatura:
 XAAC_ISO_SIGNING_KEY=<ID_CLAU> XAAC_REQUIRE_ISO_SIGNATURE=1 \
   ./scripts/build-production-iso.sh
 ```
+
+## Construcció de la ISO de producció
+
+El constructor de producció és independent del constructor d'imatges de disc antic i està dividit en sis fases:
+
+```text
+rootfs → configure → boot → squashfs → iso → verify
+```
+
+Instal·la primer les dependències:
+
+```bash
+sudo ./scripts/install-build-dependencies.sh
+```
+
+Construcció completa i neta:
+
+```bash
+./scripts/build-production-iso.sh --clean
+```
+
+L'artefacte queda en:
+
+```text
+.build/artifacts/xaac-thin-client-os-amd64.iso
+.build/artifacts/xaac-thin-client-os-amd64.iso.sha256
+```
+
+Per reprendre o diagnosticar una fase concreta:
+
+```bash
+./scripts/build-production-iso.sh --phase configure
+./scripts/build-production-iso.sh --phase boot
+./scripts/build-production-iso.sh --phase squashfs
+./scripts/build-production-iso.sh --phase iso
+./scripts/build-production-iso.sh --phase verify
+```
+
+Els logs es guarden en `.build/production/logs/`. El constructor ISO no executa `grub-install`: la compatibilitat BIOS/UEFI es genera directament amb `grub-mkrescue`.

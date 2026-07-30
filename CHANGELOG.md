@@ -1097,3 +1097,12 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Agrupats els documents de fase per blocs sense modificar el codi ni el comportament del sistema.
 - Afegides referències de CLI, configuració, release i criteris editorials.
 
+
+## [Unreleased] — Constructor ISO independent per fases
+
+- S'ha substituït el flux de producció ISO per un motor independent en `production_builder.py`.
+- Les fases `rootfs`, `configure`, `boot`, `squashfs`, `iso` i `verify` són executables separadament.
+- El nou motor no reutilitza `build-image`, `UefiBootConfigurator`, `SystemdConfigurator` ni cap ruta del sistema amfitrió.
+- La ISO es crea amb `grub-mkrescue`; no s'executa `grub-install` dins del chroot.
+- Totes les escriptures de configuració queden confinades a `.build/production/rootfs`.
+- S'han afegit muntatges de chroot amb neteja garantida i logs independents per fase.
