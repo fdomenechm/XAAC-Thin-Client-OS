@@ -204,7 +204,7 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
     assert 'update-locale", f"LANG={self.settings.locale}' in source
 
 
-def test_installer_step1_is_non_destructive_and_console_bound() -> None:
+def test_installer_step2_detects_and_selects_disks_without_writing() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
@@ -212,7 +212,10 @@ def test_installer_step1_is_non_destructive_and_console_bound() -> None:
     assert "ConditionKernelCommandLine=xaac.mode=installer" in source
     assert "Conflicts=getty@tty1.service" in source
     assert "TTYPath=/dev/tty1" in source
-    assert "Aquesta versió de prova NO particiona ni modifica cap disc." in source
+    assert "Aquest pas NO particiona, formata ni modifica cap disc." in source
+    assert "lsblk -dnpo NAME,SIZE,MODEL,TYPE,RO,RM" in source
+    assert "Seleccioneu el número del disc" in source
+    assert "No s’ha escrit cap dada al disc seleccionat." in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
 
 

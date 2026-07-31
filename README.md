@@ -216,3 +216,8 @@ reinicia. L’opció `XAAC diagnostics (read-only)` manté el comportament Live.
 
 Aquesta fita només valida el menú de GRUB, el paràmetre d’arrencada i el servei
 de consola abans d’afegir cap operació destructiva.
+
+
+### Instal·lador incremental — pas 2
+
+L’opció d’instal·lació detecta els discs escrivibles, mostra dispositiu, mida i model i permet seleccionar-ne un. Aquest pas és estrictament no destructiu: no particiona, no formata ni escriu cap dada.

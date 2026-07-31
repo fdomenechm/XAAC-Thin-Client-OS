@@ -1163,3 +1163,12 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - La pantalla confirma l’arrencada i reinicia en prémer Retorn.
 - No es detecta, particiona, formata ni modifica cap disc.
 - No s’ha alterat la separació validada entre `debootstrap --variant=minbase` i la instal·lació posterior de paquets amb APT.
+
+
+## Unreleased — instal·lador incremental, pas 2
+
+- La pantalla d’instal·lació detecta els discs de bloc escrivibles amb `lsblk`.
+- Mostra dispositiu, capacitat i model, i permet seleccionar-ne un amb validació.
+- Exclou dispositius que no són discs i discs marcats com a només lectura.
+- La selecció continua sent completament no destructiva: no particiona, no formata i no escriu cap dada.
+- Manté el control exclusiu de `tty1` i reinicia en prémer Retorn després de la prova.
