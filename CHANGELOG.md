@@ -1,3 +1,14 @@
+## Robustesa de TTY i muntatges del constructor de producció
+
+- L'instal·lador pren exclusivament `tty1` i declara explícitament el conflicte amb `getty@tty1.service`.
+- Afegit `xaac-installer-restore-getty.service`, activat amb `OnFailure`, per restaurar el `getty` de `tty1` si l'instal·lador falla.
+- L'autologin de `xaac-kiosk` queda limitat a `tty1`; `tty2` a `tty6` mantenen un `agetty` normal sense autologin.
+- Els muntatges `--rbind` del chroot es converteixen en `rslave` per impedir propagació cap al sistema host.
+- La neteja desmunta únicament punts situats sota `.build/production/rootfs`, començant per `/dev/pts`, sense `umount -l`.
+- `build-production-iso.sh` incorpora un `trap` per netejar els muntatges en eixida, interrupció o terminació.
+- `--clean` neteja primer qualsevol muntatge residual abans d'eliminar el workspace.
+- Suite completa: 1365 proves superades.
+
 ## Correcció de l’autologin del compte quiosc
 
 - El constructor de producció crea ara `xaac-kiosk` amb `/bin/bash`, necessari perquè `agetty --autologin` puga iniciar la sessió.

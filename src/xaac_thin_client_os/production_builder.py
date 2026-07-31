@@ -277,11 +277,56 @@ class ProductionIsoBuilder:
         }
         self._atomic_write(self.paths.state, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
+    def _chroot_mount_targets(self) -> tuple[Path, ...]:
+        """Return only the mount points owned by this production rootfs.
+
+        The deepest mount is listed first so ``/dev/pts`` is detached before
+        ``/dev``.  Every target is produced through ``_inside`` and can never
+        refer to the host's real ``/dev``, ``/proc``, ``/sys`` or ``/run``.
+        """
+        return (
+            self._inside("/dev/pts"),
+            self._inside("/dev"),
+            self._inside("/proc"),
+            self._inside("/sys"),
+            self._inside("/run"),
+        )
+
+    @staticmethod
+    def _is_mountpoint(path: Path) -> bool:
+        return subprocess.run(
+            ["mountpoint", "-q", str(path)],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode == 0
+
+    def cleanup_chroot_mounts(self) -> None:
+        """Safely detach stale chroot mounts without touching host mounts."""
+        if getattr(self, "dry_run", False) or not self.paths.rootfs.exists():
+            return
+        rootfs = self.paths.rootfs.resolve(strict=False)
+        for target in self._chroot_mount_targets():
+            resolved = target.resolve(strict=False)
+            if not resolved.is_relative_to(rootfs):
+                raise ProductionBuildError(f"Punt de muntatge fora del rootfs: {target}")
+            if not self._is_mountpoint(target):
+                continue
+            result = subprocess.run(
+                ["umount", "-R", str(target)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if result.returncode != 0 and self._is_mountpoint(target):
+                raise ProductionBuildError(f"No s'ha pogut desmuntar de manera segura: {target}")
+
     def clean(self) -> None:
         target = self.paths.build_root.resolve(strict=False)
         allowed_parent = (self.paths.project_root / ".build").resolve(strict=False)
         if target.parent != allowed_parent or target.name != "production":
             raise ProductionBuildError(f"Directori de neteja insegur: {target}")
+        self.cleanup_chroot_mounts()
         if target.exists():
             shutil.rmtree(target)
 
@@ -317,26 +362,31 @@ class ProductionIsoBuilder:
     @contextlib.contextmanager
     def _chroot_mounts(self) -> Iterator[None]:
         mounts = (
-            ("/dev", "--rbind"),
-            ("/proc", "-t proc"),
-            ("/sys", "--rbind"),
-            ("/run", "--rbind"),
+            ("/dev", "rbind"),
+            ("/proc", "proc"),
+            ("/sys", "rbind"),
+            ("/run", "rbind"),
         )
-        mounted: list[Path] = []
+        self.cleanup_chroot_mounts()
         try:
             for source, mode in mounts:
                 target = self._inside(source)
                 target.mkdir(parents=True, exist_ok=True)
-                if source == "/proc":
+                if mode == "proc":
                     command = ["mount", "-t", "proc", "proc", str(target)]
                 else:
                     command = ["mount", "--rbind", source, str(target)]
                 self.runner.run(command, phase=f"mount-{source.strip('/').replace('/', '-') or 'root'}")
-                mounted.append(target)
+                if mode == "rbind":
+                    # Prevent unmount operations below the chroot from
+                    # propagating back to the host's shared mount tree.
+                    self.runner.run(
+                        ["mount", "--make-rslave", str(target)],
+                        phase=f"mount-rslave-{source.strip('/').replace('/', '-')}",
+                    )
             yield
         finally:
-            for target in reversed(mounted):
-                subprocess.run(["umount", "-R", "-l", str(target)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.cleanup_chroot_mounts()
 
     def _chroot(self, command: Sequence[str], *, phase: str) -> None:
         env = os.environ.copy()
@@ -430,10 +480,24 @@ class ProductionIsoBuilder:
             f'XAAC_OS_PROFILE="{self.settings.profile}"\n'
             f'XAAC_OS_BUILD_ID="{build_id}"\n',
         )
+        # Keep kiosk autologin strictly scoped to tty1.  Explicit normal
+        # getty overrides on tty2..tty6 also neutralise any generic autologin
+        # drop-in that live-config may create at boot time.
+        for generic in (
+            "/etc/systemd/system/getty@.service.d/autologin.conf",
+            "/etc/systemd/system/getty@.service.d/live-config_autologin.conf",
+        ):
+            with contextlib.suppress(FileNotFoundError):
+                self._inside(generic).unlink()
         self._atomic_write(
-            self._inside("/etc/systemd/system/getty@tty1.service.d/autologin.conf"),
+            self._inside("/etc/systemd/system/getty@tty1.service.d/99-xaac-autologin.conf"),
             "[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
         )
+        for tty in range(2, 7):
+            self._atomic_write(
+                self._inside(f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-no-autologin.conf"),
+                "[Service]\nExecStart=\nExecStart=-/sbin/agetty --noclear %I $TERM\n",
+            )
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"
@@ -499,9 +563,12 @@ class ProductionIsoBuilder:
             "Description=XAAC Thin Client OS installer disk selection (step 2)\n"
             "ConditionKernelCommandLine=xaac.mode=installer\n"
             "After=systemd-user-sessions.service\n"
-            "Conflicts=getty@tty1.service\n\n"
+            "Before=getty@tty1.service\n"
+            "Conflicts=getty@tty1.service\n"
+            "OnFailure=xaac-installer-restore-getty.service\n\n"
             "[Service]\n"
             "Type=idle\n"
+            "ExecStartPre=-/bin/systemctl stop getty@tty1.service\n"
             "ExecStart=/usr/local/sbin/xaac-installer-welcome\n"
             "StandardInput=tty\n"
             "StandardOutput=tty\n"
@@ -513,6 +580,15 @@ class ProductionIsoBuilder:
             "Restart=no\n\n"
             "[Install]\n"
             "WantedBy=multi-user.target\n",
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-installer-restore-getty.service"),
+            "[Unit]\n"
+            "Description=Restore tty1 login after XAAC installer failure\n"
+            "After=xaac-installer-welcome.service\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/bin/systemctl start getty@tty1.service\n",
         )
 
         debs = self._copy_valid_debs()
@@ -675,6 +751,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="Planifica sense executar ordres destructives")
     parser.add_argument("--clean", action="store_true", help="Neteja el workspace de producció abans de construir")
     parser.add_argument(
+        "--cleanup-mounts-only", action="store_true", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
         "--phase", action="append", choices=ProductionIsoBuilder.PHASES,
         help="Executa només aquesta fase; es pot repetir",
     )
@@ -685,6 +764,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         builder = ProductionIsoBuilder(args.root, dry_run=args.dry_run)
+        if args.cleanup_mounts_only:
+            builder.cleanup_chroot_mounts()
+            return 0
         if args.clean:
             builder.clean()
         phases = tuple(args.phase) if args.phase else ProductionIsoBuilder.PHASES
@@ -692,11 +774,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.dry_run and "verify" in phases:
             print(f"ISO generada correctament: {iso}")
         return 0
+    except KeyboardInterrupt:
+        print("error: construcció interrompuda", file=sys.stderr)
+        return 130
     except (ProductionBuildError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     finally:
         try:
+            if "builder" in locals():
+                builder.cleanup_chroot_mounts()
             root = BuildPaths.create(args.root)
             _restore_owner(root.project_root / ".build")
         except Exception:

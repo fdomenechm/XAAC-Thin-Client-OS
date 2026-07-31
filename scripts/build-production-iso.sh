@@ -29,4 +29,14 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 cd "$PROJECT_ROOT"
-exec "$PYTHON" -m xaac_thin_client_os.production_builder --root "$PROJECT_ROOT" "$@"
+
+cleanup_chroot_mounts() {
+    "$PYTHON" -m xaac_thin_client_os.production_builder \
+        --root "$PROJECT_ROOT" --cleanup-mounts-only >/dev/null 2>&1 || true
+}
+
+# Always attempt a scoped chroot cleanup, including on interruption.  The
+# Python cleanup routine only accepts mount points below .build/production/rootfs.
+trap cleanup_chroot_mounts EXIT INT TERM
+
+"$PYTHON" -m xaac_thin_client_os.production_builder --root "$PROJECT_ROOT" "$@"

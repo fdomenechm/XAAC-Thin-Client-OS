@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -247,3 +248,58 @@ def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:
     assert "systemd.unit=multi-user.target" in installer_line
     diagnostics_line = next(line for line in grub.splitlines() if "xaac.mode=diagnostics" in line)
     assert "systemd.unit=multi-user.target" not in diagnostics_line
+
+
+def test_cleanup_chroot_mounts_is_scoped_and_deepest_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.dry_run = False
+    builder.paths.rootfs.mkdir(parents=True)
+
+    calls: list[list[str]] = []
+
+    class Result:
+        def __init__(self, returncode: int) -> None:
+            self.returncode = returncode
+
+    def fake_run(command, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(list(command))
+        return Result(1 if list(command)[:2] == ["mountpoint", "-q"] else 0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    builder.cleanup_chroot_mounts()
+
+    umounts = [call for call in calls if call and call[0] == "umount"]
+    assert umounts == []  # mountpoint checks reported not mounted
+    checked = [call[-1] for call in calls if call[:2] == ["mountpoint", "-q"]]
+    assert checked[0].endswith("/rootfs/dev/pts")
+    assert all("/.build/production/rootfs/" in value for value in checked)
+
+
+def test_chroot_rbind_mounts_are_made_rslave() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder._chroot_mounts)
+    assert "--make-rslave" in source
+    assert '"-l"' not in source
+    assert "cleanup_chroot_mounts" in source
+
+
+def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "getty@tty1.service.d/99-xaac-autologin.conf" in source
+    assert "getty@tty{tty}.service.d/99-xaac-no-autologin.conf" in source
+    assert "for tty in range(2, 7)" in source
+    assert "OnFailure=xaac-installer-restore-getty.service" in source
+    assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
+    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
+
+
+def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
+    project = Path(__file__).resolve().parents[1]
+    script = (project / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
+    assert "trap cleanup_chroot_mounts EXIT INT TERM" in script
+    assert "--cleanup-mounts-only" in script

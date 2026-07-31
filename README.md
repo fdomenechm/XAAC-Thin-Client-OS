@@ -164,6 +164,32 @@ Per reprendre o diagnosticar una fase concreta:
 
 Els logs es guarden en `.build/production/logs/`. El constructor ISO no executa `grub-install`: la compatibilitat BIOS/UEFI es genera directament amb `grub-mkrescue`.
 
+### Seguretat dels muntatges del chroot
+
+El constructor munta temporalment `/dev`, `/proc`, `/sys` i `/run` dins del rootfs.
+Els muntatges recursius es converteixen immediatament en `rslave`, de manera que
+les operacions de desmuntatge del chroot no es propaguen mai cap al sistema host.
+La neteja comprova cada punt amb `mountpoint`, desmunta primer `/dev/pts` i només
+accepta rutes confinades sota `.build/production/rootfs`. El llançador incorpora
+un `trap` per executar aquesta neteja també davant d'interrupcions.
+
+Això permet repetir: 
+
+```bash
+./scripts/build-production-iso.sh --clean
+```
+
+sense deixar `/dev/pts` de l'amfitrió inutilitzable ni obligar a reiniciar la
+màquina constructora.
+
+### Consoles virtuals i recuperació de l'instal·lador
+
+L'autologin del compte `xaac-kiosk` només s'aplica a `tty1`. Les consoles
+`tty2` a `tty6` conserven un `agetty` normal i requereixen autenticació. Quan
+l'entrada d'instal·lació pren `tty1`, el servei entra en conflicte únicament amb
+`getty@tty1.service`. Si l'instal·lador falla, `OnFailure` activa un servei de
+recuperació que torna a iniciar el `getty` de `tty1`.
+
 El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea únicament Debian base i, després, la fase `configure` executa `apt-get update` i instal·la kernel, firmware i resta de paquets des dels components definits en `config/build.yaml`. Això evita intentar resoldre `firmware-linux` o `firmware-misc-nonfree` durant el bootstrap inicial.
 
 ### Usuari de la sessió Live
