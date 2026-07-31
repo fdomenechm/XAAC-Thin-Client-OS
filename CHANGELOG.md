@@ -1,7 +1,9 @@
 ## Unreleased
 
 - Corregida la detecció de discs de l’instal·lador amb `lsblk -P`, evitant errors quan el model conté espais i excloent explícitament `loop`, `ram`, `zram` i `sr`.
-- Afegit `nottyautologin` a les entrades d’arrencada Live i instal·lador perquè `live-config` no aplique autologin a totes les consoles; l’autologin XAAC continua limitat explícitament a `tty1`.
+- Desactivada completament l'execució dels components de `live-config` mitjançant `live-config.nocomponents`; XAAC conserva el control exclusiu dels usuaris, la localització i les consoles.
+- Eliminats els overrides específics de `tty2` a `tty6`: aquestes consoles tornen a usar la plantilla estàndard `getty@.service` de Debian i requereixen autenticació.
+- Mantingut l'autologin explícit de `xaac-kiosk` únicament a `tty1`.
 
 ## Robustesa de TTY i muntatges del constructor de producció
 

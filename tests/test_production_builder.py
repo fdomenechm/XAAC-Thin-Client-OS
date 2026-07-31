@@ -191,10 +191,12 @@ def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
     assert 'variant: ""' in localization
     assert "keyboard-configuration" in packages
     assert "console-setup-linux" in packages
-    assert "locales=ca_ES.UTF-8" in iso
-    assert "keyboard-layouts=es" in iso
-    assert "timezone=Europe/Madrid" in iso
-    assert "nottyautologin" in iso
+    assert "locales=ca_ES.UTF-8" not in iso
+    assert "keyboard-layouts=es" not in iso
+    assert "timezone=Europe/Madrid" not in iso
+    assert "live-config.nocomponents" in iso
+    assert "nottyautologin" not in iso
+    assert " components " not in iso
 
 
 def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
@@ -295,7 +297,9 @@ def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert "getty@tty1.service.d/99-xaac-autologin.conf" in source
     assert "getty@tty{tty}.service.d/99-xaac-no-autologin.conf" in source
-    assert "for tty in range(2, 7)" in source
+    assert ").unlink()" in source
+    assert "/etc/live/config.conf.d/xaac.conf" in source
+    assert "LIVE_CONFIG_CMDLINE" in source
     assert "OnFailure=xaac-installer-restore-getty.service" in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "ExecStart=/bin/systemctl start getty@tty1.service" in source

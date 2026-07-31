@@ -480,24 +480,32 @@ class ProductionIsoBuilder:
             f'XAAC_OS_PROFILE="{self.settings.profile}"\n'
             f'XAAC_OS_BUILD_ID="{build_id}"\n',
         )
-        # Keep kiosk autologin strictly scoped to tty1.  Explicit normal
-        # getty overrides on tty2..tty6 also neutralise any generic autologin
-        # drop-in that live-config may create at boot time.
+        # XAAC owns console login policy.  Debian Live configuration is
+        # disabled at boot, so no generic getty autologin override is allowed.
+        # Only tty1 receives the kiosk autologin drop-in; tty2..tty6 keep the
+        # unmodified Debian getty@.service template and therefore show login:.
         for generic in (
             "/etc/systemd/system/getty@.service.d/autologin.conf",
             "/etc/systemd/system/getty@.service.d/live-config_autologin.conf",
         ):
             with contextlib.suppress(FileNotFoundError):
                 self._inside(generic).unlink()
+        for tty in range(2, 7):
+            with contextlib.suppress(FileNotFoundError):
+                self._inside(
+                    f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-no-autologin.conf"
+                ).unlink()
         self._atomic_write(
             self._inside("/etc/systemd/system/getty@tty1.service.d/99-xaac-autologin.conf"),
-            "[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
+            "[Service]\nExecStart=\n"
+            "ExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
         )
-        for tty in range(2, 7):
-            self._atomic_write(
-                self._inside(f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-no-autologin.conf"),
-                "[Service]\nExecStart=\nExecStart=-/sbin/agetty --noclear %I $TERM\n",
-            )
+        self._atomic_write(
+            self._inside("/etc/live/config.conf.d/xaac.conf"),
+            "# XAAC configures users, locale, keyboard, timezone and TTY policy at build time.\n"
+            "# Do not let live-config mutate them during boot.\n"
+            "LIVE_CONFIG_CMDLINE=\"live-config.nocomponents\"\n",
+        )
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"

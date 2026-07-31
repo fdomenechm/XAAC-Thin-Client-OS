@@ -192,15 +192,20 @@ recuperació que torna a iniciar el `getty` de `tty1`.
 
 El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea únicament Debian base i, després, la fase `configure` executa `apt-get update` i instal·la kernel, firmware i resta de paquets des dels components definits en `config/build.yaml`. Això evita intentar resoldre `firmware-linux` o `firmware-misc-nonfree` durant el bootstrap inicial.
 
-### Usuari de la sessió Live
+### Política de configuració Live i usuari de sessió
 
-La ISO declara explícitament l'usuari Live `xaac-kiosk` en els paràmetres d'arrencada. Això és necessari perquè `live-config` utilitza `user` per defecte i podria substituir l'autologin del sistema. La configuració es troba en `config/iso-builder.yaml`:
+XAAC Thin Client OS configura durant la construcció el compte `xaac-kiosk`, la
+llengua, el teclat, la zona horària i la política de consoles. Per evitar que
+Debian `live-config` torne a modificar aquests valors durant cada arrencada, les
+entrades GRUB incorporen explícitament:
 
-```yaml
-live:
-  username: xaac-kiosk
-  user_fullname: XAAC Kiosk
+```text
+live-config.nocomponents
 ```
+
+A més, el rootfs inclou `/etc/live/config.conf.d/xaac.conf` amb la mateixa
+política. D'aquesta manera `live-config` no crea l'usuari genèric `user`, no
+reescriu `getty@.service` i no aplica autologin a consoles secundàries.
 
 ### Llengua i teclat de la ISO
 
@@ -216,12 +221,10 @@ Zona horària:        `Europe/Madrid`
 
 La configuració declarativa es troba en `config/localization.yaml`. El constructor
 instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`, escriu
-`/etc/default/keyboard`, executa `dpkg-reconfigure keyboard-configuration` de manera
-no interactiva i incorpora els paràmetres següents a l'arrencada Live:
-
-```text
-locales=ca_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid
-```
+`/etc/default/keyboard` i `/etc/default/locale`, i executa
+`dpkg-reconfigure keyboard-configuration` de manera no interactiva. Aquests
+valors queden integrats directament al rootfs; no depenen de `live-config` ni de
+paràmetres variables de l'arrencada.
 
 Després de construir la ISO es pot verificar amb:
 
@@ -235,7 +238,9 @@ cat .build/production/rootfs/etc/default/locale
 
 La primera iteració de l’instal·lador és deliberadament no destructiva. L’entrada
 `Install XAAC Thin Client OS` arranca amb `xaac.mode=installer` i
-`nottyautologin` impedeix que `live-config` aplique autologin a totes les TTY. L’autologin propi de XAAC queda limitat a `tty1`.
+`live-config.nocomponents`. La política de consoles queda controlada només per
+XAAC: `tty1` és reservada per al quiosc o l'instal·lador, mentre que `tty2` a
+`tty6` conserven el `getty` estàndard de Debian i requereixen autenticació.
 
 `systemd.unit=multi-user.target`, inicia `xaac-installer-welcome.service` sobre
 `tty1` i mostra una pantalla de benvinguda. En aquest pas no es detecten,
