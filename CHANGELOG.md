@@ -1154,3 +1154,12 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - S'instal·len `keyboard-configuration`, `console-setup` i `console-setup-linux`.
 - La fase `configure` regenera la configuració del teclat de forma no interactiva.
 - GRUB transmet a Debian Live `locales=ca_ES.UTF-8`, `keyboard-layouts=es` i `timezone=Europe/Madrid`.
+
+## Unreleased — instal·lador incremental, pas 1
+
+- Partint del ZIP 30 validat, s’ha afegit exclusivament una prova no destructiva de l’instal·lador.
+- L’entrada GRUB d’instal·lació arranca en `multi-user.target`.
+- `xaac-installer-welcome.service` pren `tty1` només amb `xaac.mode=installer`.
+- La pantalla confirma l’arrencada i reinicia en prémer Retorn.
+- No es detecta, particiona, formata ni modifica cap disc.
+- No s’ha alterat la separació validada entre `debootstrap --variant=minbase` i la instal·lació posterior de paquets amb APT.

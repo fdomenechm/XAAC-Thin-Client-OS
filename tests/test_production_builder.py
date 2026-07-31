@@ -202,3 +202,45 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
     assert "dpkg-reconfigure keyboard-configuration" in source
     assert "DEBIAN_FRONTEND=noninteractive" in source
     assert 'update-locale", f"LANG={self.settings.locale}' in source
+
+
+def test_installer_step1_is_non_destructive_and_console_bound() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "/usr/local/sbin/xaac-installer-welcome" in source
+    assert "ConditionKernelCommandLine=xaac.mode=installer" in source
+    assert "Conflicts=getty@tty1.service" in source
+    assert "TTYPath=/dev/tty1" in source
+    assert "Aquesta versió de prova NO particiona ni modifica cap disc." in source
+    assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
+
+
+def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        output_name="xaac.iso",
+        kernel_parameters=(),
+        volume_id="XAAC_TC_OS",
+        live_username="xaac-kiosk",
+        live_user_fullname="XAAC Kiosk",
+    )
+    builder.dry_run = True
+    builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
+    builder._save_state = lambda phase: None  # type: ignore[method-assign]
+
+    boot = builder.paths.build_root / "boot"
+    boot.mkdir(parents=True)
+    (boot / "vmlinuz").write_bytes(b"kernel")
+    (boot / "initrd.img").write_bytes(b"initrd")
+    (builder.paths.build_root / "rootfs.squashfs").write_bytes(b"squashfs")
+
+    builder.phase_iso()
+    grub = (builder.paths.staging / "boot/grub/grub.cfg").read_text(encoding="utf-8")
+    installer_line = next(line for line in grub.splitlines() if "xaac.mode=installer" in line)
+    assert "systemd.unit=multi-user.target" in installer_line
+    diagnostics_line = next(line for line in grub.splitlines() if "xaac.mode=diagnostics" in line)
+    assert "systemd.unit=multi-user.target" not in diagnostics_line

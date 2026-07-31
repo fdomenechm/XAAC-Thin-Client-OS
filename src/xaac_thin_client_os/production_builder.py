@@ -434,6 +434,43 @@ class ProductionIsoBuilder:
             self._inside("/etc/systemd/system/getty@tty1.service.d/autologin.conf"),
             "[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
         )
+        self._atomic_write(
+            self._inside("/usr/local/sbin/xaac-installer-welcome"),
+            "#!/bin/sh\n"
+            "set -eu\n"
+            "clear\n"
+            "printf '%s\\n' 'XAAC Thin Client OS — Instal·lador (pas 1)'\n"
+            "printf '%s\\n' '============================================'\n"
+            "printf '\\n'\n"
+            "printf '%s\\n' 'La ISO ha arrancat correctament en mode instal·lació.'\n"
+            "printf '%s\\n' 'Aquesta versió de prova NO particiona ni modifica cap disc.'\n"
+            "printf '\\n'\n"
+            "printf '%s' 'Premeu Retorn per reiniciar el sistema: ' \n"
+            "IFS= read -r _answer\n"
+            "systemctl reboot\n",
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-installer-welcome.service"),
+            "[Unit]\n"
+            "Description=XAAC Thin Client OS installer welcome (step 1)\n"
+            "ConditionKernelCommandLine=xaac.mode=installer\n"
+            "After=systemd-user-sessions.service\n"
+            "Conflicts=getty@tty1.service\n\n"
+            "[Service]\n"
+            "Type=idle\n"
+            "ExecStart=/usr/local/sbin/xaac-installer-welcome\n"
+            "StandardInput=tty\n"
+            "StandardOutput=tty\n"
+            "StandardError=tty\n"
+            "TTYPath=/dev/tty1\n"
+            "TTYReset=yes\n"
+            "TTYVHangup=yes\n"
+            "TTYVTDisallocate=yes\n"
+            "Restart=no\n\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n",
+        )
 
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
@@ -467,6 +504,7 @@ class ProductionIsoBuilder:
             self._chroot(["systemctl", "enable", "NetworkManager.service"], phase="configure-networkmanager")
             self._chroot(["systemctl", "enable", "ssh.service"], phase="configure-ssh")
             self._chroot(["systemctl", "enable", "nftables.service"], phase="configure-firewall")
+            self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
         with contextlib.suppress(FileNotFoundError):
             self._inside("/usr/sbin/policy-rc.d").unlink()
         self._save_state("configure")
@@ -530,7 +568,7 @@ class ProductionIsoBuilder:
             self.paths.staging / "boot/grub/grub.cfg",
             "set default=0\nset timeout=5\n\n"
             "menuentry 'Install XAAC Thin Client OS' {\n"
-            f"  linux /live/vmlinuz {params} xaac.mode=installer\n"
+            f"  linux /live/vmlinuz {params} xaac.mode=installer systemd.unit=multi-user.target\n"
             "  initrd /live/initrd.img\n}\n\n"
             "menuentry 'XAAC diagnostics (read-only)' {\n"
             f"  linux /live/vmlinuz {diagnostics}\n"

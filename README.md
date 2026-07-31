@@ -204,3 +204,15 @@ grep -n 'linux /live/vmlinuz' .build/production/iso-staging/boot/grub/grub.cfg
 cat .build/production/rootfs/etc/default/keyboard
 cat .build/production/rootfs/etc/default/locale
 ```
+
+### Instal·lador incremental — pas 1
+
+La primera iteració de l’instal·lador és deliberadament no destructiva. L’entrada
+`Install XAAC Thin Client OS` arranca amb `xaac.mode=installer` i
+`systemd.unit=multi-user.target`, inicia `xaac-installer-welcome.service` sobre
+`tty1` i mostra una pantalla de benvinguda. En aquest pas no es detecten,
+particionen, formaten ni modifiquen discs. En prémer Retorn, el sistema es
+reinicia. L’opció `XAAC diagnostics (read-only)` manté el comportament Live.
+
+Aquesta fita només valida el menú de GRUB, el paràmetre d’arrencada i el servei
+de consola abans d’afegir cap operació destructiva.
