@@ -133,3 +133,31 @@ def test_apt_sources_include_all_configured_components(tmp_path: Path) -> None:
     sources = (builder.paths.rootfs / "etc/apt/sources.list").read_text(encoding="utf-8")
     assert "trixie main non-free-firmware" in sources
     assert "trixie-security main non-free-firmware" in sources
+
+
+def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        output_name="xaac.iso",
+        kernel_parameters=(),
+        volume_id="XAAC_TC_OS",
+    )
+    builder.dry_run = True
+    builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
+    builder._save_state = lambda phase: None  # type: ignore[method-assign]
+
+    boot = builder.paths.build_root / "boot"
+    boot.mkdir(parents=True)
+    (boot / "vmlinuz").write_bytes(b"kernel")
+    (boot / "initrd.img").write_bytes(b"initrd")
+    (builder.paths.build_root / "rootfs.squashfs").write_bytes(b"squashfs")
+
+    builder.phase_iso()
+
+    command = (builder.paths.logs / "iso-grub-mkrescue.log").read_text(encoding="utf-8")
+    assert "grub-mkrescue -o" in command
+    assert "-- -V" not in command
+    assert "XAAC_TC_OS" not in command

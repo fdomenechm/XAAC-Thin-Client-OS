@@ -1,5 +1,7 @@
 ## Correcció del constructor ISO — confinament de rutes i Debian minimal
 
+- Corregida la invocació de `grub-mkrescue`: ja no es passa `-- -V`, opció que `xorriso` interpretava en mode natiu i rebutjava amb `Not a known command: -V`.
+
 - Corregida la resolució de rutes dins del rootfs perquè els enllaços simbòlics absoluts vàlids, com `/etc/localtime`, no es resolguen accidentalment contra el sistema amfitrió.
 - Mantinguda la protecció contra `..` i contra directoris pare enllaçats fora del rootfs.
 - El llançador del constructor normalitza ara `PATH` per incloure `/usr/sbin` i `/sbin` en sessions SSH i instal·lacions Debian minimal.

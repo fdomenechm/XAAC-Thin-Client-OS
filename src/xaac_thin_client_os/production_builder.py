@@ -513,10 +513,13 @@ class ProductionIsoBuilder:
         self.paths.artifacts.mkdir(parents=True, exist_ok=True)
         iso = self.paths.artifacts / self.settings.output_name
         iso.unlink(missing_ok=True)
-        self.runner.run([
-            "grub-mkrescue", "-o", str(iso), str(self.paths.staging), "--",
-            "-V", self.settings.volume_id,
-        ], phase="iso-grub-mkrescue")
+        # grub-mkrescue already invokes xorriso with the correct emulation.
+        # Passing ``-- -V <label>`` forwards ``-V`` to xorriso's native
+        # command mode, where it is not valid, and causes the build to fail.
+        self.runner.run(
+            ["grub-mkrescue", "-o", str(iso), str(self.paths.staging)],
+            phase="iso-grub-mkrescue",
+        )
         self._save_state("iso")
 
     def phase_verify(self) -> None:
