@@ -11,6 +11,9 @@ base:
 - ca-certificates
 - apt
 - locales
+- keyboard-configuration
+- console-setup
+- console-setup-linux
 - tzdata
 - openssh-server
 - nftables

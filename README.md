@@ -163,3 +163,44 @@ Per reprendre o diagnosticar una fase concreta:
 ```
 
 Els logs es guarden en `.build/production/logs/`. El constructor ISO no executa `grub-install`: la compatibilitat BIOS/UEFI es genera directament amb `grub-mkrescue`.
+
+El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea únicament Debian base i, després, la fase `configure` executa `apt-get update` i instal·la kernel, firmware i resta de paquets des dels components definits en `config/build.yaml`. Això evita intentar resoldre `firmware-linux` o `firmware-misc-nonfree` durant el bootstrap inicial.
+
+### Usuari de la sessió Live
+
+La ISO declara explícitament l'usuari Live `xaac-kiosk` en els paràmetres d'arrencada. Això és necessari perquè `live-config` utilitza `user` per defecte i podria substituir l'autologin del sistema. La configuració es troba en `config/iso-builder.yaml`:
+
+```yaml
+live:
+  username: xaac-kiosk
+  user_fullname: XAAC Kiosk
+```
+
+### Llengua i teclat de la ISO
+
+La configuració predeterminada de XAAC Thin Client OS és:
+
+```text
+Llengua:             català (`ca_ES.UTF-8`)
+Teclat:              espanyol (`es`)
+Model de teclat:     `pc105`
+Variant:             cap
+Zona horària:        `Europe/Madrid`
+```
+
+La configuració declarativa es troba en `config/localization.yaml`. El constructor
+instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`, escriu
+`/etc/default/keyboard`, executa `dpkg-reconfigure keyboard-configuration` de manera
+no interactiva i incorpora els paràmetres següents a l'arrencada Live:
+
+```text
+locales=ca_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid
+```
+
+Després de construir la ISO es pot verificar amb:
+
+```bash
+grep -n 'linux /live/vmlinuz' .build/production/iso-staging/boot/grub/grub.cfg
+cat .build/production/rootfs/etc/default/keyboard
+cat .build/production/rootfs/etc/default/locale
+```

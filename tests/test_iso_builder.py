@@ -38,6 +38,8 @@ def test_prepares_iso_assets(tmp_path):
     assert json.loads(plan.output("manifest").read_text())["uefi"] is True
     script = plan.output("build_script").read_text()
     assert "grub-mkrescue" in script and "xorriso" in script
+    assert 'grub-mkrescue -o "$ISO" "$STAGING"' in script
+    assert "-- -V" not in script
     assert "sha256sum" in script and "gpg --batch" in script
     assert plan.output("build_script").stat().st_mode & 0o777 == 0o750
     assert len(paths) == 6

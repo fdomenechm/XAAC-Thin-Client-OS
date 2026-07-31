@@ -14,7 +14,7 @@ timezone: Europe/Madrid
 keyboard:
   model: pc105
   layout: es
-  variant: cat
+  variant: ""
   options: []
 console:
   charmap: UTF-8
@@ -27,7 +27,7 @@ def _prepare(plan):
         p.parent.mkdir(parents=True,exist_ok=True); p.write_text('ok\n')
 
 def test_plan_loads_expected_values(tmp_path):
-    p=_plan(tmp_path); assert p.locale=='ca_ES.UTF-8'; assert p.keyboard_layout=='es'; assert p.keyboard_variant=='cat'; assert len(p.locales)==3
+    p=_plan(tmp_path); assert p.locale=='ca_ES.UTF-8'; assert p.keyboard_layout=='es'; assert p.keyboard_variant==''; assert len(p.locales)==3
 
 def test_manifest_is_stable(tmp_path):
     p=_plan(tmp_path); assert p.to_manifest()['console']['charmap']=='UTF-8'; assert len(p.commands())==2
@@ -60,7 +60,7 @@ def test_real_writes_all_files_and_commands(tmp_path):
     def runner(command,**kwargs): calls.append(tuple(command)); return subprocess.CompletedProcess(command,0)
     r=LocalizationConfigurator(geteuid=lambda:0,runner=runner).execute(p,tmp_path/'log')
     assert r.executed and r.commands_executed==2 and calls==list(p.commands())
-    assert 'XKBVARIANT="cat"' in (p.rootfs/'etc/default/keyboard').read_text()
+    assert 'XKBVARIANT=""' in (p.rootfs/'etc/default/keyboard').read_text()
     assert (p.rootfs/'etc/localtime').is_symlink()
 
 def test_symlink_destination_rejected(tmp_path):

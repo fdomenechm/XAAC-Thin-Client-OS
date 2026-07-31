@@ -317,7 +317,7 @@ def test_configure_localization_dry_run_updates_current_manifest(
     assert payload["executed"] is False
     assert payload["locale"] == "ca_ES.UTF-8"
     assert payload["keyboard_layout"] == "es"
-    assert payload["keyboard_variant"] == "cat"
+    assert payload["keyboard_variant"] == ""
     manifest = project_root / ".build" / "runs" / payload["build_id"] / "manifest.json"
     data = json.loads(manifest.read_text(encoding="utf-8"))
     assert data["status"] == "localization-planned"

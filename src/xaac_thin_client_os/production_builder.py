@@ -63,6 +63,7 @@ class BuildPaths:
 class BuildSettings:
     suite: str
     mirror: str
+    components: tuple[str, ...]
     architecture: str
     hostname: str
     timezone: str
@@ -76,6 +77,8 @@ class BuildSettings:
     kernel_parameters: tuple[str, ...]
     version: str
     profile: str
+    live_username: str
+    live_user_fullname: str
 
     @classmethod
     def load(cls, project_root: Path) -> "BuildSettings":
@@ -118,9 +121,19 @@ class BuildSettings:
                 kernel_parameters.extend(str(value) for value in values if value)
 
         fallback = localization.get("fallback_locales", [])
+        live = iso.get("live", {})
+        if not isinstance(live, dict):
+            raise ProductionBuildError("config/iso-builder.yaml: live ha de ser un mapa")
+        live_username = str(live.get("username", "xaac-kiosk")).strip()
+        if not live_username or not live_username.replace("-", "").replace("_", "").isalnum():
+            raise ProductionBuildError("Nom d'usuari live invàlid")
+        live_user_fullname = str(live.get("user_fullname", "XAAC Kiosk")).strip() or "XAAC Kiosk"
+        if any(char in live_user_fullname for char in "\n\r\t\"'" ):
+            raise ProductionBuildError("Nom complet de l'usuari live invàlid")
         return cls(
             suite=configuration.build.debian.suite,
             mirror=configuration.build.debian.mirror,
+            components=tuple(configuration.build.debian.components),
             architecture=configuration.build.architecture.value,
             hostname=str(system.get("hostname", "xaac-thin-client")),
             timezone=str(localization.get("timezone", "Europe/Madrid")),
@@ -134,6 +147,8 @@ class BuildSettings:
             kernel_parameters=tuple(dict.fromkeys(kernel_parameters)),
             version=configuration.build.version,
             profile=configuration.build.profile,
+            live_username=live_username,
+            live_user_fullname=live_user_fullname,
         )
 
 
@@ -212,12 +227,39 @@ class ProductionIsoBuilder:
                 os.unlink(temporary)
 
     def _inside(self, absolute: str) -> Path:
-        if not absolute.startswith("/"):
+        """Return a host path lexically confined to the build rootfs.
+
+        Do not resolve the destination itself: files such as ``/etc/localtime``
+        are legitimate absolute symlinks inside a Debian rootfs. Resolving that
+        leaf from the host would incorrectly turn it into
+        ``/usr/share/zoneinfo/...`` on the host and trigger a false escape.
+
+        Parent directories are still checked when they already exist, so an
+        unexpected symlinked parent cannot redirect writes outside the rootfs.
+        """
+        candidate = Path(absolute)
+        if not candidate.is_absolute():
             raise ProductionBuildError(f"Ruta de rootfs no absoluta: {absolute}")
-        destination = (self.paths.rootfs / absolute.lstrip("/")).resolve(strict=False)
-        rootfs = self.paths.rootfs.resolve(strict=False)
-        if not destination.is_relative_to(rootfs):
+        if ".." in candidate.parts:
             raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}")
+
+        rootfs = self.paths.rootfs.absolute()
+        destination = rootfs.joinpath(*candidate.parts[1:])
+        try:
+            if os.path.commonpath((str(rootfs), str(destination))) != str(rootfs):
+                raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}")
+        except ValueError as exc:
+            raise ProductionBuildError(f"Ruta fora del rootfs: {absolute}") from exc
+
+        current = rootfs
+        for part in candidate.parts[1:-1]:
+            current = current / part
+            if current.is_symlink():
+                resolved_parent = current.resolve(strict=False)
+                if not resolved_parent.is_relative_to(rootfs.resolve(strict=False)):
+                    raise ProductionBuildError(
+                        f"Un directori pare ix fora del rootfs: {absolute}"
+                    )
         return destination
 
     def _save_state(self, phase: str) -> None:
@@ -244,20 +286,31 @@ class ProductionIsoBuilder:
             shutil.rmtree(target)
 
     def phase_rootfs(self) -> None:
+        """Bootstrap only the minimal Debian base system.
+
+        Runtime packages are deliberately installed later, from inside the
+        chroot.  This keeps debootstrap focused on the base system and allows
+        packages from contrib/non-free-firmware to be resolved by apt using
+        the configured repository components.
+        """
         self._require_root()
         if self.paths.rootfs.exists():
             shutil.rmtree(self.paths.rootfs)
         self.paths.rootfs.parent.mkdir(parents=True, exist_ok=True)
-        include = ",".join(self.settings.packages)
         command = [
             "debootstrap",
             "--arch", self.settings.architecture,
             "--variant=minbase",
-            f"--include={include}",
+            f"--components={','.join(self.settings.components)}",
+        ]
+        keyring = Path("/usr/share/keyrings/debian-archive-keyring.gpg")
+        if keyring.is_file():
+            command.append(f"--keyring={keyring}")
+        command.extend([
             self.settings.suite,
             str(self.paths.rootfs),
             self.settings.mirror,
-        ]
+        ])
         self.runner.run(command, phase="rootfs-debootstrap")
         self._save_state("rootfs")
 
@@ -306,11 +359,37 @@ class ProductionIsoBuilder:
             copied.append(f"/tmp/xaac-packages/{package.name}")
         return copied
 
+    def _write_apt_sources(self) -> None:
+        components = " ".join(self.settings.components)
+        suite = self.settings.suite
+        mirror = self.settings.mirror.rstrip("/")
+        sources = (
+            f"deb {mirror} {suite} {components}\n"
+            f"deb {mirror} {suite}-updates {components}\n"
+            f"deb https://security.debian.org/debian-security {suite}-security {components}\n"
+        )
+        self._atomic_write(self._inside("/etc/apt/sources.list"), sources)
+
+    def _prepare_chroot_network(self) -> None:
+        host_resolv = Path("/etc/resolv.conf")
+        content = host_resolv.read_text(encoding="utf-8") if host_resolv.exists() else "nameserver 1.1.1.1\n"
+        self._atomic_write(self._inside("/etc/resolv.conf"), content)
+
+    def _install_runtime_packages(self) -> None:
+        self._chroot(["apt-get", "update"], phase="configure-apt-update")
+        self._chroot([
+            "apt-get", "install", "--yes", "--no-install-recommends",
+            *self.settings.packages,
+        ], phase="configure-apt-install")
+
     def phase_configure(self) -> None:
         self._require_root()
         if not (self.paths.rootfs / "etc/debian_version").is_file():
             raise ProductionBuildError("El rootfs no existeix; executa primer la fase rootfs")
 
+        self._write_apt_sources()
+        self._prepare_chroot_network()
+        self._atomic_write(self._inside("/usr/sbin/policy-rc.d"), "#!/bin/sh\nexit 101\n", 0o755)
         self._atomic_write(self._inside("/etc/hostname"), self.settings.hostname + "\n")
         self._atomic_write(
             self._inside("/etc/hosts"),
@@ -334,7 +413,6 @@ class ProductionIsoBuilder:
         with contextlib.suppress(FileNotFoundError):
             localtime.unlink()
         localtime.symlink_to(f"/usr/share/zoneinfo/{self.settings.timezone}")
-        self._atomic_write(self._inside("/usr/sbin/policy-rc.d"), "#!/bin/sh\nexit 101\n", 0o755)
 
         build_id = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
         self._atomic_write(
@@ -359,7 +437,13 @@ class ProductionIsoBuilder:
 
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
+            self._install_runtime_packages()
             self._chroot(["locale-gen"], phase="configure-locales")
+            self._chroot(["update-locale", f"LANG={self.settings.locale}"], phase="configure-update-locale")
+            self._chroot(
+                ["/bin/sh", "-c", "DEBIAN_FRONTEND=noninteractive dpkg-reconfigure keyboard-configuration"],
+                phase="configure-keyboard",
+            )
             self._chroot(["/bin/sh", "-c", "getent group xaac-admin >/dev/null || groupadd --system xaac-admin"], phase="configure-group-admin")
             self._chroot(["/bin/sh", "-c", "getent group xaac-kiosk >/dev/null || groupadd --system xaac-kiosk"], phase="configure-group-kiosk")
             self._chroot([
@@ -370,8 +454,12 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-c",
                 "id xaac-kiosk >/dev/null 2>&1 || useradd --system --home-dir /var/lib/xaac-kiosk "
-                "--create-home --shell /usr/sbin/nologin --gid xaac-kiosk xaac-kiosk",
+                "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk",
             ], phase="configure-user-kiosk")
+            # The kiosk account is an autologin session account, so it must have
+            # a valid login shell. Enforce it even on incremental builds where
+            # the account may already exist from an earlier rootfs.
+            self._chroot(["usermod", "--shell", "/bin/bash", "xaac-kiosk"], phase="configure-shell-kiosk")
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
             if debs:
@@ -432,8 +520,12 @@ class ProductionIsoBuilder:
         if installer.is_file():
             shutil.copy2(installer, self.paths.staging / "install/xaac-installer")
             os.chmod(self.paths.staging / "install/xaac-installer", 0o755)
-        params = " ".join(("boot=live", "components", "quiet", *self.settings.kernel_parameters))
-        diagnostics = " ".join(("boot=live", "components", "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
+        live_identity = (
+            f"username={self.settings.live_username}",
+            f"user-fullname={self.settings.live_user_fullname.replace(' ', '_')}",
+        )
+        params = " ".join(("boot=live", "components", *live_identity, "quiet", *self.settings.kernel_parameters))
+        diagnostics = " ".join(("boot=live", "components", *live_identity, "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
         self._atomic_write(
             self.paths.staging / "boot/grub/grub.cfg",
             "set default=0\nset timeout=5\n\n"
@@ -447,10 +539,13 @@ class ProductionIsoBuilder:
         self.paths.artifacts.mkdir(parents=True, exist_ok=True)
         iso = self.paths.artifacts / self.settings.output_name
         iso.unlink(missing_ok=True)
-        self.runner.run([
-            "grub-mkrescue", "-o", str(iso), str(self.paths.staging), "--",
-            "-V", self.settings.volume_id,
-        ], phase="iso-grub-mkrescue")
+        # grub-mkrescue already invokes xorriso with the correct emulation.
+        # Passing ``-- -V <label>`` forwards ``-V`` to xorriso's native
+        # command mode, where it is not valid, and causes the build to fail.
+        self.runner.run(
+            ["grub-mkrescue", "-o", str(iso), str(self.paths.staging)],
+            phase="iso-grub-mkrescue",
+        )
         self._save_state("iso")
 
     def phase_verify(self) -> None:
