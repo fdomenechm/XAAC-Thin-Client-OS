@@ -439,6 +439,11 @@ class ProductionIsoBuilder:
         with self._chroot_mounts():
             self._install_runtime_packages()
             self._chroot(["locale-gen"], phase="configure-locales")
+            self._chroot(["update-locale", f"LANG={self.settings.locale}"], phase="configure-update-locale")
+            self._chroot(
+                ["/bin/sh", "-c", "DEBIAN_FRONTEND=noninteractive dpkg-reconfigure keyboard-configuration"],
+                phase="configure-keyboard",
+            )
             self._chroot(["/bin/sh", "-c", "getent group xaac-admin >/dev/null || groupadd --system xaac-admin"], phase="configure-group-admin")
             self._chroot(["/bin/sh", "-c", "getent group xaac-kiosk >/dev/null || groupadd --system xaac-kiosk"], phase="configure-group-kiosk")
             self._chroot([

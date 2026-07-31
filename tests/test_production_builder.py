@@ -177,3 +177,28 @@ def test_production_kiosk_account_has_login_shell() -> None:
     assert "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk" in source
     assert '["usermod", "--shell", "/bin/bash", "xaac-kiosk"]' in source
     assert "--shell /usr/sbin/nologin --gid xaac-kiosk" not in source
+
+
+def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
+    project = Path(__file__).resolve().parents[1]
+    localization = (project / "config/localization.yaml").read_text(encoding="utf-8")
+    packages = (project / "config/packages.yaml").read_text(encoding="utf-8")
+    iso = (project / "config/iso-builder.yaml").read_text(encoding="utf-8")
+
+    assert "locale: ca_ES.UTF-8" in localization
+    assert "layout: es" in localization
+    assert 'variant: ""' in localization
+    assert "keyboard-configuration" in packages
+    assert "console-setup-linux" in packages
+    assert "locales=ca_ES.UTF-8" in iso
+    assert "keyboard-layouts=es" in iso
+    assert "timezone=Europe/Madrid" in iso
+
+
+def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "dpkg-reconfigure keyboard-configuration" in source
+    assert "DEBIAN_FRONTEND=noninteractive" in source
+    assert 'update-locale", f"LANG={self.settings.locale}' in source

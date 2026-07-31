@@ -175,3 +175,32 @@ live:
   username: xaac-kiosk
   user_fullname: XAAC Kiosk
 ```
+
+### Llengua i teclat de la ISO
+
+La configuració predeterminada de XAAC Thin Client OS és:
+
+```text
+Llengua:             català (`ca_ES.UTF-8`)
+Teclat:              espanyol (`es`)
+Model de teclat:     `pc105`
+Variant:             cap
+Zona horària:        `Europe/Madrid`
+```
+
+La configuració declarativa es troba en `config/localization.yaml`. El constructor
+instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`, escriu
+`/etc/default/keyboard`, executa `dpkg-reconfigure keyboard-configuration` de manera
+no interactiva i incorpora els paràmetres següents a l'arrencada Live:
+
+```text
+locales=ca_ES.UTF-8 keyboard-layouts=es timezone=Europe/Madrid
+```
+
+Després de construir la ISO es pot verificar amb:
+
+```bash
+grep -n 'linux /live/vmlinuz' .build/production/iso-staging/boot/grub/grub.cfg
+cat .build/production/rootfs/etc/default/keyboard
+cat .build/production/rootfs/etc/default/locale
+```

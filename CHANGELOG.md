@@ -1146,3 +1146,11 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - El constructor ISO passa explícitament `username=xaac-kiosk` i `user-fullname=XAAC_Kiosk` al kernel.
 - S'evita que `live-config` cree l'usuari predeterminat `user` i substituïsca l'autologin configurat.
 - La identitat Live queda declarada en `config/iso-builder.yaml` i s'aplica tant al constructor de producció com al constructor ISO heretat.
+
+## Unreleased — localització de la ISO
+
+- La llengua predeterminada de la sessió Live i del sistema és `ca_ES.UTF-8`.
+- La disposició de teclat predeterminada és l'espanyola (`es`, model `pc105`, sense variant).
+- S'instal·len `keyboard-configuration`, `console-setup` i `console-setup-linux`.
+- La fase `configure` regenera la configuració del teclat de forma no interactiva.
+- GRUB transmet a Debian Live `locales=ca_ES.UTF-8`, `keyboard-layouts=es` i `timezone=Europe/Madrid`.
