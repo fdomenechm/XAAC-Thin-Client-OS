@@ -77,6 +77,8 @@ class BuildSettings:
     kernel_parameters: tuple[str, ...]
     version: str
     profile: str
+    live_username: str
+    live_user_fullname: str
 
     @classmethod
     def load(cls, project_root: Path) -> "BuildSettings":
@@ -119,6 +121,15 @@ class BuildSettings:
                 kernel_parameters.extend(str(value) for value in values if value)
 
         fallback = localization.get("fallback_locales", [])
+        live = iso.get("live", {})
+        if not isinstance(live, dict):
+            raise ProductionBuildError("config/iso-builder.yaml: live ha de ser un mapa")
+        live_username = str(live.get("username", "xaac-kiosk")).strip()
+        if not live_username or not live_username.replace("-", "").replace("_", "").isalnum():
+            raise ProductionBuildError("Nom d'usuari live invàlid")
+        live_user_fullname = str(live.get("user_fullname", "XAAC Kiosk")).strip() or "XAAC Kiosk"
+        if any(char in live_user_fullname for char in "\n\r\t\"'" ):
+            raise ProductionBuildError("Nom complet de l'usuari live invàlid")
         return cls(
             suite=configuration.build.debian.suite,
             mirror=configuration.build.debian.mirror,
@@ -136,6 +147,8 @@ class BuildSettings:
             kernel_parameters=tuple(dict.fromkeys(kernel_parameters)),
             version=configuration.build.version,
             profile=configuration.build.profile,
+            live_username=live_username,
+            live_user_fullname=live_user_fullname,
         )
 
 
@@ -502,8 +515,12 @@ class ProductionIsoBuilder:
         if installer.is_file():
             shutil.copy2(installer, self.paths.staging / "install/xaac-installer")
             os.chmod(self.paths.staging / "install/xaac-installer", 0o755)
-        params = " ".join(("boot=live", "components", "quiet", *self.settings.kernel_parameters))
-        diagnostics = " ".join(("boot=live", "components", "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
+        live_identity = (
+            f"username={self.settings.live_username}",
+            f"user-fullname={self.settings.live_user_fullname.replace(' ', '_')}",
+        )
+        params = " ".join(("boot=live", "components", *live_identity, "quiet", *self.settings.kernel_parameters))
+        diagnostics = " ".join(("boot=live", "components", *live_identity, "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
         self._atomic_write(
             self.paths.staging / "boot/grub/grub.cfg",
             "set default=0\nset timeout=5\n\n"

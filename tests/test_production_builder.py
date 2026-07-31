@@ -144,6 +144,8 @@ def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: P
         output_name="xaac.iso",
         kernel_parameters=(),
         volume_id="XAAC_TC_OS",
+        live_username="xaac-kiosk",
+        live_user_fullname="XAAC Kiosk",
     )
     builder.dry_run = True
     builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
@@ -161,6 +163,11 @@ def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: P
     assert "grub-mkrescue -o" in command
     assert "-- -V" not in command
     assert "XAAC_TC_OS" not in command
+
+    grub = (builder.paths.staging / "boot/grub/grub.cfg").read_text(encoding="utf-8")
+    assert "username=xaac-kiosk" in grub
+    assert "user-fullname=XAAC_Kiosk" in grub
+    assert "username=user" not in grub
 
 
 def test_production_kiosk_account_has_login_shell() -> None:

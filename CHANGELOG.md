@@ -1140,3 +1140,9 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - El directori de logs es recrea abans de cada ordre externa.
 - `--clean` ja no elimina el directori de logs de manera que la fase `rootfs` falle abans d'executar `debootstrap`.
 - Afegida una prova de regressió específica per a la seqüència `--clean` seguida de construcció.
+
+### Correcció de l'usuari Live
+
+- El constructor ISO passa explícitament `username=xaac-kiosk` i `user-fullname=XAAC_Kiosk` al kernel.
+- S'evita que `live-config` cree l'usuari predeterminat `user` i substituïsca l'autologin configurat.
+- La identitat Live queda declarada en `config/iso-builder.yaml` i s'aplica tant al constructor de producció com al constructor ISO heretat.
