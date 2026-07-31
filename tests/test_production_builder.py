@@ -194,6 +194,7 @@ def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
     assert "locales=ca_ES.UTF-8" in iso
     assert "keyboard-layouts=es" in iso
     assert "timezone=Europe/Madrid" in iso
+    assert "nottyautologin" in iso
 
 
 def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
@@ -214,7 +215,9 @@ def test_installer_step2_detects_and_selects_disks_without_writing() -> None:
     assert "Conflicts=getty@tty1.service" in source
     assert "TTYPath=/dev/tty1" in source
     assert "Aquest pas NO particiona, formata ni modifica cap disc." in source
-    assert "lsblk -dnpo NAME,SIZE,MODEL,TYPE,RO,RM" in source
+    assert "lsblk -dnP -o NAME,SIZE,MODEL,TYPE,RO,RM" in source
+    assert '${TYPE:-}' in source
+    assert 'case $base in loop*|ram*|zram*|sr*) continue ;; esac' in source
     assert "Seleccioneu el número del disc" in source
     assert "No s’ha escrit cap dada al disc seleccionat." in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source

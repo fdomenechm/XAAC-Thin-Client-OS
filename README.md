@@ -235,6 +235,8 @@ cat .build/production/rootfs/etc/default/locale
 
 La primera iteració de l’instal·lador és deliberadament no destructiva. L’entrada
 `Install XAAC Thin Client OS` arranca amb `xaac.mode=installer` i
+`nottyautologin` impedeix que `live-config` aplique autologin a totes les TTY. L’autologin propi de XAAC queda limitat a `tty1`.
+
 `systemd.unit=multi-user.target`, inicia `xaac-installer-welcome.service` sobre
 `tty1` i mostra una pantalla de benvinguda. En aquest pas no es detecten,
 particionen, formaten ni modifiquen discs. En prémer Retorn, el sistema es

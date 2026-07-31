@@ -1,3 +1,8 @@
+## Unreleased
+
+- Corregida la detecció de discs de l’instal·lador amb `lsblk -P`, evitant errors quan el model conté espais i excloent explícitament `loop`, `ram`, `zram` i `sr`.
+- Afegit `nottyautologin` a les entrades d’arrencada Live i instal·lador perquè `live-config` no aplique autologin a totes les consoles; l’autologin XAAC continua limitat explícitament a `tty1`.
+
 ## Robustesa de TTY i muntatges del constructor de producció
 
 - L'instal·lador pren exclusivament `tty1` i declara explícitament el conflicte amb `getty@tty1.service`.
