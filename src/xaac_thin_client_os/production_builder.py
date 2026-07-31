@@ -436,8 +436,12 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-c",
                 "id xaac-kiosk >/dev/null 2>&1 || useradd --system --home-dir /var/lib/xaac-kiosk "
-                "--create-home --shell /usr/sbin/nologin --gid xaac-kiosk xaac-kiosk",
+                "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk",
             ], phase="configure-user-kiosk")
+            # The kiosk account is an autologin session account, so it must have
+            # a valid login shell. Enforce it even on incremental builds where
+            # the account may already exist from an earlier rootfs.
+            self._chroot(["usermod", "--shell", "/bin/bash", "xaac-kiosk"], phase="configure-shell-kiosk")
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
             if debs:

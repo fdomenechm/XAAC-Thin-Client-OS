@@ -1,3 +1,11 @@
+## Correcció de l’autologin del compte quiosc
+
+- El constructor de producció crea ara `xaac-kiosk` amb `/bin/bash`, necessari perquè `agetty --autologin` puga iniciar la sessió.
+- S’aplica també `usermod --shell /bin/bash xaac-kiosk` per corregir rootfs incrementals on el compte ja existia amb `/usr/sbin/nologin`.
+- El compte continua amb la contrasenya bloquejada; només canvia el shell de sessió.
+- Afegida una prova de regressió específica.
+- Suite completa: 1357 proves superades.
+
 ## Correcció del constructor ISO — confinament de rutes i Debian minimal
 
 - Corregida la invocació de `grub-mkrescue`: ja no es passa `-- -V`, opció que `xorriso` interpretava en mode natiu i rebutjava amb `Not a known command: -V`.

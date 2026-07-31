@@ -161,3 +161,12 @@ def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: P
     assert "grub-mkrescue -o" in command
     assert "-- -V" not in command
     assert "XAAC_TC_OS" not in command
+
+
+def test_production_kiosk_account_has_login_shell() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk" in source
+    assert '["usermod", "--shell", "/bin/bash", "xaac-kiosk"]' in source
+    assert "--shell /usr/sbin/nologin --gid xaac-kiosk" not in source
