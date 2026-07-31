@@ -7,7 +7,7 @@ timezone: Europe/Madrid
 keyboard:
   model: pc105
   layout: es
-  variant: ""
+  variant: cat
   options: []
 console:
   charmap: UTF-8

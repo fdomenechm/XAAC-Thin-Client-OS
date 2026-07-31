@@ -183,7 +183,7 @@ mkdir -p "$(dirname "$ISO")"
 # grub-mkrescue usa xorriso internament i genera una ISO híbrida BIOS/UEFI.
 # Les fonts efi_image i bios_image es mantenen validades per compatibilitat
 # amb el manifest de producció, però GRUB regenera les estructures d'arrencada.
-grub-mkrescue -o "$ISO" "$STAGING"
+grub-mkrescue -o "$ISO" "$STAGING" -- -V '{p['image']['volume_id']}'
 sha256sum "$ISO" > "$CHECKSUM"
 SIGNING_KEY=${{XAAC_ISO_SIGNING_KEY:-'{p['integrity']['signing_key_id']}'}}
 if gpg --batch --list-secret-keys "$SIGNING_KEY" >/dev/null 2>&1; then

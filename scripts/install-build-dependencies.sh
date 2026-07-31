@@ -19,7 +19,6 @@ fi
 "${APT[@]}" update
 "${APT[@]}" install --yes --no-install-recommends \
     debootstrap \
-    debian-archive-keyring \
     gdisk \
     parted \
     dosfstools \

@@ -14,12 +14,10 @@ boot:
   timeout_seconds: 5
   entries:
     - id: installer
-      kernel_parameters: ["boot=live", "components", "username=xaac-kiosk", "user-fullname=XAAC_Kiosk", "locales=ca_ES.UTF-8", "keyboard-layouts=es", "timezone=Europe/Madrid", "quiet", "xaac.mode=installer"]
+      kernel_parameters: ["boot=live", "components", "quiet", "xaac.mode=installer"]
     - id: diagnostics
-      kernel_parameters: ["boot=live", "components", "username=xaac-kiosk", "user-fullname=XAAC_Kiosk", "locales=ca_ES.UTF-8", "keyboard-layouts=es", "timezone=Europe/Madrid", "ro", "toram", "xaac.mode=diagnostics", "xaac.persistence=disabled"]
+      kernel_parameters: ["boot=live", "components", "ro", "toram", "xaac.mode=diagnostics", "xaac.persistence=disabled"]
 live:
-  username: xaac-kiosk
-  user_fullname: XAAC Kiosk
   diagnostics_only: true
   read_only_root: true
   persistent_changes: false
