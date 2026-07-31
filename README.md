@@ -204,3 +204,14 @@ grep -n 'linux /live/vmlinuz' .build/production/iso-staging/boot/grub/grub.cfg
 cat .build/production/rootfs/etc/default/keyboard
 cat .build/production/rootfs/etc/default/locale
 ```
+
+## Instal·lació de la ISO de producció
+
+La ISO ofereix dues entrades d'arrencada:
+
+- **Install XAAC Thin Client OS**: inicia l'instal·lador en la TTY1. Detecta els discos interns, exigeix seleccionar explícitament la destinació i demana escriure `INSTALL XAAC` abans d'esborrar-la.
+- **XAAC diagnostics (read-only)**: arranca el sistema Live sense instal·lar ni modificar el disc.
+
+L'instal·lador comprova el SHA-256 de `filesystem.squashfs`, crea una taula GPT amb particions BIOS, EFI, arrel, dades i recuperació, genera `/etc/fstab` i instal·la GRUB tant per a BIOS com per a UEFI. En acabar, cal retirar la ISO i reiniciar.
+
+> **Avís:** la instal·lació elimina completament el contingut del disc seleccionat. Per a les primeres proves utilitzeu una màquina virtual amb un disc dedicat d'almenys 7 GiB.

@@ -111,6 +111,13 @@ class BuildSettings:
             "network-manager",
             "python3",
             "python3-venv",
+            "grub-pc-bin",
+            "grub-efi-amd64-bin",
+            "gdisk",
+            "dosfstools",
+            "e2fsprogs",
+            "parted",
+            "squashfs-tools",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []
@@ -432,8 +439,32 @@ class ProductionIsoBuilder:
         )
         self._atomic_write(
             self._inside("/etc/systemd/system/getty@tty1.service.d/autologin.conf"),
-            "[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
+            "[Service]\nExecCondition=/bin/sh -c '! grep -qw xaac.mode=installer /proc/cmdline'\nExecStart=\nExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
         )
+
+        installer_source = self.paths.project_root / "builder/scripts/xaac-installer"
+        if not installer_source.is_file():
+            raise ProductionBuildError(f"Falta l'instal·lador de producció: {installer_source}")
+        installer_target = self._inside("/usr/local/sbin/xaac-installer")
+        installer_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(installer_source, installer_target)
+        os.chmod(installer_target, 0o750)
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-installer.service"),
+            "[Unit]\nDescription=Instal·lador de XAAC Thin Client OS\n"
+            "ConditionKernelCommandLine=xaac.mode=installer\n"
+            "After=local-fs.target systemd-udev-settle.service\n"
+            "Before=getty@tty1.service\nConflicts=getty@tty1.service\n\n"
+            "[Service]\nType=oneshot\nStandardInput=tty-force\nStandardOutput=tty\nStandardError=tty\n"
+            "TTYPath=/dev/tty1\nTTYReset=yes\nTTYVHangup=yes\n"
+            "ExecStart=/usr/local/sbin/xaac-installer\nRemainAfterExit=yes\n\n"
+            "[Install]\nWantedBy=multi-user.target\n",
+        )
+        wants = self._inside("/etc/systemd/system/multi-user.target.wants")
+        wants.mkdir(parents=True, exist_ok=True)
+        link = wants / "xaac-installer.service"
+        link.unlink(missing_ok=True)
+        link.symlink_to("../xaac-installer.service")
 
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
@@ -515,11 +546,13 @@ class ProductionIsoBuilder:
         (self.paths.staging / "install").mkdir(parents=True)
         shutil.copy2(kernel, self.paths.staging / "live/vmlinuz")
         shutil.copy2(initrd, self.paths.staging / "live/initrd.img")
-        shutil.copy2(squashfs, self.paths.staging / "live/filesystem.squashfs")
-        installer = self.paths.project_root / "builder/scripts/xaac-installer"
-        if installer.is_file():
-            shutil.copy2(installer, self.paths.staging / "install/xaac-installer")
-            os.chmod(self.paths.staging / "install/xaac-installer", 0o755)
+        staged_squashfs = self.paths.staging / "live/filesystem.squashfs"
+        shutil.copy2(squashfs, staged_squashfs)
+        digest = hashlib.sha256(staged_squashfs.read_bytes()).hexdigest()
+        self._atomic_write(
+            self.paths.staging / "live/filesystem.squashfs.sha256",
+            f"{digest}  filesystem.squashfs\n",
+        )
         live_identity = (
             f"username={self.settings.live_username}",
             f"user-fullname={self.settings.live_user_fullname.replace(' ', '_')}",

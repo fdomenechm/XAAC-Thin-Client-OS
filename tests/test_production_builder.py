@@ -202,3 +202,47 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
     assert "dpkg-reconfigure keyboard-configuration" in source
     assert "DEBIAN_FRONTEND=noninteractive" in source
     assert 'update-locale", f"LANG={self.settings.locale}' in source
+
+
+def test_production_iso_contains_installer_payload_and_checksum(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    (root / "builder/scripts").mkdir(parents=True)
+    (root / "builder/scripts/xaac-installer").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        output_name="xaac.iso", kernel_parameters=(), volume_id="XAAC_TC_OS",
+        live_username="xaac-kiosk", live_user_fullname="XAAC Kiosk",
+    )
+    builder.dry_run = True
+    builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
+    builder._save_state = lambda phase: None  # type: ignore[method-assign]
+    boot = builder.paths.build_root / "boot"
+    boot.mkdir(parents=True)
+    (boot / "vmlinuz").write_bytes(b"kernel")
+    (boot / "initrd.img").write_bytes(b"initrd")
+    (builder.paths.build_root / "rootfs.squashfs").write_bytes(b"squashfs")
+    builder.phase_iso()
+    assert (builder.paths.staging / "live/filesystem.squashfs.sha256").is_file()
+    grub = (builder.paths.staging / "boot/grub/grub.cfg").read_text(encoding="utf-8")
+    assert "xaac.mode=installer" in grub
+
+
+def test_installer_supports_bios_uefi_and_writes_fstab() -> None:
+    project = Path(__file__).resolve().parents[1]
+    script = (project / "builder/scripts/xaac-installer").read_text(encoding="utf-8")
+    assert "ef02" in script
+    assert "--target=i386-pc" in script
+    assert "--target=x86_64-efi" in script
+    assert "/etc/fstab" in script
+    assert "INSTALL XAAC" in script
+    assert "filesystem.squashfs.sha256" in script
+
+
+def test_installer_service_is_conditioned_by_kernel_mode() -> None:
+    import inspect
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "ConditionKernelCommandLine=xaac.mode=installer" in source
+    assert "/usr/local/sbin/xaac-installer" in source
+    assert "Conflicts=getty@tty1.service" in source

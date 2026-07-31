@@ -3,11 +3,13 @@ base:
 - linux-image-amd64
 - initramfs-tools
 - grub-efi-amd64-bin
+- grub-pc-bin
 - grub2-common
 - gdisk
 - dosfstools
 - e2fsprogs
 - parted
+- squashfs-tools
 - ca-certificates
 - apt
 - locales

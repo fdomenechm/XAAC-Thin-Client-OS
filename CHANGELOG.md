@@ -1,5 +1,14 @@
 ## Correcció de l’autologin del compte quiosc
 
+## [Unreleased] — Instal·lador de producció integrat
+
+- La ISO inclou ara un instal·lador interactiu destructiu amb selecció i confirmació explícita del disc.
+- S'ha afegit particionament GPT compatible amb BIOS i UEFI, còpia verificada del SquashFS, generació de `fstab` i instal·lació de GRUB.
+- L'entrada «Install XAAC Thin Client OS» activa `xaac-installer.service` a la TTY1; el mode de diagnòstic continua sense modificar el disc.
+- La ISO publica el checksum SHA-256 del sistema arrel i l'instal·lador el valida abans d'esborrar el disc.
+- S'han afegit proves de regressió per al payload, BIOS/UEFI, `fstab`, confirmació destructiva i activació condicionada per la línia del kernel.
+
+
 - El constructor de producció crea ara `xaac-kiosk` amb `/bin/bash`, necessari perquè `agetty --autologin` puga iniciar la sessió.
 - S’aplica també `usermod --shell /bin/bash xaac-kiosk` per corregir rootfs incrementals on el compte ja existia amb `/usr/sbin/nologin`.
 - El compte continua amb la contrasenya bloquejada; només canvia el shell de sessió.
