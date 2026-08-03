@@ -262,24 +262,72 @@ def test_cleanup_chroot_mounts_is_scoped_and_deepest_first(tmp_path: Path, monke
     builder.dry_run = False
     builder.paths.rootfs.mkdir(parents=True)
 
+    rootfs = builder.paths.rootfs.resolve()
+    mounts = [
+        rootfs / "sys",
+        rootfs / "sys/fs/cgroup",
+        rootfs / "dev",
+        rootfs / "dev/pts",
+        Path("/dev/pts"),  # host mount: must never be touched
+    ]
     calls: list[list[str]] = []
 
     class Result:
-        def __init__(self, returncode: int) -> None:
-            self.returncode = returncode
+        returncode = 0
+
+    def fake_mounted():  # type: ignore[no-untyped-def]
+        active = [path for path in mounts if path != Path("/dev/pts")]
+        return tuple(sorted(active, key=lambda path: len(path.parts), reverse=True))
 
     def fake_run(command, **kwargs):  # type: ignore[no-untyped-def]
         calls.append(list(command))
-        return Result(1 if list(command)[:2] == ["mountpoint", "-q"] else 0)
+        target = Path(command[-1])
+        if target in mounts:
+            mounts.remove(target)
+        return Result()
 
+    monkeypatch.setattr(builder, "_mounted_paths_below_rootfs", fake_mounted)
     monkeypatch.setattr(subprocess, "run", fake_run)
     builder.cleanup_chroot_mounts()
 
-    umounts = [call for call in calls if call and call[0] == "umount"]
-    assert umounts == []  # mountpoint checks reported not mounted
-    checked = [call[-1] for call in calls if call[:2] == ["mountpoint", "-q"]]
-    assert checked[0].endswith("/rootfs/dev/pts")
-    assert all("/.build/production/rootfs/" in value for value in checked)
+    targets = [Path(call[-1]) for call in calls if call and call[0] == "umount"]
+    assert targets.index(rootfs / "sys/fs/cgroup") < targets.index(rootfs / "sys")
+    assert targets.index(rootfs / "dev/pts") < targets.index(rootfs / "dev")
+    assert Path("/dev/pts") not in targets
+    assert all(target.is_relative_to(rootfs) for target in targets)
+
+
+def test_mountinfo_parser_filters_host_and_sorts_nested_mounts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.dry_run = False
+    builder.paths.rootfs.mkdir(parents=True)
+    rootfs = builder.paths.rootfs.resolve()
+
+    mountinfo = "\n".join([
+        f"20 1 0:1 / {rootfs}/sys rw - sysfs sysfs rw",
+        f"21 20 0:2 / {rootfs}/sys/fs/cgroup rw - cgroup2 cgroup2 rw",
+        f"22 1 0:3 / {rootfs}/dev rw - devtmpfs devtmpfs rw",
+        f"23 22 0:4 / {rootfs}/dev/pts rw - devpts devpts rw",
+        "24 1 0:5 / /dev/pts rw - devpts devpts rw",
+        f"25 1 0:6 / {rootfs}/home rw - tmpfs tmpfs rw",
+    ]) + "\n"
+    real_read_text = Path.read_text
+
+    def fake_read_text(path: Path, *args, **kwargs):  # type: ignore[no-untyped-def]
+        if str(path) == "/proc/self/mountinfo":
+            return mountinfo
+        return real_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    found = builder._mounted_paths_below_rootfs()
+    assert found == (
+        rootfs / "sys/fs/cgroup",
+        rootfs / "dev/pts",
+        rootfs / "sys",
+        rootfs / "dev",
+    )
 
 
 def test_chroot_rbind_mounts_are_made_rslave() -> None:

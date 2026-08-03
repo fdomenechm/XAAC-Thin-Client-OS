@@ -278,14 +278,8 @@ class ProductionIsoBuilder:
         self._atomic_write(self.paths.state, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
     def _chroot_mount_targets(self) -> tuple[Path, ...]:
-        """Return only the mount points owned by this production rootfs.
-
-        The deepest mount is listed first so ``/dev/pts`` is detached before
-        ``/dev``.  Every target is produced through ``_inside`` and can never
-        refer to the host's real ``/dev``, ``/proc``, ``/sys`` or ``/run``.
-        """
+        """Return the top-level mount trees owned by this production rootfs."""
         return (
-            self._inside("/dev/pts"),
             self._inside("/dev"),
             self._inside("/proc"),
             self._inside("/sys"),
@@ -293,33 +287,89 @@ class ProductionIsoBuilder:
         )
 
     @staticmethod
-    def _is_mountpoint(path: Path) -> bool:
-        return subprocess.run(
-            ["mountpoint", "-q", str(path)],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode == 0
+    def _decode_mountinfo_path(value: str) -> str:
+        """Decode the octal escapes used by ``/proc/self/mountinfo``."""
+        replacements = {
+            r"\040": " ",
+            r"\011": "\t",
+            r"\012": "\n",
+            r"\134": "\\",
+        }
+        for escaped, plain in replacements.items():
+            value = value.replace(escaped, plain)
+        return value
+
+    def _mounted_paths_below_rootfs(self) -> tuple[Path, ...]:
+        """List chroot mount points, deepest first, without following host trees.
+
+        Reading ``mountinfo`` directly is more reliable than ``umount -R``: it
+        lets us detach every nested mount (for example ``/sys/fs/cgroup`` and
+        ``/dev/pts``) in the correct order while strictly confining all targets
+        to the production rootfs.
+        """
+        if not self.paths.rootfs.exists():
+            return ()
+
+        rootfs = self.paths.rootfs.resolve(strict=False)
+        allowed_roots = tuple(path.resolve(strict=False) for path in self._chroot_mount_targets())
+        mounted: set[Path] = set()
+        try:
+            lines = Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines()
+        except OSError as exc:
+            raise ProductionBuildError(f"No s'ha pogut llegir /proc/self/mountinfo: {exc}") from exc
+
+        for line in lines:
+            fields = line.split()
+            if len(fields) < 5:
+                continue
+            mountpoint = Path(self._decode_mountinfo_path(fields[4])).resolve(strict=False)
+            if mountpoint == rootfs or not mountpoint.is_relative_to(rootfs):
+                continue
+            if not any(mountpoint == top or mountpoint.is_relative_to(top) for top in allowed_roots):
+                continue
+            mounted.add(mountpoint)
+
+        return tuple(sorted(mounted, key=lambda path: (len(path.parts), str(path)), reverse=True))
 
     def cleanup_chroot_mounts(self) -> None:
-        """Safely detach stale chroot mounts without touching host mounts."""
+        """Safely detach all nested chroot mounts without touching the host.
+
+        Several bind-mounted trees contain child mounts.  They must be
+        detached from deepest to shallowest; otherwise unmounting ``/sys`` or
+        ``/dev`` can fail with ``EBUSY``.  The mount table is re-read after
+        every pass because removing one level may expose another mount below
+        it.  No lazy or forced unmount is ever used.
+        """
         if getattr(self, "dry_run", False) or not self.paths.rootfs.exists():
             return
+
         rootfs = self.paths.rootfs.resolve(strict=False)
-        for target in self._chroot_mount_targets():
-            resolved = target.resolve(strict=False)
-            if not resolved.is_relative_to(rootfs):
-                raise ProductionBuildError(f"Punt de muntatge fora del rootfs: {target}")
-            if not self._is_mountpoint(target):
-                continue
-            result = subprocess.run(
-                ["umount", "-R", str(target)],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+        for _attempt in range(4):
+            mounted = self._mounted_paths_below_rootfs()
+            if not mounted:
+                return
+            progress = False
+            for target in mounted:
+                resolved = target.resolve(strict=False)
+                if not resolved.is_relative_to(rootfs):
+                    raise ProductionBuildError(f"Punt de muntatge fora del rootfs: {target}")
+                result = subprocess.run(
+                    ["umount", str(target)],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                if result.returncode == 0:
+                    progress = True
+            if not progress:
+                break
+
+        remaining = self._mounted_paths_below_rootfs()
+        if remaining:
+            details = ", ".join(str(path) for path in remaining)
+            raise ProductionBuildError(
+                f"No s'han pogut desmuntar de manera segura els muntatges del chroot: {details}"
             )
-            if result.returncode != 0 and self._is_mountpoint(target):
-                raise ProductionBuildError(f"No s'ha pogut desmuntar de manera segura: {target}")
 
     def clean(self) -> None:
         target = self.paths.build_root.resolve(strict=False)
