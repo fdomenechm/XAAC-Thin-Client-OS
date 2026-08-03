@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Corregit l’autologin indegut de `xaac-kiosk` en `tty2`–`tty6`: cada consola secundària reinicia explícitament `ImportCredential=` per ignorar qualsevol credencial global `agetty.autologin` injectada en temps d’arrencada.
+- `tty2`–`tty6` restauren explícitament l’ordre estàndard autenticada d’`agetty`; només `tty1` conserva l’autologin controlat per XAAC.
+- Afegit també `live-config.nottyautologin` als paràmetres del kernel com a defensa addicional contra l’autologin de consola de Debian Live.
+
 - Corregida la detecció de discs de l’instal·lador amb `lsblk -P`, evitant errors quan el model conté espais i excloent explícitament `loop`, `ram`, `zram` i `sr`.
 - Desactivada completament l'execució dels components de `live-config` mitjançant `live-config.nocomponents`; XAAC conserva el control exclusiu dels usuaris, la localització i les consoles.
 - Eliminats els overrides específics de `tty2` a `tty6`: aquestes consoles tornen a usar la plantilla estàndard `getty@.service` de Debian i requereixen autenticació.

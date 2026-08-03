@@ -195,7 +195,7 @@ def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
     assert "keyboard-layouts=es" not in iso
     assert "timezone=Europe/Madrid" not in iso
     assert "live-config.nocomponents" in iso
-    assert "nottyautologin" not in iso
+    assert "live-config.nottyautologin" in iso
     assert " components " not in iso
 
 
@@ -344,8 +344,9 @@ def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert "getty@tty1.service.d/99-xaac-autologin.conf" in source
-    assert "getty@tty{tty}.service.d/99-xaac-no-autologin.conf" in source
-    assert ").unlink()" in source
+    assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
+    assert "ImportCredential=\\n" in source
+    assert "ExecStart=-/sbin/agetty -o" in source
     assert "/etc/live/config.conf.d/xaac.conf" in source
     assert "LIVE_CONFIG_CMDLINE" in source
     assert "OnFailure=xaac-installer-restore-getty.service" in source

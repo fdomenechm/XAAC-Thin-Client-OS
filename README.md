@@ -185,7 +185,9 @@ màquina constructora.
 ### Consoles virtuals i recuperació de l'instal·lador
 
 L'autologin del compte `xaac-kiosk` només s'aplica a `tty1`. Les consoles
-`tty2` a `tty6` conserven un `agetty` normal i requereixen autenticació. Quan
+`tty2` a `tty6` reinicien explícitament les credencials importades d’`agetty` i
+executen un `agetty` autenticat normal. Això evita que una credencial global
+`agetty.autologin` creada en temps d’arrencada propague l’autologin a totes les TTY. Quan
 l'entrada d'instal·lació pren `tty1`, el servei entra en conflicte únicament amb
 `getty@tty1.service`. Si l'instal·lador falla, `OnFailure` activa un servei de
 recuperació que torna a iniciar el `getty` de `tty1`.

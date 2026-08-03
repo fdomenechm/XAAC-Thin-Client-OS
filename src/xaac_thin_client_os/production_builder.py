@@ -540,11 +540,22 @@ class ProductionIsoBuilder:
         ):
             with contextlib.suppress(FileNotFoundError):
                 self._inside(generic).unlink()
+        # systemd 257+ allows getty@.service to import a global
+        # ``agetty.autologin`` credential.  Debian Live may provide that
+        # credential dynamically at boot, which would otherwise affect every
+        # virtual console even when only tty1 has an explicit autologin
+        # drop-in.  Secondary consoles therefore reset ImportCredential and
+        # restore the stock authenticated agetty command explicitly.
         for tty in range(2, 7):
-            with contextlib.suppress(FileNotFoundError):
+            self._atomic_write(
                 self._inside(
-                    f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-no-autologin.conf"
-                ).unlink()
+                    f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-authenticated.conf"
+                ),
+                "[Service]\n"
+                "ImportCredential=\n"
+                "ExecStart=\n"
+                "ExecStart=-/sbin/agetty -o '-p -- \\u' --noclear %I $TERM\n",
+            )
         self._atomic_write(
             self._inside("/etc/systemd/system/getty@tty1.service.d/99-xaac-autologin.conf"),
             "[Service]\nExecStart=\n"
