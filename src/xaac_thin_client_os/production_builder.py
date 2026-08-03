@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
@@ -331,24 +332,44 @@ class ProductionIsoBuilder:
 
         return tuple(sorted(mounted, key=lambda path: (len(path.parts), str(path)), reverse=True))
 
+    def _mount_users(self, target: Path) -> str:
+        """Return best-effort diagnostics for processes using a mountpoint."""
+        if shutil.which("fuser") is None:
+            return "fuser no està disponible"
+        result = subprocess.run(
+            ["fuser", "-vm", str(target)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        output = result.stdout.strip()
+        return output or "cap procés identificat per fuser"
+
     def cleanup_chroot_mounts(self) -> None:
         """Safely detach all nested chroot mounts without touching the host.
 
-        Several bind-mounted trees contain child mounts.  They must be
-        detached from deepest to shallowest; otherwise unmounting ``/sys`` or
-        ``/dev`` can fail with ``EBUSY``.  The mount table is re-read after
-        every pass because removing one level may expose another mount below
-        it.  No lazy or forced unmount is ever used.
+        Bind-mounted trees are detached deepest-first.  Transient ``EBUSY``
+        failures are retried after ``sync`` because package hooks and chroot
+        helpers can keep short-lived file descriptors open after their parent
+        command exits.  No lazy, forced, or recursive unmount is used.
         """
         if getattr(self, "dry_run", False) or not self.paths.rootfs.exists():
             return
 
         rootfs = self.paths.rootfs.resolve(strict=False)
-        for _attempt in range(4):
+        max_attempts = 10
+        retry_delay = 0.2
+        last_errors: dict[Path, str] = {}
+
+        subprocess.run(["sync"], check=False)
+        for attempt in range(max_attempts):
             mounted = self._mounted_paths_below_rootfs()
             if not mounted:
                 return
+
             progress = False
+            last_errors.clear()
             for target in mounted:
                 resolved = target.resolve(strict=False)
                 if not resolved.is_relative_to(rootfs):
@@ -356,19 +377,33 @@ class ProductionIsoBuilder:
                 result = subprocess.run(
                     ["umount", str(target)],
                     check=False,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
                 )
                 if result.returncode == 0:
                     progress = True
-            if not progress:
+                else:
+                    last_errors[target] = (getattr(result, "stdout", "") or "").strip() or f"codi {result.returncode}"
+
+            if not self._mounted_paths_below_rootfs():
+                return
+            if attempt < max_attempts - 1:
+                subprocess.run(["sync"], check=False)
+                time.sleep(retry_delay)
+            if not progress and attempt == max_attempts - 1:
                 break
 
         remaining = self._mounted_paths_below_rootfs()
         if remaining:
-            details = ", ".join(str(path) for path in remaining)
+            diagnostics: list[str] = []
+            for path in remaining:
+                reason = last_errors.get(path, "continua muntat")
+                users = self._mount_users(path)
+                diagnostics.append(f"{path}: {reason}; processos: {users}")
             raise ProductionBuildError(
-                f"No s'han pogut desmuntar de manera segura els muntatges del chroot: {details}"
+                "No s'han pogut desmuntar de manera segura els muntatges del chroot: "
+                + " | ".join(diagnostics)
             )
 
     def clean(self) -> None:

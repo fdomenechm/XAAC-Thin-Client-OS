@@ -143,6 +143,9 @@ Construcció completa i neta:
 
 ```bash
 ./scripts/build-production-iso.sh --clean
+
+El constructor espera i reintenta de manera segura els desmuntatges temporals del chroot. Si un punt continua ocupat, mostra el procés responsable mitjançant `fuser`, sense usar desmuntatges forçats, recursius ni diferits.
+
 ```
 
 L'artefacte queda en:

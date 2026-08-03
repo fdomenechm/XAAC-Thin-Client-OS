@@ -359,3 +359,62 @@ def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     script = (project / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
     assert "trap cleanup_chroot_mounts EXIT INT TERM" in script
     assert "--cleanup-mounts-only" in script
+
+
+def test_cleanup_chroot_mounts_retries_transient_busy_mount(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.dry_run = False
+    builder.paths.rootfs.mkdir(parents=True)
+    target = builder.paths.rootfs.resolve() / "sys"
+    active = True
+    attempts = 0
+
+    class Result:
+        def __init__(self, returncode: int, stdout: str = "") -> None:
+            self.returncode = returncode
+            self.stdout = stdout
+
+    def fake_mounted():  # type: ignore[no-untyped-def]
+        return (target,) if active else ()
+
+    def fake_run(command, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal active, attempts
+        if command[0] == "sync":
+            return Result(0)
+        if command[0] == "umount":
+            attempts += 1
+            if attempts < 3:
+                return Result(32, "target is busy")
+            active = False
+            return Result(0)
+        return Result(0)
+
+    monkeypatch.setattr(builder, "_mounted_paths_below_rootfs", fake_mounted)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("time.sleep", lambda _seconds: None)
+
+    builder.cleanup_chroot_mounts()
+    assert attempts == 3
+
+
+def test_cleanup_chroot_mounts_reports_mount_users(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.dry_run = False
+    builder.paths.rootfs.mkdir(parents=True)
+    target = builder.paths.rootfs.resolve() / "sys"
+
+    class Result:
+        returncode = 32
+        stdout = "target is busy"
+
+    monkeypatch.setattr(builder, "_mounted_paths_below_rootfs", lambda: (target,))
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: Result())
+    monkeypatch.setattr("time.sleep", lambda _seconds: None)
+    monkeypatch.setattr(builder, "_mount_users", lambda _target: "PID 1234 apt-get")
+
+    with pytest.raises(ProductionBuildError, match="PID 1234 apt-get"):
+        builder.cleanup_chroot_mounts()

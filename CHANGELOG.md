@@ -1,4 +1,5 @@
 ## Unreleased
+- Robustesa del desmuntatge del chroot: reintents davant d'`EBUSY`, `sync` entre intents i diagnòstic amb `fuser` dels processos que mantenen ocupat un punt de muntatge.
 
 - Corregit l’autologin indegut de `xaac-kiosk` en `tty2`–`tty6`: cada consola secundària reinicia explícitament `ImportCredential=` per ignorar qualsevol credencial global `agetty.autologin` injectada en temps d’arrencada.
 - `tty2`–`tty6` restauren explícitament l’ordre estàndard autenticada d’`agetty`; només `tty1` conserva l’autologin controlat per XAAC.
