@@ -3,6 +3,8 @@ base:
 - linux-image-amd64
 - initramfs-tools
 - grub-efi-amd64-bin
+- grub-efi-amd64-signed
+- shim-signed
 - grub2-common
 - gdisk
 - dosfstools

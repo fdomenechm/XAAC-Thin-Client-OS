@@ -1,4 +1,11 @@
 ## Unreleased
+- Estabilitzada l’arrencada UEFI del sistema instal·lat amb una cadena Debian signada: `shim-signed` com a `EFI/BOOT/BOOTX64.EFI` i `grub-efi-amd64-signed` com a `EFI/BOOT/grubx64.efi`.
+- Afegit un `EFI/BOOT/grub.cfg` mínim que localitza explícitament `XAAC_ROOT` pel seu UUID i transfereix el control a `/boot/grub/grub.cfg`.
+- L’instal·lador valida ara la capçalera PE/COFF dels executables EFI, el tipus GPT `EF00`, la integritat FAT32 de l’ESP i la presència de tots els artefactes abans de declarar l’èxit.
+- La neteja de la instal·lació desmunta també `/run`, `/sys`, `/proc` i `/dev` del chroot abans de desmuntar el sistema de destinació.
+- Afegits `shim-signed` i `grub-efi-amd64-signed` al rootfs de producció i proves de regressió específiques.
+- Suite completa: 1371 proves superades.
+
 - Replantejat completament el subsistema Live: `live-boot` queda limitat al muntatge del SquashFS i s’elimina `live-config` dels paquets obligatoris i del flux d’arrencada.
 - Eliminats de GRUB `components`, `username=`, `user-fullname=`, `live-config.nocomponents` i `live-config.nottyautologin`.
 - XAAC crea `xaac-kiosk` durant la construcció del rootfs i controla directament l’autologin exclusiu de `tty1`; `tty2`–`tty6` tornen a la plantilla estàndard autenticada de Debian sense overrides.

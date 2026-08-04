@@ -734,7 +734,7 @@ class ProductionIsoBuilder:
             "mount_root=/mnt/xaac-target\n"
             "cleanup_install() {\n"
             "    sync || true\n"
-            "    for mounted in \"$mount_root/boot/efi\" \"$mount_root/data\" \"$mount_root/recovery\" \"$mount_root\"; do\n"
+            "    for mounted in \"$mount_root/run\" \"$mount_root/sys\" \"$mount_root/proc\" \"$mount_root/dev\" \"$mount_root/boot/efi\" \"$mount_root/data\" \"$mount_root/recovery\" \"$mount_root\"; do\n"
             "        mountpoint -q \"$mounted\" && umount \"$mounted\" || true\n"
             "    done\n"
             "}\n"
@@ -776,10 +776,32 @@ class ProductionIsoBuilder:
             'mount -t proc proc "$mount_root/proc"\n'
             'mount --rbind /sys "$mount_root/sys"; mount --make-rslave "$mount_root/sys"\n'
             'mount --rbind /run "$mount_root/run"; mount --make-rslave "$mount_root/run"\n'
-            'chroot "$mount_root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram --recheck\n'
+            'chroot "$mount_root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --bootloader-id=XAAC --removable --no-nvram --recheck\n'
             'chroot "$mount_root" update-grub\n'
-            '[ -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI" ] || { printf \'%s\\n\' \'No s’ha creat el carregador UEFI de fallback.\'; exit 1; }\n'
+            'signed_shim="$mount_root/usr/lib/shim/shimx64.efi.signed"\n'
+            'signed_grub="$mount_root/usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed"\n'
+            'signed_mok="$mount_root/usr/lib/shim/mmx64.efi.signed"\n'
+            '[ -s "$signed_shim" ] || { printf \'%s\\n\' \'No s’ha trobat shimx64.efi signat.\'; exit 1; }\n'
+            '[ -s "$signed_grub" ] || { printf \'%s\\n\' \'No s’ha trobat grubx64.efi signat.\'; exit 1; }\n'
+            'mkdir -p "$mount_root/boot/efi/EFI/BOOT" "$mount_root/boot/efi/EFI/XAAC"\n'
+            'install -m 0644 "$signed_shim" "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
+            'install -m 0644 "$signed_grub" "$mount_root/boot/efi/EFI/BOOT/grubx64.efi"\n'
+            'install -m 0644 "$signed_shim" "$mount_root/boot/efi/EFI/XAAC/shimx64.efi"\n'
+            'install -m 0644 "$signed_grub" "$mount_root/boot/efi/EFI/XAAC/grubx64.efi"\n'
+            'if [ -s "$signed_mok" ]; then install -m 0644 "$signed_mok" "$mount_root/boot/efi/EFI/BOOT/mmx64.efi"; install -m 0644 "$signed_mok" "$mount_root/boot/efi/EFI/XAAC/mmx64.efi"; fi\n'
+            'cat > "$mount_root/boot/efi/EFI/BOOT/grub.cfg" <<EOF\n'
+            'search --no-floppy --fs-uuid --set=root $root_uuid\n'
+            'set prefix=(\\$root)/boot/grub\n'
+            'configfile \\$prefix/grub.cfg\n'
+            'EOF\n'
+            'cp "$mount_root/boot/efi/EFI/BOOT/grub.cfg" "$mount_root/boot/efi/EFI/XAAC/grub.cfg"\n'
             '[ -s "$mount_root/boot/grub/grub.cfg" ] || { printf \'%s\\n\' \'No s’ha generat grub.cfg.\'; exit 1; }\n'
+            'for efi_file in "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI" "$mount_root/boot/efi/EFI/BOOT/grubx64.efi"; do [ -s "$efi_file" ] || { printf \'No existeix o està buit: %s\\n\' "$efi_file"; exit 1; }; [ "$(od -An -tx1 -N2 "$efi_file" | tr -d \' \\n\')" = 4d5a ] || { printf \'No és un executable PE/COFF vàlid: %s\\n\' "$efi_file"; exit 1; }; done\n'
+            'grep -Fq "$root_uuid" "$mount_root/boot/efi/EFI/BOOT/grub.cfg" || { printf \'%s\\n\' \'El fallback GRUB no referencia l’UUID arrel.\'; exit 1; }\n'
+            'sgdisk -i 1 "$target" | grep -Eqi \'EF00|EFI system partition\' || { printf \'%s\\n\' \'La primera partició no és una ESP GPT vàlida.\'; exit 1; }\n'
+            'sync; umount "$mount_root/boot/efi"\n'
+            'fsck.vfat -n "$p1" >/dev/null || { printf \'%s\\n\' \'La partició EFI FAT32 no supera la verificació.\'; exit 1; }\n'
+            'mount "$p1" "$mount_root/boot/efi"\n'
             "printf '%s\\n' '[7/8] Preparant el primer arrencament...'\n"
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
@@ -798,7 +820,7 @@ class ProductionIsoBuilder:
             'efi_uuid=$efi_uuid\n'
             'data_uuid=$data_uuid\n'
             'recovery_uuid=$recovery_uuid\n'
-            'bootloader=grub-efi-amd64-removable\n'
+            'bootloader=shim-signed-grub-efi-amd64-removable\n'
             'EOF\n'
             'sync\n'
             "printf '\\n'\n"

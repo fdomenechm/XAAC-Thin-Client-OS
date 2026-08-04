@@ -23,6 +23,8 @@ def test_resolve_project_packages(project_root: Path) -> None:
     assert resolved.profile_chain == ("common", "wyse3040")
     assert resolved.packages == tuple(sorted(resolved.packages))
     assert "systemd" in resolved.packages
+    assert "shim-signed" in resolved.packages
+    assert "grub-efi-amd64-signed" in resolved.packages
     assert "firmware-linux" in resolved.packages
     assert "task-desktop" in resolved.excluded
     assert len(resolved.packages) == len(set(resolved.packages))

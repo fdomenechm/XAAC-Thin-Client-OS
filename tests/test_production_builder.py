@@ -237,7 +237,14 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "trap cleanup_install EXIT HUP INT TERM" in source
     assert "grub-install --target=x86_64-efi" in source
     assert "--removable --no-nvram --recheck" in source
+    assert "shimx64.efi.signed" in source
+    assert "x86_64-efi-signed/grubx64.efi.signed" in source
     assert "EFI/BOOT/BOOTX64.EFI" in source
+    assert "EFI/BOOT/grubx64.efi" in source
+    assert "search --no-floppy --fs-uuid --set=root $root_uuid" in source
+    assert "No és un executable PE/COFF vàlid" in source
+    assert "fsck.vfat -n" in source
+    assert "sgdisk -i 1" in source
     assert "update-grub" in source
     assert "etc/machine-id" in source
     assert "ssh_host_*" in source
@@ -455,3 +462,26 @@ def test_cleanup_stops_chroot_processes_before_unmounting() -> None:
 
     source = inspect.getsource(ProductionIsoBuilder.cleanup_chroot_mounts)
     assert source.index("self._stop_chroot_processes()") < source.index('["umount", str(target)]')
+
+
+def test_installer_script_with_signed_uefi_fallback_has_valid_shell_syntax(tmp_path: Path) -> None:
+    import ast
+    import inspect
+    import textwrap
+
+    source = textwrap.dedent(inspect.getsource(ProductionIsoBuilder.phase_configure))
+    tree = ast.parse(source)
+    installer = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or len(node.args) < 2:
+            continue
+        target = ast.get_source_segment(source, node.args[0]) or ""
+        if "xaac-installer-welcome" not in target or "service" in target:
+            continue
+        installer = eval(compile(ast.Expression(node.args[1]), "<installer>", "eval"), {})
+        break
+
+    assert isinstance(installer, str)
+    script = tmp_path / "xaac-installer-welcome"
+    script.write_text(installer, encoding="utf-8")
+    subprocess.run(["sh", "-n", str(script)], check=True)

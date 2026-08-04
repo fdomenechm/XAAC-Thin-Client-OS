@@ -296,8 +296,14 @@ disc queda amb el sistema base desplegat però encara no és arrancable de maner
 autònoma.
 
 
-### Instal·lador incremental — pas 5
+### Instal·lador incremental — pas 5, estabilització UEFI
 
-Aquesta fase completa la instal·lació arrancable. Després del desplegament del rootfs, l’instal·lador munta de manera confinada `/dev`, `/proc`, `/sys` i `/run`, instal·la GRUB UEFI x86_64 amb `--removable --no-nvram`, genera `grub.cfg` i comprova el fallback `EFI/BOOT/BOOTX64.EFI`.
+Aquesta fase completa la instal·lació arrancable i reforça el fallback UEFI. Després del desplegament del rootfs, l’instal·lador munta de manera confinada `/dev`, `/proc`, `/sys` i `/run`, executa `grub-install` amb `--removable --no-nvram` i genera `/boot/grub/grub.cfg`.
 
-La postinstal·lació buida `machine-id`, elimina les claus SSH i la llavor aleatòria, marca el primer arrencament, desactiva l’instal·lador en el sistema desplegat i desa un resum en `/recovery/installer/installation-summary.txt`.
+Per evitar que un firmware OVMF o el Dell Wyse rebutge un carregador EFI no signat, el fallback final usa la cadena signada de Debian:
+
+- `EFI/BOOT/BOOTX64.EFI`: `shimx64.efi.signed`;
+- `EFI/BOOT/grubx64.efi`: `grubx64.efi.signed`;
+- `EFI/BOOT/grub.cfg`: localitza la partició arrel pel seu UUID i carrega `/boot/grub/grub.cfg`.
+
+Abans de declarar l’èxit, l’instal·lador comprova que els executables tenen capçalera PE/COFF, que la primera partició és una ESP GPT `EF00`, que el FAT32 supera `fsck.vfat -n` i que el fitxer de fallback referencia l’UUID correcte. La postinstal·lació buida `machine-id`, elimina les claus SSH i la llavor aleatòria, marca el primer arrencament, desactiva l’instal·lador en el sistema desplegat i desa un resum en `/recovery/installer/installation-summary.txt`.
