@@ -7,6 +7,7 @@ base:
 - gdisk
 - dosfstools
 - e2fsprogs
+- squashfs-tools
 - parted
 - ca-certificates
 - apt

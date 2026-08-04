@@ -210,7 +210,7 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
     assert 'update-locale", f"LANG={self.settings.locale}' in source
 
 
-def test_installer_step3_validates_and_confirms_disk_without_writing() -> None:
+def test_installer_step4_partitions_formats_and_deploys_rootfs() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
@@ -218,21 +218,25 @@ def test_installer_step3_validates_and_confirms_disk_without_writing() -> None:
     assert "ConditionKernelCommandLine=xaac.mode=installer" in source
     assert "Conflicts=getty@tty1.service" in source
     assert "TTYPath=/dev/tty1" in source
-    assert "Instal·lador (pas 3)" in source
-    assert "Aquest pas NO particiona, formata ni modifica cap disc." in source
-    assert "lsblk -bdnP -o NAME,SIZE,MODEL,TYPE,RO,RM" in source
-    assert '${TYPE:-}' in source
-    assert 'case $base in loop*|ram*|zram*|sr*) continue ;; esac' in source
+    assert "Instal·lador (pas 4)" in source
+    assert "ATENCIÓ: aquest pas elimina totes les dades" in source
     assert "minimum_size=7000000000" in source
-    assert 'lsblk -nrpo MOUNTPOINT' in source
-    assert "El disc ha canviat des de la detecció." in source
     assert "INSTALL XAAC" in source
-    assert "Confirmació incorrecta. No s’ha fet cap canvi." in source
-    assert "Aquest pas continua sent no destructiu: no s’ha escrit cap dada." in source
-    assert "sgdisk" not in source
-    assert "mkfs." not in source
+    assert "El disc seleccionat conté el sistema Live actiu" in source
+    assert "No s’ha detectat alimentació externa" in source
+    assert "sgdisk --zap-all" in source
+    assert "-c 1:XAAC_EFI" in source
+    assert "-c 2:XAAC_ROOT" in source
+    assert "-c 3:XAAC_DATA" in source
+    assert "-c 4:XAAC_RECOVERY" in source
+    assert "mkfs.vfat -F 32 -n XAAC_EFI" in source
+    assert "mkfs.ext4 -F -L XAAC_ROOT" in source
+    assert "unsquashfs -f -d" in source
+    assert "filesystem.squashfs" in source
+    assert "UUID=$root_uuid / ext4 defaults,noatime 0 1" in source
+    assert "trap cleanup_install EXIT HUP INT TERM" in source
+    assert "GRUB i la postinstal·lació s’afegiran en la fase següent." in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
-
 
 def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:
     root = minimal_project(tmp_path)

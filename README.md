@@ -276,3 +276,39 @@ Abans de continuar presenta un resum amb dispositiu, capacitat i model, i exigei
 la frase exacta `INSTALL XAAC`. Una confirmació diferent cancel·la el procés. La
 fase continua sent deliberadament no destructiva: encara no executa `sgdisk`,
 `mkfs`, `dd` ni cap altra ordre d’escriptura.
+
+### Instal·lador incremental — pas 4
+
+Aquesta iteració agrupa la primera unitat destructiva completa de l’instal·lador.
+Després de repetir les validacions del pas 3 i exigir `INSTALL XAAC`, comprova que
+la destinació no és el dispositiu que conté el sistema Live actiu i valida
+l’alimentació externa quan el maquinari l’exposa mitjançant `power_supply`.
+
+L’instal·lador crea una taula GPT amb les particions `XAAC_EFI` (256 MiB),
+`XAAC_ROOT` (4096 MiB), `XAAC_DATA` (1024 MiB) i `XAAC_RECOVERY` (espai restant),
+les formata, les munta sota `/mnt/xaac-target`, desplega
+`/run/live/medium/live/filesystem.squashfs` amb `unsquashfs` i genera un
+`/etc/fstab` basat en UUID. Un `trap` sincronitza i desmunta en ordre invers en
+cas d’èxit, error o interrupció.
+
+Aquest pas encara no instal·la GRUB ni executa la postinstal·lació; per tant, el
+disc queda amb el sistema base desplegat però encara no és arrancable de manera
+autònoma.
+
+### Instal·lador incremental — pas 4
+
+Aquesta iteració agrupa la primera unitat destructiva completa de l’instal·lador.
+Després de repetir les validacions del pas 3 i exigir `INSTALL XAAC`, comprova que
+la destinació no és el dispositiu que conté el sistema Live actiu i valida
+l’alimentació externa quan el maquinari l’exposa mitjançant `power_supply`.
+
+L’instal·lador crea una taula GPT amb les particions `XAAC_EFI` (256 MiB),
+`XAAC_ROOT` (4096 MiB), `XAAC_DATA` (1024 MiB) i `XAAC_RECOVERY` (espai restant),
+les formata, les munta sota `/mnt/xaac-target`, desplega
+`/run/live/medium/live/filesystem.squashfs` amb `unsquashfs` i genera un
+`/etc/fstab` basat en UUID. Un `trap` sincronitza i desmunta en ordre invers en
+cas d’èxit, error o interrupció.
+
+Aquest pas encara no instal·la GRUB ni executa la postinstal·lació; per tant, el
+disc queda amb el sistema base desplegat però encara no és arrancable de manera
+autònoma.

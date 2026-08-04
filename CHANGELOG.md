@@ -1211,3 +1211,23 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - El resum mostra dispositiu, capacitat, model i advertència per a dispositius extraïbles.
 - La selecció exigeix escriure exactament `INSTALL XAAC`; qualsevol altra entrada cancel·la l’operació.
 - El pas continua sent completament no destructiu: no particiona, no formata i no escriu al disc.
+
+## Unreleased — instal·lador incremental, pas 4
+
+- Agrupats el preflight final, el particionat GPT, el format, el muntatge i el desplegament del rootfs en una sola fase funcional.
+- Rebuig explícit del dispositiu que conté el sistema Live actiu.
+- Validació de l’alimentació externa quan el maquinari publica l’estat en `/sys/class/power_supply`.
+- Creació de `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY` amb mides deterministes.
+- Desplegament de `filesystem.squashfs` mitjançant `unsquashfs` i generació d’`fstab` per UUID.
+- Neteja segura dels muntatges de destinació mitjançant `trap`, `sync` i desmuntatge en ordre invers.
+- GRUB i les tasques de postinstal·lació continuen ajornades a la fase següent per mantindre una frontera de validació clara.
+
+## Unreleased — instal·lador incremental, pas 4
+
+- Agrupats el preflight final, el particionat GPT, el format, el muntatge i el desplegament del rootfs en una sola fase funcional.
+- Rebuig explícit del dispositiu que conté el sistema Live actiu.
+- Validació de l’alimentació externa quan el maquinari publica l’estat en `/sys/class/power_supply`.
+- Creació de `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY` amb mides deterministes.
+- Desplegament de `filesystem.squashfs` mitjançant `unsquashfs` i generació d’`fstab` per UUID.
+- Neteja segura dels muntatges de destinació mitjançant `trap`, `sync` i desmuntatge en ordre invers.
+- GRUB i les tasques de postinstal·lació continuen ajornades a la fase següent per mantindre una frontera de validació clara.
