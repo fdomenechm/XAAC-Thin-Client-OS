@@ -716,7 +716,28 @@ class ProductionIsoBuilder:
             "    systemctl reboot\n"
             "fi\n"
             "printf '\\n'\n"
-            "printf '%s\\n' 'Confirmació acceptada. Comença la instal·lació.'\n"
+            "printf '%s\\n' 'Confirmació acceptada.'\n"
+            "printf '\\n%s\\n' 'Configureu ara la contrasenya de l’administrador local xaac-admin.'\n"
+            "printf '%s\\n' 'Ha de tindre almenys 12 caràcters i no pot contindre dos punts (:).'\n"
+            "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM\n"
+            "while :; do\n"
+            "    printf '%s' 'Contrasenya: '\n"
+            "    stty -echo\n"
+            "    IFS= read -r admin_password || { stty echo; printf '\\n'; exit 1; }\n"
+            "    stty echo\n"
+            "    printf '\\n%s' 'Repetiu la contrasenya: '\n"
+            "    stty -echo\n"
+            "    IFS= read -r admin_password_confirm || { stty echo; printf '\\n'; exit 1; }\n"
+            "    stty echo\n"
+            "    printf '\\n'\n"
+            "    [ \"$admin_password\" = \"$admin_password_confirm\" ] || { printf '%s\\n' 'Les contrasenyes no coincideixen.'; continue; }\n"
+            "    [ \"${#admin_password}\" -ge 12 ] || { printf '%s\\n' 'La contrasenya és massa curta.'; continue; }\n"
+            "    case $admin_password in *:*) printf '%s\\n' 'La contrasenya no pot contindre dos punts (:).'; continue ;; esac\n"
+            "    break\n"
+            "done\n"
+            "trap - HUP INT TERM\n"
+            "unset admin_password_confirm\n"
+            "printf '%s\\n' 'Contrasenya administrativa validada. Comença la instal·lació.'\n"
             "live_source=$(findmnt -nro SOURCE /run/live/medium 2>/dev/null || true)\n"
             "if [ -n \"$live_source\" ]; then\n"
             "    live_parent=$(lsblk -ndo PKNAME \"$live_source\" 2>/dev/null | head -n1)\n"
@@ -802,13 +823,20 @@ class ProductionIsoBuilder:
             'sync; umount "$mount_root/boot/efi"\n'
             'fsck.vfat -n "$p1" >/dev/null || { printf \'%s\\n\' \'La partició EFI FAT32 no supera la verificació.\'; exit 1; }\n'
             'mount "$p1" "$mount_root/boot/efi"\n'
-            "printf '%s\\n' '[7/8] Preparant el primer arrencament...'\n"
+            "printf '%s\\n' '[7/9] Configurant l’administrador local...'\n"
+            'printf \'%s:%s\\n\' xaac-admin "$admin_password" | chroot "$mount_root" chpasswd\n'
+            'passwd_status=$(chroot "$mount_root" passwd -S xaac-admin 2>/dev/null | awk \'{print $2}\')\n'
+            '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No s’ha pogut activar la contrasenya de xaac-admin.\'; exit 1; }\n'
+            'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
+            'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
+            'unset admin_password\n'
+            "printf '%s\\n' '[8/9] Preparant el primer arrencament...'\n"
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
             'mkdir -p "$mount_root/var/lib/xaac" "$mount_root/recovery/installer"\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
             'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
-            "printf '%s\\n' '[8/8] Verificant la instal·lació...'\n"
+            "printf '%s\\n' '[9/9] Verificant la instal·lació...'\n"
             'test -x "$mount_root/usr/bin/systemctl"\n'
             'test -f "$mount_root/etc/fstab"\n'
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'

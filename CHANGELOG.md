@@ -6,6 +6,16 @@
 - Afegits `shim-signed` i `grub-efi-amd64-signed` al rootfs de producció i proves de regressió específiques.
 - Suite completa: 1371 proves superades.
 
+## Unreleased — contrasenya administrativa durant la instal·lació
+
+- L’instal·lador demana i confirma una contrasenya per a `xaac-admin` abans d’iniciar les operacions destructives.
+- L’entrada queda oculta amb `stty -echo`, exigeix almenys 12 caràcters i rebutja el caràcter `:`.
+- La contrasenya s’aplica exclusivament dins del sistema desplegat mitjançant `chpasswd` i es valida amb `passwd -S`.
+- La dada sensible s’elimina de l’entorn tan prompte com queda aplicada i no apareix en logs ni resums.
+- Es crea el marcador administratiu `password-changed` perquè no es repetisca un canvi obligatori després d’haver-la triada durant la instal·lació.
+- `xaac-kiosk` i `root` mantenen els comptes bloquejats per a autenticació manual.
+- Suite completa: 1372 proves superades.
+
 - Replantejat completament el subsistema Live: `live-boot` queda limitat al muntatge del SquashFS i s’elimina `live-config` dels paquets obligatoris i del flux d’arrencada.
 - Eliminats de GRUB `components`, `username=`, `user-fullname=`, `live-config.nocomponents` i `live-config.nottyautologin`.
 - XAAC crea `xaac-kiosk` durant la construcció del rootfs i controla directament l’autologin exclusiu de `tty1`; `tty2`–`tty6` tornen a la plantilla estàndard autenticada de Debian sense overrides.

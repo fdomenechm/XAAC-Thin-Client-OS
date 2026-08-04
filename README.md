@@ -307,3 +307,18 @@ Per evitar que un firmware OVMF o el Dell Wyse rebutge un carregador EFI no sign
 - `EFI/BOOT/grub.cfg`: localitza la partició arrel pel seu UUID i carrega `/boot/grub/grub.cfg`.
 
 Abans de declarar l’èxit, l’instal·lador comprova que els executables tenen capçalera PE/COFF, que la primera partició és una ESP GPT `EF00`, que el FAT32 supera `fsck.vfat -n` i que el fitxer de fallback referencia l’UUID correcte. La postinstal·lació buida `machine-id`, elimina les claus SSH i la llavor aleatòria, marca el primer arrencament, desactiva l’instal·lador en el sistema desplegat i desa un resum en `/recovery/installer/installation-summary.txt`.
+
+### Contrasenya de l’administrador durant la instal·lació
+
+Després de la confirmació destructiva i abans de modificar el disc, l’instal·lador
+demana dues vegades una contrasenya per a `xaac-admin`. L’entrada no es mostra a
+la consola, ha de tindre almenys 12 caràcters i no pot contindre `:`. Només si
+les dues entrades coincideixen continua la instal·lació.
+
+La contrasenya s’aplica al sistema desplegat mitjançant `chpasswd`, se’n comprova
+l’estat amb `passwd -S` i mai no s’escriu en fitxers, arguments de procés, logs ni
+el resum de la instal·lació. `xaac-kiosk` continua bloquejat i reservat a
+l’autologin de `tty1`; `root` continua sense accés interactiu per contrasenya.
+Com que la contrasenya la tria directament l’administrador durant la instal·lació,
+es crea el marcador de canvi completat i no es torna a exigir un canvi redundant
+en el primer inici de sessió.

@@ -42,6 +42,13 @@ def test_prepares_installer_assets(tmp_path):
     script = plan.output("installer_script").read_text()
     assert "INSTALL XAAC" in script and "grub-install --target=x86_64-efi" in script
     assert "sha256sum -c" in script and "findmnt" in script
+    assert "xaac-admin password" in script
+    assert "stty -echo" in script
+    assert '${#ADMIN_PASSWORD}' in script
+    assert 'chroot "$WORK/root" chpasswd' in script
+    assert 'passwd -S xaac-admin' in script
+    assert '/var/lib/xaac/admin/password-changed' in script
+    assert 'unset ADMIN_PASSWORD' in script
     assert plan.output("installer_script").stat().st_mode & 0o777 == 0o750
 
 

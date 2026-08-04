@@ -185,6 +185,21 @@ fail() {
 [ "$(id -u)" -eq 0 ] || fail "root privileges required"
 [ -b "$TARGET" ] || fail "target is not a block device"
 [ "$CONFIRMATION" = "INSTALL XAAC" ] || fail "confirmation phrase rejected"
+printf '%s\n' 'Configure the xaac-admin password (minimum 12 characters; colon is not allowed).'
+trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM
+while :; do
+  printf '%s' 'Password: '; stty -echo
+  IFS= read -r ADMIN_PASSWORD || { stty echo; printf '\n'; fail "password input failed"; }
+  stty echo; printf '\n%s' 'Repeat password: '; stty -echo
+  IFS= read -r ADMIN_PASSWORD_CONFIRM || { stty echo; printf '\n'; fail "password confirmation failed"; }
+  stty echo; printf '\n'
+  [ "$ADMIN_PASSWORD" = "$ADMIN_PASSWORD_CONFIRM" ] || { echo 'Passwords do not match.' >&2; continue; }
+  [ "${#ADMIN_PASSWORD}" -ge 12 ] || { echo 'Password is too short.' >&2; continue; }
+  case "$ADMIN_PASSWORD" in *:*) echo 'Password cannot contain a colon.' >&2; continue ;; esac
+  break
+done
+trap - HUP INT TERM
+unset ADMIN_PASSWORD_CONFIRM
 case "$TARGET" in /dev/mmcblk*|/dev/sd*|/dev/nvme*n*) ;; *) fail "unsupported target disk" ;; esac
 findmnt -rn -S "$TARGET" >/dev/null 2>&1 && fail "target disk is mounted"
 ROOT_SOURCE=$(findmnt -nro SOURCE / || true)
@@ -214,6 +229,11 @@ mkdir -p "$WORK/root/boot/efi"; mount "${P}1" "$WORK/root/boot/efi"
 mount --bind /dev "$WORK/root/dev"; mount -t proc proc "$WORK/root/proc"; mount -t sysfs sys "$WORK/root/sys"
 chroot "$WORK/root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram
 chroot "$WORK/root" update-grub
+printf '%s:%s\n' xaac-admin "$ADMIN_PASSWORD" | chroot "$WORK/root" chpasswd
+[ "$(chroot "$WORK/root" passwd -S xaac-admin | awk '{print $2}')" = P ] || fail "xaac-admin password activation failed"
+chroot "$WORK/root" mkdir -p /var/lib/xaac/admin
+chroot "$WORK/root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed
+unset ADMIN_PASSWORD
 umount "$WORK/root/sys" "$WORK/root/proc" "$WORK/root/dev"
 touch "$WORK/root/etc/xaac-first-boot.pending"
 sync

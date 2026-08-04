@@ -251,6 +251,13 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "first-boot.pending" in source
     assert "installation-summary.txt" in source
     assert "Instal·lació completada i verificada" in source
+    assert "Configureu ara la contrasenya" in source
+    assert "stty -echo" in source
+    assert '${#admin_password}' in source
+    assert 'chroot "$mount_root" chpasswd' in source
+    assert 'passwd -S xaac-admin' in source
+    assert '/var/lib/xaac/admin/password-changed' in source
+    assert 'unset admin_password' in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
 
 def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:
@@ -485,3 +492,16 @@ def test_installer_script_with_signed_uefi_fallback_has_valid_shell_syntax(tmp_p
     script = tmp_path / "xaac-installer-welcome"
     script.write_text(installer, encoding="utf-8")
     subprocess.run(["sh", "-n", str(script)], check=True)
+
+
+def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "stty -echo" in source
+    assert "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM" in source
+    assert "chpasswd" in source
+    assert "passwd -S xaac-admin" in source
+    assert '["passwd", "--lock", "xaac-kiosk"]' in source
+    assert "installation-summary.txt" in source
+    assert "admin_password=$admin_password" not in source
