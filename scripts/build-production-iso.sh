@@ -12,7 +12,7 @@ if [[ ! -x "$PYTHON" ]]; then
     exit 1
 fi
 
-for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot; do
+for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync; do
     command -v "$command" >/dev/null 2>&1 || {
         printf 'Error: falta la dependència del sistema: %s\n' "$command" >&2
         printf 'Executa: sudo ./scripts/install-build-dependencies.sh\n' >&2
@@ -32,11 +32,30 @@ cd "$PROJECT_ROOT"
 
 cleanup_chroot_mounts() {
     "$PYTHON" -m xaac_thin_client_os.production_builder \
-        --root "$PROJECT_ROOT" --cleanup-mounts-only >/dev/null 2>&1 || true
+        --root "$PROJECT_ROOT" --cleanup-mounts-only
 }
 
-# Always attempt a scoped chroot cleanup, including on interruption.  The
-# Python cleanup routine only accepts mount points below .build/production/rootfs.
-trap cleanup_chroot_mounts EXIT INT TERM
+cleanup_on_exit() {
+    local status=$?
+    trap - EXIT INT TERM
+    cleanup_chroot_mounts || {
+        printf 'Error: la neteja segura del chroot no ha finalitzat correctament.\n' >&2
+        [[ $status -ne 0 ]] || status=1
+    }
+    exit "$status"
+}
+
+cleanup_on_signal() {
+    local signal=$1
+    trap - EXIT INT TERM
+    cleanup_chroot_mounts || true
+    kill -s "$signal" "$$"
+}
+
+# Preserve the original exit status, handle signals explicitly, and ensure the
+# cleanup routine remains strictly scoped below .build/production/rootfs.
+trap cleanup_on_exit EXIT
+trap 'cleanup_on_signal INT' INT
+trap 'cleanup_on_signal TERM' TERM
 
 "$PYTHON" -m xaac_thin_client_os.production_builder --root "$PROJECT_ROOT" "$@"

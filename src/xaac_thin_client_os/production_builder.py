@@ -78,8 +78,6 @@ class BuildSettings:
     kernel_parameters: tuple[str, ...]
     version: str
     profile: str
-    live_username: str
-    live_user_fullname: str
 
     @classmethod
     def load(cls, project_root: Path) -> "BuildSettings":
@@ -106,7 +104,6 @@ class BuildSettings:
 
         mandatory = {
             "live-boot",
-            "live-config",
             "sudo",
             "dbus",
             "network-manager",
@@ -122,15 +119,6 @@ class BuildSettings:
                 kernel_parameters.extend(str(value) for value in values if value)
 
         fallback = localization.get("fallback_locales", [])
-        live = iso.get("live", {})
-        if not isinstance(live, dict):
-            raise ProductionBuildError("config/iso-builder.yaml: live ha de ser un mapa")
-        live_username = str(live.get("username", "xaac-kiosk")).strip()
-        if not live_username or not live_username.replace("-", "").replace("_", "").isalnum():
-            raise ProductionBuildError("Nom d'usuari live invàlid")
-        live_user_fullname = str(live.get("user_fullname", "XAAC Kiosk")).strip() or "XAAC Kiosk"
-        if any(char in live_user_fullname for char in "\n\r\t\"'" ):
-            raise ProductionBuildError("Nom complet de l'usuari live invàlid")
         return cls(
             suite=configuration.build.debian.suite,
             mirror=configuration.build.debian.mirror,
@@ -148,8 +136,6 @@ class BuildSettings:
             kernel_parameters=tuple(dict.fromkeys(kernel_parameters)),
             version=configuration.build.version,
             profile=configuration.build.profile,
-            live_username=live_username,
-            live_user_fullname=live_user_fullname,
         )
 
 
@@ -346,6 +332,63 @@ class ProductionIsoBuilder:
         output = result.stdout.strip()
         return output or "cap procés identificat per fuser"
 
+    def _chroot_processes(self) -> tuple[int, ...]:
+        """Return processes whose root/cwd/executable is inside this rootfs.
+
+        This deliberately ignores ordinary host processes merely accessing a
+        bind-mounted device. Only processes demonstrably attached to the chroot
+        namespace are eligible for termination.
+        """
+        if not self.paths.rootfs.exists():
+            return ()
+        rootfs = self.paths.rootfs.resolve(strict=False)
+        own_pid = os.getpid()
+        found: set[int] = set()
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            if pid in (1, own_pid, os.getppid()):
+                continue
+            for link_name in ("root", "cwd", "exe"):
+                try:
+                    target = (entry / link_name).resolve(strict=True)
+                except (FileNotFoundError, PermissionError, OSError):
+                    continue
+                if target == rootfs or target.is_relative_to(rootfs):
+                    found.add(pid)
+                    break
+        return tuple(sorted(found))
+
+    def _stop_chroot_processes(self) -> None:
+        """Terminate leftover chroot processes before attempting unmounts."""
+        if getattr(self, "dry_run", False):
+            return
+        pids = self._chroot_processes()
+        if not pids:
+            return
+        for pid in pids:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(pid, 15)
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            remaining = self._chroot_processes()
+            if not remaining:
+                return
+            time.sleep(0.1)
+        for pid in self._chroot_processes():
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(pid, 9)
+        deadline = time.monotonic() + 1.0
+        while time.monotonic() < deadline and self._chroot_processes():
+            time.sleep(0.05)
+        remaining = self._chroot_processes()
+        if remaining:
+            raise ProductionBuildError(
+                "No s'han pogut aturar els processos residuals del chroot: "
+                + ", ".join(str(pid) for pid in remaining)
+            )
+
     def cleanup_chroot_mounts(self) -> None:
         """Safely detach all nested chroot mounts without touching the host.
 
@@ -362,6 +405,7 @@ class ProductionIsoBuilder:
         retry_delay = 0.2
         last_errors: dict[Path, str] = {}
 
+        self._stop_chroot_processes()
         subprocess.run(["sync"], check=False)
         for attempt in range(max_attempts):
             mounted = self._mounted_paths_below_rootfs()
@@ -565,42 +609,21 @@ class ProductionIsoBuilder:
             f'XAAC_OS_PROFILE="{self.settings.profile}"\n'
             f'XAAC_OS_BUILD_ID="{build_id}"\n',
         )
-        # XAAC owns console login policy.  Debian Live configuration is
-        # disabled at boot, so no generic getty autologin override is allowed.
-        # Only tty1 receives the kiosk autologin drop-in; tty2..tty6 keep the
-        # unmodified Debian getty@.service template and therefore show login:.
-        for generic in (
+        # XAAC owns the complete console policy. Remove any stale Debian Live
+        # autologin artefact left by an incremental build. tty2..tty6 deliberately
+        # use Debian's untouched authenticated getty@.service template.
+        for stale in (
             "/etc/systemd/system/getty@.service.d/autologin.conf",
             "/etc/systemd/system/getty@.service.d/live-config_autologin.conf",
+            "/etc/live/config.conf.d/xaac.conf",
+            *(f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-authenticated.conf" for tty in range(2, 7)),
         ):
             with contextlib.suppress(FileNotFoundError):
-                self._inside(generic).unlink()
-        # systemd 257+ allows getty@.service to import a global
-        # ``agetty.autologin`` credential.  Debian Live may provide that
-        # credential dynamically at boot, which would otherwise affect every
-        # virtual console even when only tty1 has an explicit autologin
-        # drop-in.  Secondary consoles therefore reset ImportCredential and
-        # restore the stock authenticated agetty command explicitly.
-        for tty in range(2, 7):
-            self._atomic_write(
-                self._inside(
-                    f"/etc/systemd/system/getty@tty{tty}.service.d/99-xaac-authenticated.conf"
-                ),
-                "[Service]\n"
-                "ImportCredential=\n"
-                "ExecStart=\n"
-                "ExecStart=-/sbin/agetty -o '-p -- \\u' --noclear %I $TERM\n",
-            )
+                self._inside(stale).unlink()
         self._atomic_write(
             self._inside("/etc/systemd/system/getty@tty1.service.d/99-xaac-autologin.conf"),
             "[Service]\nExecStart=\n"
             "ExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
-        )
-        self._atomic_write(
-            self._inside("/etc/live/config.conf.d/xaac.conf"),
-            "# XAAC configures users, locale, keyboard, timezone and TTY policy at build time.\n"
-            "# Do not let live-config mutate them during boot.\n"
-            "LIVE_CONFIG_CMDLINE=\"live-config.nocomponents\"\n",
         )
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
@@ -785,12 +808,12 @@ class ProductionIsoBuilder:
         if installer.is_file():
             shutil.copy2(installer, self.paths.staging / "install/xaac-installer")
             os.chmod(self.paths.staging / "install/xaac-installer", 0o755)
-        live_identity = (
-            f"username={self.settings.live_username}",
-            f"user-fullname={self.settings.live_user_fullname.replace(' ', '_')}",
-        )
-        params = " ".join(("boot=live", "components", *live_identity, "quiet", *self.settings.kernel_parameters))
-        diagnostics = " ".join(("boot=live", "components", *live_identity, "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
+        # live-boot is retained solely to locate and mount filesystem.squashfs.
+        # User creation, autologin and installer dispatch are entirely owned by
+        # the rootfs and systemd units generated by XAAC. Do not pass
+        # ``components`` or any live-config identity parameters.
+        params = " ".join(("boot=live", "quiet", *self.settings.kernel_parameters))
+        diagnostics = " ".join(("boot=live", "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
         self._atomic_write(
             self.paths.staging / "boot/grub/grub.cfg",
             "set default=0\nset timeout=5\n\n"

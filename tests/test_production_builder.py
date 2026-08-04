@@ -7,6 +7,7 @@ import pytest
 
 from xaac_thin_client_os.production_builder import (
     BuildPaths,
+    BuildSettings,
     CommandRunner,
     ProductionBuildError,
     ProductionIsoBuilder,
@@ -166,9 +167,10 @@ def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: P
     assert "XAAC_TC_OS" not in command
 
     grub = (builder.paths.staging / "boot/grub/grub.cfg").read_text(encoding="utf-8")
-    assert "username=xaac-kiosk" in grub
-    assert "user-fullname=XAAC_Kiosk" in grub
-    assert "username=user" not in grub
+    assert "username=" not in grub
+    assert "user-fullname=" not in grub
+    assert " components " not in grub
+    assert "live-config" not in grub
 
 
 def test_production_kiosk_account_has_login_shell() -> None:
@@ -194,9 +196,9 @@ def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
     assert "locales=ca_ES.UTF-8" not in iso
     assert "keyboard-layouts=es" not in iso
     assert "timezone=Europe/Madrid" not in iso
-    assert "live-config.nocomponents" in iso
-    assert "live-config.nottyautologin" in iso
-    assert " components " not in iso
+    assert "live-config" not in iso
+    assert "username:" not in iso
+    assert "user_fullname:" not in iso
 
 
 def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
@@ -345,10 +347,10 @@ def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert "getty@tty1.service.d/99-xaac-autologin.conf" in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "ImportCredential=\\n" in source
-    assert "ExecStart=-/sbin/agetty -o" in source
+    assert "ImportCredential=\\n" not in source
+    assert "ExecStart=-/sbin/agetty -o" not in source
     assert "/etc/live/config.conf.d/xaac.conf" in source
-    assert "LIVE_CONFIG_CMDLINE" in source
+    assert "LIVE_CONFIG_CMDLINE" not in source
     assert "OnFailure=xaac-installer-restore-getty.service" in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
@@ -357,8 +359,11 @@ def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
     script = (project / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
-    assert "trap cleanup_chroot_mounts EXIT INT TERM" in script
+    assert "trap cleanup_on_exit EXIT" in script
+    assert "trap 'cleanup_on_signal INT' INT" in script
+    assert "trap 'cleanup_on_signal TERM' TERM" in script
     assert "--cleanup-mounts-only" in script
+    assert 'local status=$?' in script
 
 
 def test_cleanup_chroot_mounts_retries_transient_busy_mount(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -418,3 +423,16 @@ def test_cleanup_chroot_mounts_reports_mount_users(tmp_path: Path, monkeypatch: 
 
     with pytest.raises(ProductionBuildError, match="PID 1234 apt-get"):
         builder.cleanup_chroot_mounts()
+
+
+def test_production_builder_does_not_require_live_config(project_root: Path) -> None:
+    settings = BuildSettings.load(project_root)
+    assert "live-boot" in settings.packages
+    assert "live-config" not in settings.packages
+
+
+def test_cleanup_stops_chroot_processes_before_unmounting() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.cleanup_chroot_mounts)
+    assert source.index("self._stop_chroot_processes()") < source.index('["umount", str(target)]')

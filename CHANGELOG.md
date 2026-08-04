@@ -1,4 +1,12 @@
 ## Unreleased
+- Replantejat completament el subsistema Live: `live-boot` queda limitat al muntatge del SquashFS i s’elimina `live-config` dels paquets obligatoris i del flux d’arrencada.
+- Eliminats de GRUB `components`, `username=`, `user-fullname=`, `live-config.nocomponents` i `live-config.nottyautologin`.
+- XAAC crea `xaac-kiosk` durant la construcció del rootfs i controla directament l’autologin exclusiu de `tty1`; `tty2`–`tty6` tornen a la plantilla estàndard autenticada de Debian sense overrides.
+- Eliminats els fitxers de configuració i les defenses compensatòries de `live-config`; els artefactes antics es netegen en construccions incrementals.
+- La neteja del chroot finalitza primer processos residuals confinats al rootfs, conserva l’estat d’eixida del constructor i tracta explícitament `EXIT`, `INT` i `TERM`.
+- Els muntatges continuen confinats per `rslave`, es processen segons `/proc/self/mountinfo` de més profund a menys profund i mai s’aplica `umount -R`, `-l` o `-f`.
+- Suite completa: 1370 proves superades.
+
 - Robustesa del desmuntatge del chroot: reintents davant d'`EBUSY`, `sync` entre intents i diagnòstic amb `fuser` dels processos que mantenen ocupat un punt de muntatge.
 
 - Corregit l’autologin indegut de `xaac-kiosk` en `tty2`–`tty6`: cada consola secundària reinicia explícitament `ImportCredential=` per ignorar qualsevol credencial global `agetty.autologin` injectada en temps d’arrencada.

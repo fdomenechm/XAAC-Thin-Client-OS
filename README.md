@@ -169,48 +169,53 @@ Els logs es guarden en `.build/production/logs/`. El constructor ISO no executa 
 
 ### Seguretat dels muntatges del chroot
 
-El constructor munta temporalment `/dev`, `/proc`, `/sys` i `/run` dins del rootfs.
-Els muntatges recursius es converteixen immediatament en `rslave`, de manera que
-les operacions de desmuntatge del chroot no es propaguen mai cap al sistema host.
-La neteja comprova cada punt amb `mountpoint`, desmunta primer `/dev/pts` i només
-accepta rutes confinades sota `.build/production/rootfs`. El llançador incorpora
-un `trap` per executar aquesta neteja també davant d'interrupcions.
+El constructor munta temporalment `/dev`, `/proc`, `/sys` i `/run` dins del
+rootfs. Els muntatges recursius es converteixen immediatament en `rslave`, de
+manera que cap desmuntatge efectuat sota el chroot es pot propagar a l’arbre de
+muntatges compartit de l’amfitrió.
 
-Això permet repetir: 
+Abans de desmuntar, el constructor detecta i finalitza únicament els processos
+que tenen `root`, `cwd` o executable dins de `.build/production/rootfs`. Després
+llegeix `/proc/self/mountinfo`, filtra estrictament els punts situats sota els
+quatre arbres temporals del rootfs i els desmunta de més profund a menys profund.
+No utilitza `umount -R`, `umount -l` ni desmuntatges forçats. Els errors `EBUSY`
+es reintenten després de `sync` i, si persisteixen, es mostren diagnòstics amb
+`fuser`.
+
+El llançador conserva el codi d’eixida original, tracta `INT` i `TERM`
+explícitament i executa sempre la neteja confinada. Això permet repetir:
 
 ```bash
 ./scripts/build-production-iso.sh --clean
 ```
 
-sense deixar `/dev/pts` de l'amfitrió inutilitzable ni obligar a reiniciar la
-màquina constructora.
+sense deixar muntatges residuals ni afectar `/dev/pts` de la màquina
+constructora.
 
-### Consoles virtuals i recuperació de l'instal·lador
+### Arquitectura Live, usuaris i consoles
 
-L'autologin del compte `xaac-kiosk` només s'aplica a `tty1`. Les consoles
-`tty2` a `tty6` reinicien explícitament les credencials importades d’`agetty` i
-executen un `agetty` autenticat normal. Això evita que una credencial global
-`agetty.autologin` creada en temps d’arrencada propague l’autologin a totes les TTY. Quan
-l'entrada d'instal·lació pren `tty1`, el servei entra en conflicte únicament amb
-`getty@tty1.service`. Si l'instal·lador falla, `OnFailure` activa un servei de
-recuperació que torna a iniciar el `getty` de `tty1`.
+XAAC Thin Client OS conserva `live-boot` només per localitzar i muntar
+`filesystem.squashfs`. `live-config` ja no forma part dels paquets obligatoris,
+no s’executa i no participa en la creació d’usuaris, la localització ni
+l’autologin.
 
-El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea únicament Debian base i, després, la fase `configure` executa `apt-get update` i instal·la kernel, firmware i resta de paquets des dels components definits en `config/build.yaml`. Això evita intentar resoldre `firmware-linux` o `firmware-misc-nonfree` durant el bootstrap inicial.
+Les entrades GRUB no contenen `components`, `username=`, `user-fullname=`,
+`live-config.nocomponents` ni `live-config.nottyautologin`. El compte
+`xaac-kiosk` es crea durant la fase `configure`, directament dins del rootfs,
+amb shell de sessió vàlid i contrasenya bloquejada.
 
-### Política de configuració Live i usuari de sessió
+La política de consoles és íntegrament de XAAC:
 
-XAAC Thin Client OS configura durant la construcció el compte `xaac-kiosk`, la
-llengua, el teclat, la zona horària i la política de consoles. Per evitar que
-Debian `live-config` torne a modificar aquests valors durant cada arrencada, les
-entrades GRUB incorporen explícitament:
+- `tty1` disposa d’un únic drop-in d’autologin per a `xaac-kiosk`;
+- `tty2`–`tty6` utilitzen sense modificacions la plantilla autenticada
+  `getty@.service` de Debian;
+- en mode instal·lador, `xaac-installer-welcome.service` pren exclusivament
+  `tty1`, entra en conflicte amb `getty@tty1.service` i el restaura mitjançant
+  `OnFailure` si l’instal·lador falla.
 
-```text
-live-config.nocomponents
-```
-
-A més, el rootfs inclou `/etc/live/config.conf.d/xaac.conf` amb la mateixa
-política. D'aquesta manera `live-config` no crea l'usuari genèric `user`, no
-reescriu `getty@.service` i no aplica autologin a consoles secundàries.
+El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea Debian
+base i la fase `configure` instal·la kernel, firmware i paquets des de dins del
+chroot.
 
 ### Llengua i teclat de la ISO
 
@@ -242,10 +247,10 @@ cat .build/production/rootfs/etc/default/locale
 ### Instal·lador incremental — pas 1
 
 La primera iteració de l’instal·lador és deliberadament no destructiva. L’entrada
-`Install XAAC Thin Client OS` arranca amb `xaac.mode=installer` i
-`live-config.nocomponents`. La política de consoles queda controlada només per
-XAAC: `tty1` és reservada per al quiosc o l'instal·lador, mentre que `tty2` a
-`tty6` conserven el `getty` estàndard de Debian i requereixen autenticació.
+`Install XAAC Thin Client OS` arranca amb `boot=live`, `xaac.mode=installer` i
+`systemd.unit=multi-user.target`, sense cap paràmetre de `live-config`. `tty1`
+és reservada per a l’instal·lador, mentre que `tty2`–`tty6` conserven el `getty`
+estàndard autenticat de Debian.
 
 `systemd.unit=multi-user.target`, inicia `xaac-installer-welcome.service` sobre
 `tty1` i mostra una pantalla de benvinguda. En aquest pas no es detecten,
