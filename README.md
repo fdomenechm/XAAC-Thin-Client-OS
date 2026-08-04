@@ -264,3 +264,15 @@ de consola abans d’afegir cap operació destructiva.
 ### Instal·lador incremental — pas 2
 
 L’opció d’instal·lació detecta els discs escrivibles, mostra dispositiu, mida i model i permet seleccionar-ne un. Aquest pas és estrictament no destructiu: no particiona, no formata ni escriu cap dada.
+
+### Instal·lador incremental — pas 3
+
+Després de seleccionar el disc, l’instal·lador torna a comprovar que el dispositiu
+existeix i conserva la mateixa capacitat detectada. Rebutja destinacions menors de
+7.000.000.000 bytes i qualsevol disc que tinga ell mateix o alguna partició
+muntada. Els dispositius extraïbles es mostren amb una advertència explícita.
+
+Abans de continuar presenta un resum amb dispositiu, capacitat i model, i exigeix
+la frase exacta `INSTALL XAAC`. Una confirmació diferent cancel·la el procés. La
+fase continua sent deliberadament no destructiva: encara no executa `sgdisk`,
+`mkfs`, `dd` ni cap altra ordre d’escriptura.

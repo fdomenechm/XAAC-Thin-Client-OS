@@ -1203,3 +1203,11 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Exclou dispositius que no són discs i discs marcats com a només lectura.
 - La selecció continua sent completament no destructiva: no particiona, no formata i no escriu cap dada.
 - Manté el control exclusiu de `tty1` i reinicia en prémer Retorn després de la prova.
+
+## Unreleased — instal·lador incremental, pas 3
+
+- Afegida la revalidació del dispositiu després de seleccionar-lo per detectar canvis entre la detecció i la confirmació.
+- Rebutjats discs menors de 7.000.000.000 bytes i qualsevol disc o partició amb muntatges actius.
+- El resum mostra dispositiu, capacitat, model i advertència per a dispositius extraïbles.
+- La selecció exigeix escriure exactament `INSTALL XAAC`; qualsevol altra entrada cancel·la l’operació.
+- El pas continua sent completament no destructiu: no particiona, no formata i no escriu al disc.
