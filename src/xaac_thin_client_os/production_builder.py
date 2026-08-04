@@ -630,7 +630,7 @@ class ProductionIsoBuilder:
             "#!/bin/sh\n"
             "set -eu\n"
             "clear\n"
-            "printf '%s\\n' 'XAAC Thin Client OS — Instal·lador (pas 4)'\n"
+            "printf '%s\\n' 'XAAC Thin Client OS — Instal·lador (pas 5)'\n"
             "printf '%s\\n' '============================================'\n"
             "printf '\\n'\n"
             "printf '%s\\n' 'Preflight, particionat GPT, format i desplegament del sistema base.'\n"
@@ -761,18 +761,48 @@ class ProductionIsoBuilder:
             "rootfs_image=/run/live/medium/live/filesystem.squashfs\n"
             "[ -r \"$rootfs_image\" ] || { printf '%s\\n' 'No s’ha trobat filesystem.squashfs al mitjà Live.'; exit 1; }\n"
             "unsquashfs -f -d \"$mount_root\" \"$rootfs_image\"\n"
-            "printf '%s\\n' '[5/5] Generant la configuració de muntatge...'\n"
-            "root_uuid=$(blkid -s UUID -o value \"$p2\"); efi_uuid=$(blkid -s UUID -o value \"$p1\"); data_uuid=$(blkid -s UUID -o value \"$p3\"); recovery_uuid=$(blkid -s UUID -o value \"$p4\")\n"
-            "cat > \"$mount_root/etc/fstab\" <<EOF\n"
-            "UUID=$root_uuid / ext4 defaults,noatime 0 1\n"
-            "UUID=$efi_uuid /boot/efi vfat umask=0077 0 1\n"
-            "UUID=$data_uuid /data ext4 defaults,noatime 0 2\n"
-            "UUID=$recovery_uuid /recovery ext4 defaults,noatime 0 2\n"
-            "EOF\n"
-            "sync\n"
+            "printf '%s\\n' '[5/8] Generant la configuració de muntatge...'\n"
+            'root_uuid=$(blkid -s UUID -o value "$p2"); efi_uuid=$(blkid -s UUID -o value "$p1"); data_uuid=$(blkid -s UUID -o value "$p3"); recovery_uuid=$(blkid -s UUID -o value "$p4")\n'
+            '[ -n "$root_uuid" ] && [ -n "$efi_uuid" ] && [ -n "$data_uuid" ] && [ -n "$recovery_uuid" ] || { printf \'%s\\n\' \'No s’han pogut obtindre tots els UUID.\'; exit 1; }\n'
+            'cat > "$mount_root/etc/fstab" <<EOF\n'
+            'UUID=$root_uuid / ext4 defaults,noatime 0 1\n'
+            'UUID=$efi_uuid /boot/efi vfat umask=0077 0 1\n'
+            'UUID=$data_uuid /data ext4 defaults,noatime 0 2\n'
+            'UUID=$recovery_uuid /recovery ext4 defaults,noatime 0 2\n'
+            'EOF\n'
+            "printf '%s\\n' '[6/8] Instal·lant GRUB UEFI...'\n"
+            'mkdir -p "$mount_root/dev" "$mount_root/proc" "$mount_root/sys" "$mount_root/run"\n'
+            'mount --rbind /dev "$mount_root/dev"; mount --make-rslave "$mount_root/dev"\n'
+            'mount -t proc proc "$mount_root/proc"\n'
+            'mount --rbind /sys "$mount_root/sys"; mount --make-rslave "$mount_root/sys"\n'
+            'mount --rbind /run "$mount_root/run"; mount --make-rslave "$mount_root/run"\n'
+            'chroot "$mount_root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram --recheck\n'
+            'chroot "$mount_root" update-grub\n'
+            '[ -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI" ] || { printf \'%s\\n\' \'No s’ha creat el carregador UEFI de fallback.\'; exit 1; }\n'
+            '[ -s "$mount_root/boot/grub/grub.cfg" ] || { printf \'%s\\n\' \'No s’ha generat grub.cfg.\'; exit 1; }\n'
+            "printf '%s\\n' '[7/8] Preparant el primer arrencament...'\n"
+            ': > "$mount_root/etc/machine-id"\n'
+            'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
+            'mkdir -p "$mount_root/var/lib/xaac" "$mount_root/recovery/installer"\n'
+            'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
+            'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
+            "printf '%s\\n' '[8/8] Verificant la instal·lació...'\n"
+            'test -x "$mount_root/usr/bin/systemctl"\n'
+            'test -f "$mount_root/etc/fstab"\n'
+            'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
+            'test -s "$mount_root/boot/grub/grub.cfg"\n'
+            'cat > "$mount_root/recovery/installer/installation-summary.txt" <<EOF\n'
+            'status=completed\n'
+            'target=$target\n'
+            'root_uuid=$root_uuid\n'
+            'efi_uuid=$efi_uuid\n'
+            'data_uuid=$data_uuid\n'
+            'recovery_uuid=$recovery_uuid\n'
+            'bootloader=grub-efi-amd64-removable\n'
+            'EOF\n'
+            'sync\n'
             "printf '\\n'\n"
-            "printf '%s\\n' 'Particionat, format i desplegament del rootfs completats.'\n"
-            "printf '%s\\n' 'GRUB i la postinstal·lació s’afegiran en la fase següent.'\n"
+            "printf '%s\\n' 'Instal·lació completada i verificada. El disc ja és arrancable en mode UEFI.'\n"
             "printf '%s' 'Premeu Retorn per apagar el sistema: '\n"
             "IFS= read -r _answer\n"
             "systemctl poweroff\n",
@@ -781,7 +811,7 @@ class ProductionIsoBuilder:
         self._atomic_write(
             self._inside("/etc/systemd/system/xaac-installer-welcome.service"),
             "[Unit]\n"
-            "Description=XAAC Thin Client OS installer storage deployment (step 4)\n"
+            "Description=XAAC Thin Client OS complete installer (step 5)\n"
             "ConditionKernelCommandLine=xaac.mode=installer\n"
             "After=systemd-user-sessions.service\n"
             "Before=getty@tty1.service\n"

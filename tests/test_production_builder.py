@@ -210,7 +210,7 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
     assert 'update-locale", f"LANG={self.settings.locale}' in source
 
 
-def test_installer_step4_partitions_formats_and_deploys_rootfs() -> None:
+def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
@@ -218,7 +218,7 @@ def test_installer_step4_partitions_formats_and_deploys_rootfs() -> None:
     assert "ConditionKernelCommandLine=xaac.mode=installer" in source
     assert "Conflicts=getty@tty1.service" in source
     assert "TTYPath=/dev/tty1" in source
-    assert "Instal·lador (pas 4)" in source
+    assert "Instal·lador (pas 5)" in source
     assert "ATENCIÓ: aquest pas elimina totes les dades" in source
     assert "minimum_size=7000000000" in source
     assert "INSTALL XAAC" in source
@@ -235,7 +235,15 @@ def test_installer_step4_partitions_formats_and_deploys_rootfs() -> None:
     assert "filesystem.squashfs" in source
     assert "UUID=$root_uuid / ext4 defaults,noatime 0 1" in source
     assert "trap cleanup_install EXIT HUP INT TERM" in source
-    assert "GRUB i la postinstal·lació s’afegiran en la fase següent." in source
+    assert "grub-install --target=x86_64-efi" in source
+    assert "--removable --no-nvram --recheck" in source
+    assert "EFI/BOOT/BOOTX64.EFI" in source
+    assert "update-grub" in source
+    assert "etc/machine-id" in source
+    assert "ssh_host_*" in source
+    assert "first-boot.pending" in source
+    assert "installation-summary.txt" in source
+    assert "Instal·lació completada i verificada" in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
 
 def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:

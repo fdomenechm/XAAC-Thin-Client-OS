@@ -1231,3 +1231,12 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Desplegament de `filesystem.squashfs` mitjançant `unsquashfs` i generació d’`fstab` per UUID.
 - Neteja segura dels muntatges de destinació mitjançant `trap`, `sync` i desmuntatge en ordre invers.
 - GRUB i les tasques de postinstal·lació continuen ajornades a la fase següent per mantindre una frontera de validació clara.
+
+
+## Unreleased — instal·lador incremental, pas 5
+
+- Instal·lació de GRUB UEFI x86_64 amb fallback extraïble i sense modificar NVRAM.
+- Generació i verificació de `grub.cfg` i `EFI/BOOT/BOOTX64.EFI`.
+- Muntatges de chroot confinats amb propagació `rslave` i neteja ordenada.
+- Sanejament de `machine-id`, claus SSH i `random-seed`.
+- Marcatge del primer arrencament, desactivació de l’instal·lador i resum persistent en la partició de recuperació.
