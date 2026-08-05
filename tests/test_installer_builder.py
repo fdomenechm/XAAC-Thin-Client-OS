@@ -47,6 +47,9 @@ def test_prepares_installer_assets(tmp_path):
     assert '${#ADMIN_PASSWORD}' in script
     assert 'chroot "$WORK/root" chpasswd' in script
     assert 'passwd -S xaac-admin' in script
+    assert "usermod --unlock --shell /bin/bash xaac-admin" in script
+    assert "chage -E -1 -I -1 -m 0 xaac-admin" in script
+    assert "getent shadow xaac-admin" in script
     assert '/var/lib/xaac/admin/password-changed' in script
     assert 'unset ADMIN_PASSWORD' in script
     assert plan.output("installer_script").stat().st_mode & 0o777 == 0o750

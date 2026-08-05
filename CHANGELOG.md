@@ -1,5 +1,12 @@
 ## Unreleased
 - Estabilitzada l’arrencada UEFI del sistema instal·lat amb una cadena Debian signada: `shim-signed` com a `EFI/BOOT/BOOTX64.EFI` i `grub-efi-amd64-signed` com a `EFI/BOOT/grubx64.efi`.
+
+### Correcció d’activació de `xaac-admin`
+
+- L’instal·lador desbloqueja explícitament `xaac-admin` després de configurar-ne la contrasenya.
+- Es força `/bin/bash` com a shell interactiva i s’eliminen caducitats o inactivitats residuals del compte.
+- La instal·lació s’atura si `/etc/shadow` encara conté un prefix de bloqueig (`!` o `*`).
+- Es comprova també que `passwd -S` retorne `P` i que la shell efectiva siga `/bin/bash`.
 - Afegit un `EFI/BOOT/grub.cfg` mínim que localitza explícitament `XAAC_ROOT` pel seu UUID i transfereix el control a `/boot/grub/grub.cfg`.
 - L’instal·lador valida ara la capçalera PE/COFF dels executables EFI, el tipus GPT `EF00`, la integritat FAT32 de l’ESP i la presència de tots els artefactes abans de declarar l’èxit.
 - La neteja de la instal·lació desmunta també `/run`, `/sys`, `/proc` i `/dev` del chroot abans de desmuntar el sistema de destinació.

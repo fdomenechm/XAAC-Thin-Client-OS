@@ -315,8 +315,8 @@ demana dues vegades una contrasenya per a `xaac-admin`. L’entrada no es mostra
 la consola, ha de tindre almenys 12 caràcters i no pot contindre `:`. Només si
 les dues entrades coincideixen continua la instal·lació.
 
-La contrasenya s’aplica al sistema desplegat mitjançant `chpasswd`, se’n comprova
-l’estat amb `passwd -S` i mai no s’escriu en fitxers, arguments de procés, logs ni
+La contrasenya s’aplica al sistema desplegat mitjançant `chpasswd`; després el compte es desbloqueja explícitament amb `usermod --unlock`, es fixa `/bin/bash` com a shell i s’eliminen caducitats residuals amb `chage`. Se’n comprova
+l’estat amb `passwd -S`, el camp real de `/etc/shadow` i la shell efectiva i mai no s’escriu en fitxers, arguments de procés, logs ni
 el resum de la instal·lació. `xaac-kiosk` continua bloquejat i reservat a
 l’autologin de `tty1`; `root` continua sense accés interactiu per contrasenya.
 Com que la contrasenya la tria directament l’administrador durant la instal·lació,

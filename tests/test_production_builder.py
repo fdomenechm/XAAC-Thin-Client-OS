@@ -502,6 +502,9 @@ def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
     assert "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM" in source
     assert "chpasswd" in source
     assert "passwd -S xaac-admin" in source
+    assert "usermod --unlock --shell /bin/bash xaac-admin" in source
+    assert "chage -E -1 -I -1 -m 0 xaac-admin" in source
+    assert "getent shadow xaac-admin" in source
     assert '["passwd", "--lock", "xaac-kiosk"]' in source
     assert "installation-summary.txt" in source
     assert "admin_password=$admin_password" not in source
