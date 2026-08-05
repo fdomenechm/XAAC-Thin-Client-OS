@@ -308,6 +308,20 @@ Per evitar que un firmware OVMF o el Dell Wyse rebutge un carregador EFI no sign
 
 Abans de declarar l’èxit, l’instal·lador comprova que els executables tenen capçalera PE/COFF, que la primera partició és una ESP GPT `EF00`, que el FAT32 supera `fsck.vfat -n` i que el fitxer de fallback referencia l’UUID correcte. La postinstal·lació buida `machine-id`, elimina les claus SSH i la llavor aleatòria, marca el primer arrencament, desactiva l’instal·lador en el sistema desplegat i desa un resum en `/recovery/installer/installation-summary.txt`.
 
+### Mode de recuperació Live
+
+La ISO inclou una entrada de GRUB **`XAAC rescue shell (root, read-only)`**. Aquesta opció inicia una shell de `root` en `tty1` sense requerir cap contrasenya del sistema instal·lat.
+
+El mode de recuperació:
+
+- localitza automàticament les particions `XAAC_ROOT` i `XAAC_EFI`;
+- les munta en `/mnt/xaac-rescue` en mode només lectura;
+- genera `/run/xaac-rescue-report.txt`;
+- mostra l'entrada de `xaac-admin` en `/etc/passwd`, l'estat del hash sense revelar-lo, la pila PAM de `login`, les regles `securetty` i possibles registres de bloqueig;
+- deixa una shell interactiva per executar `lsblk -f`, `blkid` i inspeccionar el sistema instal·lat.
+
+El mode és deliberadament de diagnòstic i no modifica el disc automàticament. En escriure `exit`, la màquina es reinicia i els muntatges es desfan.
+
 ### Contrasenya de l’administrador durant la instal·lació
 
 Després de la confirmació destructiva i abans de modificar el disc, l’instal·lador

@@ -508,3 +508,44 @@ def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
     assert '["passwd", "--lock", "xaac-kiosk"]' in source
     assert "installation-summary.txt" in source
     assert "admin_password=$admin_password" not in source
+
+
+def test_live_iso_has_explicit_root_rescue_mode() -> None:
+    import inspect
+
+    configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    iso = inspect.getsource(ProductionIsoBuilder.phase_iso)
+    assert "/usr/local/sbin/xaac-rescue-shell" in configure
+    assert "ConditionKernelCommandLine=xaac.mode=rescue" in configure
+    assert "TTYPath=/dev/tty1" in configure
+    assert "blkid -L XAAC_ROOT" in configure
+    assert 'mount -o ro "$root_device" "$mount_root"' in configure
+    assert "/run/xaac-rescue-report.txt" in configure
+    assert "getent shadow" not in configure or "shadow status" in configure
+    assert "XAAC rescue shell (root, read-only)" in iso
+    assert "xaac.mode=rescue systemd.unit=multi-user.target" in iso
+    assert 'enable", "xaac-rescue-shell.service"' in configure
+
+
+def test_rescue_shell_script_has_valid_shell_syntax(tmp_path: Path) -> None:
+    import ast
+    import inspect
+    import textwrap
+
+    source = textwrap.dedent(inspect.getsource(ProductionIsoBuilder.phase_configure))
+    tree = ast.parse(source)
+    rescue = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or len(node.args) < 2:
+            continue
+        target = ast.get_source_segment(source, node.args[0]) or ""
+        if "xaac-rescue-shell" not in target or "service" in target:
+            continue
+        rescue = eval(compile(ast.Expression(node.args[1]), "<rescue>", "eval"), {"textwrap": textwrap})
+        break
+    assert isinstance(rescue, str)
+    script = tmp_path / "xaac-rescue-shell"
+    script.write_text(rescue, encoding="utf-8")
+    subprocess.run(["sh", "-n", str(script)], check=True)
+    assert "mount -o ro" in rescue
+    assert "PS1='xaac-rescue# '" in rescue

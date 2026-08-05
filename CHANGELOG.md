@@ -1,3 +1,12 @@
+## Unreleased — mode de recuperació Live
+
+- Afegida una entrada GRUB `XAAC rescue shell (root, read-only)`.
+- La ISO inicia una shell de `root` en `tty1` amb `xaac.mode=rescue`, sense dependre de contrasenyes del sistema instal·lat.
+- Les particions `XAAC_ROOT` i `XAAC_EFI` es detecten per etiqueta i es munten només en lectura sota `/mnt/xaac-rescue`.
+- Es genera `/run/xaac-rescue-report.txt` amb l'estat sanititzat de `xaac-admin`, la configuració PAM de `login`, `securetty` i possibles registres de bloqueig.
+- Els muntatges es netegen automàticament en eixir o interrompre la shell.
+- Suite completa: 1374 proves superades.
+
 ## Unreleased
 - Estabilitzada l’arrencada UEFI del sistema instal·lat amb una cadena Debian signada: `shim-signed` com a `EFI/BOOT/BOOTX64.EFI` i `grub-efi-amd64-signed` com a `EFI/BOOT/grubx64.efi`.
 
