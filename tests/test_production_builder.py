@@ -254,7 +254,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "Configureu ara la contrasenya" in source
     assert "stty -echo" in source
     assert '${#admin_password}' in source
-    assert 'chroot "$mount_root" chpasswd' in source
+    assert 'openssl passwd -6 -stdin' in source
     assert 'passwd -S xaac-admin' in source
     assert '/var/lib/xaac/admin/password-changed' in source
     assert 'unset admin_password' in source
@@ -500,11 +500,13 @@ def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert "stty -echo" in source
     assert "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM" in source
-    assert "chpasswd" in source
+    assert "openssl passwd -6 -stdin" in source
     assert "passwd -S xaac-admin" in source
-    assert "usermod --unlock --shell /bin/bash xaac-admin" in source
+    assert "usermod --password" in source
     assert "chage -E -1 -I -1 -m 0 xaac-admin" in source
     assert "getent shadow xaac-admin" in source
+    assert "pamtester login xaac-admin authenticate" in source
+    assert "usermod --password" in source
     assert '["passwd", "--lock", "xaac-kiosk"]' in source
     assert "installation-summary.txt" in source
     assert "admin_password=$admin_password" not in source

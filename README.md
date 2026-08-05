@@ -322,3 +322,7 @@ l’autologin de `tty1`; `root` continua sense accés interactiu per contrasenya
 Com que la contrasenya la tria directament l’administrador durant la instal·lació,
 es crea el marcador de canvi completat i no es torna a exigir un canvi redundant
 en el primer inici de sessió.
+
+### Validació real de la contrasenya administrativa
+
+La instal·lació no considera vàlida la configuració de `xaac-admin` només perquè `/etc/shadow` continga un hash. La contrasenya introduïda es transforma en un hash SHA-512, s’assigna explícitament al compte i es comprova immediatament contra la pila PAM de `login` amb `pamtester`. Si PAM no l’accepta, la instal·lació s’atura i no mostra el missatge d’èxit.

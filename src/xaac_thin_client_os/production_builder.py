@@ -109,6 +109,8 @@ class BuildSettings:
             "network-manager",
             "python3",
             "python3-venv",
+            "openssl",
+            "pamtester",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []
@@ -824,8 +826,9 @@ class ProductionIsoBuilder:
             'fsck.vfat -n "$p1" >/dev/null || { printf \'%s\\n\' \'La partició EFI FAT32 no supera la verificació.\'; exit 1; }\n'
             'mount "$p1" "$mount_root/boot/efi"\n'
             "printf '%s\\n' '[7/9] Configurant l’administrador local...'\n"
-            'printf \'%s:%s\\n\' xaac-admin "$admin_password" | chroot "$mount_root" chpasswd\n'
-            'chroot "$mount_root" usermod --unlock --shell /bin/bash xaac-admin\n'
+            'admin_hash=$(printf \'%s\' "$admin_password" | openssl passwd -6 -stdin)\n'
+            'case "$admin_hash" in \'$6$\'*) ;; *) printf \'%s\\n\' \'No s’ha pogut generar el hash SHA-512 de xaac-admin.\'; exit 1 ;; esac\n'
+            'chroot "$mount_root" usermod --password "$admin_hash" --unlock --shell /bin/bash xaac-admin\n'
             'chroot "$mount_root" chage -E -1 -I -1 -m 0 xaac-admin\n'
             'passwd_status=$(chroot "$mount_root" passwd -S xaac-admin 2>/dev/null | awk \'{print $2}\')\n'
             'shadow_password=$(chroot "$mount_root" getent shadow xaac-admin 2>/dev/null | cut -d: -f2)\n'
@@ -833,6 +836,7 @@ class ProductionIsoBuilder:
             '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No s’ha pogut activar la contrasenya de xaac-admin.\'; exit 1; }\n'
             'case "$shadow_password" in \'\'|\\!*|\\**) printf \'%s\\n\' \'El compte xaac-admin continua bloquejat en /etc/shadow.\'; exit 1 ;; esac\n'
             '[ "$admin_shell" = /bin/bash ] || { printf \'%s\\n\' \'La shell de xaac-admin no és interactiva.\'; exit 1; }\n'
+            'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
             'unset admin_password\n'

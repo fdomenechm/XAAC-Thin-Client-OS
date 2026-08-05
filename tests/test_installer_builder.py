@@ -45,9 +45,10 @@ def test_prepares_installer_assets(tmp_path):
     assert "xaac-admin password" in script
     assert "stty -echo" in script
     assert '${#ADMIN_PASSWORD}' in script
-    assert 'chroot "$WORK/root" chpasswd' in script
+    assert 'openssl passwd -6 -stdin' in script
+    assert 'pamtester login xaac-admin authenticate' in script
     assert 'passwd -S xaac-admin' in script
-    assert "usermod --unlock --shell /bin/bash xaac-admin" in script
+    assert "usermod --password" in script
     assert "chage -E -1 -I -1 -m 0 xaac-admin" in script
     assert "getent shadow xaac-admin" in script
     assert '/var/lib/xaac/admin/password-changed' in script
@@ -108,3 +109,14 @@ def test_cli(tmp_path):
     assert build_parser().parse_args(["build-installer", "--dry-run"]).command == "build-installer"
     (tmp_path / "config").mkdir(); (tmp_path / "config/installer-builder.yaml").write_text((ROOT / "config/installer-builder.yaml").read_text())
     assert main(["--root", str(tmp_path), "build-installer", "--dry-run"]) == 0
+
+
+def test_installer_verifies_admin_password_with_pam(project_root: Path, tmp_path: Path) -> None:
+    profile = project_root / "config/installer-builder.yaml"
+    plan = create_installer_build_plan(tmp_path, profile)
+    InstallerBuilder().prepare(plan)
+    script = plan.output("installer_script").read_text(encoding="utf-8")
+    assert "openssl passwd -6 -stdin" in script
+    assert "usermod --password" in script
+    assert "pamtester login xaac-admin authenticate" in script
+    assert "chpasswd" not in script

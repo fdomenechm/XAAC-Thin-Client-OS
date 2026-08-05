@@ -229,13 +229,15 @@ mkdir -p "$WORK/root/boot/efi"; mount "${P}1" "$WORK/root/boot/efi"
 mount --bind /dev "$WORK/root/dev"; mount -t proc proc "$WORK/root/proc"; mount -t sysfs sys "$WORK/root/sys"
 chroot "$WORK/root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram
 chroot "$WORK/root" update-grub
-printf '%s:%s\n' xaac-admin "$ADMIN_PASSWORD" | chroot "$WORK/root" chpasswd
-chroot "$WORK/root" usermod --unlock --shell /bin/bash xaac-admin
+ADMIN_HASH=$(printf '%s' "$ADMIN_PASSWORD" | openssl passwd -6 -stdin)
+case "$ADMIN_HASH" in '$6$'*) ;; *) fail "xaac-admin SHA-512 password hash generation failed" ;; esac
+chroot "$WORK/root" usermod --password "$ADMIN_HASH" --unlock --shell /bin/bash xaac-admin
 chroot "$WORK/root" chage -E -1 -I -1 -m 0 xaac-admin
 [ "$(chroot "$WORK/root" passwd -S xaac-admin | awk '{print $2}')" = P ] || fail "xaac-admin password activation failed"
 SHADOW_PASSWORD=$(chroot "$WORK/root" getent shadow xaac-admin | cut -d: -f2)
 case "$SHADOW_PASSWORD" in ''|\!*|\**) fail "xaac-admin remains locked in shadow" ;; esac
 [ "$(chroot "$WORK/root" getent passwd xaac-admin | cut -d: -f7)" = /bin/bash ] || fail "xaac-admin shell is not interactive"
+printf '%s\n' "$ADMIN_PASSWORD" | chroot "$WORK/root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || fail "PAM rejected xaac-admin password"
 chroot "$WORK/root" mkdir -p /var/lib/xaac/admin
 chroot "$WORK/root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed
 unset ADMIN_PASSWORD
