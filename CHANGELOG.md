@@ -1,12 +1,3 @@
-## Unreleased — autenticació real de `xaac-admin`
-
-- La contrasenya de `xaac-admin` es converteix explícitament en un hash SHA-512 amb `openssl passwd -6`.
-- El compte s’activa amb `usermod --password`, evitant dependre del comportament intern de `chpasswd` dins del chroot.
-- L’instal·lador executa una autenticació real amb PAM mitjançant `pamtester login xaac-admin authenticate`.
-- La instal·lació falla abans de finalitzar si PAM rebutja la contrasenya.
-- `openssl` i `pamtester` passen a ser dependències obligatòries del rootfs de producció.
-- Afegides proves de regressió per impedir tornar a una validació basada només en `/etc/shadow`.
-
 ## Unreleased
 - Estabilitzada l’arrencada UEFI del sistema instal·lat amb una cadena Debian signada: `shim-signed` com a `EFI/BOOT/BOOTX64.EFI` i `grub-efi-amd64-signed` com a `EFI/BOOT/grubx64.efi`.
 

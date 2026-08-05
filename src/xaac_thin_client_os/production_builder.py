@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
@@ -869,6 +870,80 @@ class ProductionIsoBuilder:
             0o755,
         )
         self._atomic_write(
+            self._inside("/usr/local/sbin/xaac-rescue-shell"),
+            textwrap.dedent(r"""
+            #!/bin/sh
+            set -eu
+            mount_root=/mnt/xaac-rescue
+            report=/run/xaac-rescue-report.txt
+            cleanup() {
+                umount "$mount_root/boot/efi" 2>/dev/null || true
+                umount "$mount_root" 2>/dev/null || true
+            }
+            trap cleanup EXIT HUP INT TERM
+            clear
+            printf '%s\n' 'XAAC Thin Client OS — Mode de recuperació'
+            printf '%s\n' '========================================='
+            printf '%s\n' 'Shell de root del sistema Live. El sistema instal·lat es munta en mode només lectura.'
+            mkdir -p "$mount_root/boot/efi"
+            root_device=$(blkid -L XAAC_ROOT 2>/dev/null || true)
+            efi_device=$(blkid -L XAAC_EFI 2>/dev/null || true)
+            if [ -n "$root_device" ]; then
+                mount -o ro "$root_device" "$mount_root"
+                mkdir -p "$mount_root/boot/efi"
+                if [ -n "$efi_device" ]; then
+                    mount -o ro "$efi_device" "$mount_root/boot/efi" || true
+                fi
+                {
+                    printf 'root_device=%s\n' "$root_device"
+                    printf 'efi_device=%s\n' "${efi_device:-not-found}"
+                    printf '%s\n' '--- passwd ---'
+                    grep '^xaac-admin:' "$mount_root/etc/passwd" 2>/dev/null || true
+                    printf '%s\n' '--- shadow status ---'
+                    awk -F: '$1=="xaac-admin" { p=$2; if (p ~ /^[!*]/) state="locked"; else if (p=="") state="empty"; else state="password-set"; printf "user=%s state=%s hash_prefix=%s\\n",$1,state,substr(p,1,4) }' "$mount_root/etc/shadow" 2>/dev/null || true
+                    printf '%s\n' '--- PAM login stack ---'
+                    sed -n '1,200p' "$mount_root/etc/pam.d/login" 2>/dev/null || true
+                    printf '%s\n' '--- securetty ---'
+                    find "$mount_root/etc/securetty.d" -maxdepth 1 -type f -print -exec sed -n '1,120p' {} \; 2>/dev/null || true
+                    printf '%s\n' '--- faillock ---'
+                    find "$mount_root/var/run/faillock" "$mount_root/var/lib/faillock" -maxdepth 1 -type f -ls 2>/dev/null || true
+                } | tee "$report"
+                printf '\nSistema instal·lat muntat en %s (només lectura).\n' "$mount_root"
+                printf 'Informe: %s\n' "$report"
+            else
+                printf '%s\n' 'No s’ha trobat cap partició amb etiqueta XAAC_ROOT.'
+            fi
+            printf '%s\n' 'Ordres útils: cat /run/xaac-rescue-report.txt, lsblk -f, blkid.'
+            printf '%s\n' 'Escriviu exit per reiniciar.'
+            PS1='xaac-rescue# ' /bin/bash --noprofile --norc || true
+            systemctl reboot
+            """),
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-rescue-shell.service"),
+            "[Unit]\n"
+            "Description=XAAC Live recovery root shell\n"
+            "ConditionKernelCommandLine=xaac.mode=rescue\n"
+            "After=systemd-user-sessions.service\n"
+            "Before=getty@tty1.service\n"
+            "Conflicts=getty@tty1.service xaac-installer-welcome.service\n\n"
+            "[Service]\n"
+            "Type=idle\n"
+            "ExecStartPre=-/bin/systemctl stop getty@tty1.service\n"
+            "ExecStart=/usr/local/sbin/xaac-rescue-shell\n"
+            "StandardInput=tty\n"
+            "StandardOutput=tty\n"
+            "StandardError=tty\n"
+            "TTYPath=/dev/tty1\n"
+            "TTYReset=yes\n"
+            "TTYVHangup=yes\n"
+            "TTYVTDisallocate=yes\n"
+            "Restart=no\n\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n",
+        )
+        self._atomic_write(
             self._inside("/etc/systemd/system/xaac-installer-welcome.service"),
             "[Unit]\n"
             "Description=XAAC Thin Client OS complete installer (step 5)\n"
@@ -935,6 +1010,7 @@ class ProductionIsoBuilder:
             self._chroot(["systemctl", "enable", "ssh.service"], phase="configure-ssh")
             self._chroot(["systemctl", "enable", "nftables.service"], phase="configure-firewall")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
+            self._chroot(["systemctl", "enable", "xaac-rescue-shell.service"], phase="configure-rescue-shell")
         with contextlib.suppress(FileNotFoundError):
             self._inside("/usr/sbin/policy-rc.d").unlink()
         self._save_state("configure")
@@ -1002,6 +1078,9 @@ class ProductionIsoBuilder:
             "  initrd /live/initrd.img\n}\n\n"
             "menuentry 'XAAC diagnostics (read-only)' {\n"
             f"  linux /live/vmlinuz {diagnostics}\n"
+            "  initrd /live/initrd.img\n}\n\n"
+            "menuentry 'XAAC rescue shell (root, read-only)' {\n"
+            f"  linux /live/vmlinuz {params} xaac.mode=rescue systemd.unit=multi-user.target\n"
             "  initrd /live/initrd.img\n}\n",
         )
         self.paths.artifacts.mkdir(parents=True, exist_ok=True)
