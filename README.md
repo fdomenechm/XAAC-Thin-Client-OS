@@ -344,3 +344,7 @@ sudo /usr/local/libexec/xaac/diagnostics --pam-test
 ```
 
 La contrasenya es demana interactivament i no es desa. Aquesta infraestructura no s'instal·la en canals `testing`, `candidate`, `stable` o `long-term`.
+
+### Verificació reforçada de credencials d’administració
+
+L’instal·lador escriu el hash xifrat de `xaac-admin` amb `chpasswd --encrypted`, comprova que el valor exacte ha quedat en l’`/etc/shadow` del disc de destinació i repeteix la comprovació al final de la postinstal·lació. El diagnòstic de desenvolupament mostra només informació segura i busca directives XAAC que pogueren tornar a bloquejar el compte.

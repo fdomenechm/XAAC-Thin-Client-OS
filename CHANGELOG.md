@@ -1,3 +1,8 @@
+## Unreleased
+
+- Reforçada l’activació de `xaac-admin` amb `chpasswd --encrypted`, comparació exacta del hash i verificació final.
+- Ampliat el diagnòstic amb prefix segur de shadow i detecció de directives de bloqueig.
+
 ## Unreleased — diagnòstic local de desenvolupament
 
 - Afegida `/usr/local/libexec/xaac/diagnostics` exclusivament quan `config/build.yaml` usa el canal `development`.

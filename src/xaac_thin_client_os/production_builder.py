@@ -65,8 +65,13 @@ else
         '$'*) state=configured; prefix=$(printf '%s' "$field" | cut -d'$' -f2) ;;
         *) state=configured; prefix=legacy ;;
     esac
-    printf 'shadow: %s (scheme=%s, length=%s)\n' "$state" "$prefix" "${#field}"
+    preview=$(printf '%s' "$field" | cut -c1-4)
+    [ "$state" = configured ] || preview=$(printf '%s' "$field" | cut -c1-2)
+    printf 'shadow: %s (scheme=%s, length=%s, prefix=%s)\n' "$state" "$prefix" "${#field}" "$preview"
 fi
+
+printf '\n%s\n' '[XAAC account lock directives]'
+grep -RInE 'passwd[[:space:]]+--lock[[:space:]]+xaac-admin|usermod[[:space:]].*(-L|--lock)[[:space:]]+xaac-admin' /usr/local/libexec /usr/local/sbin /etc/systemd /etc/xaac 2>/dev/null || printf '%s\n' 'No runtime XAAC lock directives found.'
 
 printf '\n%s\n' '[age and groups]'
 chage -l xaac-admin 2>&1 || true
@@ -909,18 +914,18 @@ class ProductionIsoBuilder:
             "printf '%s\\n' '[7/9] Configurant l’administrador local...'\n"
             'admin_hash=$(printf \'%s\' "$admin_password" | openssl passwd -6 -stdin)\n'
             'case "$admin_hash" in \'$6$\'*) ;; *) printf \'%s\\n\' \'No s’ha pogut generar el hash SHA-512 de xaac-admin.\'; exit 1 ;; esac\n'
-            'chroot "$mount_root" usermod --password "$admin_hash" --unlock --shell /bin/bash xaac-admin\n'
+            "printf 'xaac-admin:%s\\n' \"$admin_hash\" | chroot \"$mount_root\" chpasswd --encrypted\n"
+            'chroot "$mount_root" usermod --unlock --shell /bin/bash xaac-admin\n'
             'chroot "$mount_root" chage -E -1 -I -1 -m 0 xaac-admin\n'
             'passwd_status=$(chroot "$mount_root" passwd -S xaac-admin 2>/dev/null | awk \'{print $2}\')\n'
-            'shadow_password=$(chroot "$mount_root" getent shadow xaac-admin 2>/dev/null | cut -d: -f2)\n'
+            "shadow_password=$(awk -F: '$1 == \"xaac-admin\" {print $2}' \"$mount_root/etc/shadow\")\n"
             'admin_shell=$(chroot "$mount_root" getent passwd xaac-admin 2>/dev/null | cut -d: -f7)\n'
             '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No s’ha pogut activar la contrasenya de xaac-admin.\'; exit 1; }\n'
-            'case "$shadow_password" in \'\'|\\!*|\\**) printf \'%s\\n\' \'El compte xaac-admin continua bloquejat en /etc/shadow.\'; exit 1 ;; esac\n'
+            '[ "$shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'El hash de xaac-admin no ha quedat escrit al sistema de destinació.\'; exit 1; }\n'
             '[ "$admin_shell" = /bin/bash ] || { printf \'%s\\n\' \'La shell de xaac-admin no és interactiva.\'; exit 1; }\n'
             'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
-            'unset admin_password\n'
             "printf '%s\\n' '[8/9] Preparant el primer arrencament...'\n"
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
@@ -932,6 +937,13 @@ class ProductionIsoBuilder:
             'test -f "$mount_root/etc/fstab"\n'
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
             'test -s "$mount_root/boot/grub/grub.cfg"\n'
+            "final_shadow_password=$(awk -F: '$1 == \"xaac-admin\" {print $2}' \"$mount_root/etc/shadow\")\n"
+            '[ "$final_shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'La verificació final ha detectat que xaac-admin ha tornat a quedar bloquejat o alterat.\'; exit 1; }\n'
+            "admin_hash_fingerprint=$(printf '%s' \"$admin_hash\" | sha256sum | awk '{print $1}')\n"
+            "printf 'status=configured\\nscheme=sha512\\nfingerprint=%s\\n' \"$admin_hash_fingerprint\" > \"$mount_root/var/lib/xaac/admin/install-credential-state\"\n"
+            'chmod 0640 "$mount_root/var/lib/xaac/admin/install-credential-state"\n'
+            'chown root:xaac-admin "$mount_root/var/lib/xaac/admin/install-credential-state"\n'
+            'unset admin_password admin_hash final_shadow_password shadow_password\n'
             'cat > "$mount_root/recovery/installer/installation-summary.txt" <<EOF\n'
             'status=completed\n'
             'target=$target\n'

@@ -502,14 +502,18 @@ def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
     assert "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM" in source
     assert "openssl passwd -6 -stdin" in source
     assert "passwd -S xaac-admin" in source
-    assert "usermod --password" in source
+    assert "chpasswd --encrypted" in source
     assert "chage -E -1 -I -1 -m 0 xaac-admin" in source
-    assert "getent shadow xaac-admin" in source
+    assert "awk -F:" in source and "$mount_root/etc/shadow" in source
     assert "pamtester login xaac-admin authenticate" in source
-    assert "usermod --password" in source
+    assert "chpasswd --encrypted" in source
     assert '["passwd", "--lock", "xaac-kiosk"]' in source
     assert "installation-summary.txt" in source
     assert "admin_password=$admin_password" not in source
+    assert "chpasswd --encrypted" in source
+    assert "final_shadow_password" in source
+    assert "install-credential-state" in source
+    assert "fingerprint=%s" in source
 
 
 def test_development_diagnostics_is_restricted_and_read_only() -> None:
@@ -528,11 +532,13 @@ def test_development_diagnostics_is_restricted_and_read_only() -> None:
     assert "sh -c" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "rm -" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "mount " not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
-    assert "usermod" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "usermod --password" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "passwd -S xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "getent shadow xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "pamtester login xaac-admin authenticate" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "${#field}" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "prefix=%s" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "XAAC account lock directives" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
 
 
 def test_development_diagnostics_script_has_valid_shell_syntax(tmp_path: Path) -> None:
