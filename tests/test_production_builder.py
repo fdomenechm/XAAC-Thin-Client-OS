@@ -510,3 +510,34 @@ def test_installer_admin_password_is_private_and_kiosk_remains_locked() -> None:
     assert '["passwd", "--lock", "xaac-kiosk"]' in source
     assert "installation-summary.txt" in source
     assert "admin_password=$admin_password" not in source
+
+
+def test_development_diagnostics_is_restricted_and_read_only() -> None:
+    import inspect
+
+    from xaac_thin_client_os.production_builder import DEVELOPMENT_DIAGNOSTICS_SCRIPT
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert 'self.settings.channel == "development"' in source
+    assert "/usr/local/libexec/xaac/diagnostics" in source
+    assert "/etc/sudoers.d/xaac-kiosk-diagnostics" in source
+    assert "NOPASSWD: /usr/local/libexec/xaac/diagnostics" in source
+    assert "/usr/local/libexec/xaac/diagnostics --pam-test" in source
+    assert "ALL=(root) ALL" not in source
+    assert "bash" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "sh -c" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "rm -" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "mount " not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "usermod" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "passwd -S xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "getent shadow xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "pamtester login xaac-admin authenticate" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "${#field}" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+
+
+def test_development_diagnostics_script_has_valid_shell_syntax(tmp_path: Path) -> None:
+    from xaac_thin_client_os.production_builder import DEVELOPMENT_DIAGNOSTICS_SCRIPT
+
+    script = tmp_path / "diagnostics"
+    script.write_text(DEVELOPMENT_DIAGNOSTICS_SCRIPT, encoding="utf-8")
+    subprocess.run(["sh", "-n", str(script)], check=True)

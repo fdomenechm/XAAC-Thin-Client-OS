@@ -1,3 +1,13 @@
+## Unreleased — diagnòstic local de desenvolupament
+
+- Afegida `/usr/local/libexec/xaac/diagnostics` exclusivament quan `config/build.yaml` usa el canal `development`.
+- `xaac-kiosk` pot executar només aquest diagnòstic, sense contrasenya, mitjançant una regla `sudoers` exacta; no obté una shell ni permisos `sudo` generals.
+- L'eina és de només lectura i mostra l'existència, identitat, grups, shell, estat de contrasenya, caducitat, pila PAM i missatges recents d'autenticació de `xaac-admin`.
+- El hash de `/etc/shadow` no es mostra: només s'informa de si és buit, bloquejat o configurat, l'esquema i la longitud.
+- L'opció `--pam-test` permet comprovar interactivament la contrasenya contra PAM sense emmagatzemar-la.
+- No s'ha modificat GRUB, systemd ni el flux d'arrencada.
+- Suite completa: 1375 proves superades.
+
 ## Unreleased — autenticació real de `xaac-admin`
 
 - La contrasenya de `xaac-admin` es converteix explícitament en un hash SHA-512 amb `openssl passwd -6`.

@@ -25,6 +25,67 @@ from typing import Iterable, Iterator, Sequence
 
 import yaml
 
+DEVELOPMENT_DIAGNOSTICS_SCRIPT = r"""#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+
+if [ ! -f /etc/xaac/development-mode ]; then
+    printf '%s\n' 'XAAC diagnostics is only available in development builds.' >&2
+    exit 1
+fi
+
+printf '%s\n' 'XAAC local account diagnostics (read-only)'
+printf '%s\n' '==========================================='
+printf 'Date: '; date -u '+%Y-%m-%dT%H:%M:%SZ'
+printf 'Kernel: '; uname -srmo
+printf 'Boot mode: '
+if [ -d /sys/firmware/efi ]; then printf '%s\n' UEFI; else printf '%s\n' BIOS; fi
+
+printf '\n%s\n' '[xaac-admin identity]'
+if getent passwd xaac-admin >/dev/null 2>&1; then
+    getent passwd xaac-admin
+    id xaac-admin
+else
+    printf '%s\n' 'MISSING: xaac-admin does not exist'
+fi
+
+printf '\n%s\n' '[password state]'
+passwd -S xaac-admin 2>&1 || true
+shadow=$(getent shadow xaac-admin 2>/dev/null || true)
+if [ -z "$shadow" ]; then
+    printf '%s\n' 'shadow: missing'
+else
+    field=$(printf '%s\n' "$shadow" | cut -d: -f2)
+    case $field in
+        '') state=empty; prefix=none ;;
+        '!') state=locked; prefix=locked ;;
+        '!'*) state=locked; prefix=$(printf '%s' "${field#!}" | cut -c1-3) ;;
+        '\*'*) state=locked; prefix=asterisk ;;
+        '$'*) state=configured; prefix=$(printf '%s' "$field" | cut -d'$' -f2) ;;
+        *) state=configured; prefix=legacy ;;
+    esac
+    printf 'shadow: %s (scheme=%s, length=%s)\n' "$state" "$prefix" "${#field}"
+fi
+
+printf '\n%s\n' '[age and groups]'
+chage -l xaac-admin 2>&1 || true
+getent group sudo 2>&1 || true
+
+printf '\n%s\n' '[PAM login stack]'
+sed -n '1,160p' /etc/pam.d/login 2>/dev/null || true
+
+printf '\n%s\n' '[recent authentication messages]'
+journalctl --no-pager -b -n 80 -u 'getty@tty2.service' 2>/dev/null || true
+journalctl --no-pager -b -n 80 _COMM=login 2>/dev/null || true
+
+if [ "${1:-}" = '--pam-test' ]; then
+    printf '\n%s\n' '[interactive PAM test]'
+    printf '%s\n' 'Enter the xaac-admin password when prompted; it is not stored.'
+    pamtester login xaac-admin authenticate
+fi
+"""
+
 from xaac_thin_client_os.configuration import load_project_configuration
 from xaac_thin_client_os.packages import resolve_packages
 
@@ -78,6 +139,7 @@ class BuildSettings:
     kernel_parameters: tuple[str, ...]
     version: str
     profile: str
+    channel: str
 
     @classmethod
     def load(cls, project_root: Path) -> "BuildSettings":
@@ -138,6 +200,7 @@ class BuildSettings:
             kernel_parameters=tuple(dict.fromkeys(kernel_parameters)),
             version=configuration.build.version,
             profile=configuration.build.profile,
+            channel=configuration.build.channel.value,
         )
 
 
@@ -611,6 +674,24 @@ class ProductionIsoBuilder:
             f'XAAC_OS_PROFILE="{self.settings.profile}"\n'
             f'XAAC_OS_BUILD_ID="{build_id}"\n',
         )
+        if self.settings.channel == "development":
+            self._atomic_write(
+                self._inside("/etc/xaac/development-mode"),
+                f"channel={self.settings.channel}\nbuild_id={build_id}\n",
+                0o644,
+            )
+            self._atomic_write(
+                self._inside("/usr/local/libexec/xaac/diagnostics"),
+                DEVELOPMENT_DIAGNOSTICS_SCRIPT,
+                0o755,
+            )
+            self._atomic_write(
+                self._inside("/etc/sudoers.d/xaac-kiosk-diagnostics"),
+                "Defaults!/usr/local/libexec/xaac/diagnostics !authenticate,use_pty\n"
+                "xaac-kiosk ALL=(root) NOPASSWD: /usr/local/libexec/xaac/diagnostics, "
+                "/usr/local/libexec/xaac/diagnostics --pam-test\n",
+                0o440,
+            )
         # XAAC owns the complete console policy. Remove any stale Debian Live
         # autologin artefact left by an incremental build. tty2..tty6 deliberately
         # use Debian's untouched authenticated getty@.service template.
