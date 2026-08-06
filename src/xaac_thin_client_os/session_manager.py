@@ -134,7 +134,13 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "export XDG_CURRENT_DESKTOP=XAAC\n"
         "export XDG_SESSION_DESKTOP=xaac-kiosk\n"
         "export GDK_BACKEND=wayland,x11\n"
-        "exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml\n"
+        "if [ -x /usr/bin/labwc ] && [ -e /dev/dri/card0 ]; then\n"
+        "    export XDG_SESSION_TYPE=wayland\n"
+        "    exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml\n"
+        "fi\n"
+        "export XDG_SESSION_TYPE=x11\n"
+        "export GDK_BACKEND=x11\n"
+        "exec /usr/bin/startx /usr/bin/openbox -- -nolisten tcp -nocursor vt1\n"
     )
     desktop = (
         "[Desktop Entry]\n"

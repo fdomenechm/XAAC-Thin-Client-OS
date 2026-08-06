@@ -45,7 +45,7 @@ def test_runtime_failures(project_root: Path, changes: dict[str, object], failed
 
 def test_plan_generates_restricted_autologin(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
-    assert plan.packages == ("greetd",)
+    assert plan.packages == ("greetd", "xinit")
     assert {"gdm3", "lightdm", "sddm", "xdm"} <= set(plan.forbidden_packages)
     files = {p.as_posix(): (content, mode) for p, content, mode in plan.files}
     config, mode = files["/etc/greetd/config.toml"]
@@ -99,3 +99,12 @@ def test_cli_exposes_session_manager_command() -> None:
     from xaac_thin_client_os.cli import build_parser
     args = build_parser().parse_args(["configure-session-manager", "--dry-run"])
     assert args.command == "configure-session-manager" and args.dry_run
+
+
+def test_session_has_controlled_x11_fallback(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
+    assert {"greetd", "xinit"} <= set(plan.packages)
+    launcher = next(c for p, c, _ in plan.files if str(p).endswith("xaac-session"))
+    assert "exec /usr/bin/labwc" in launcher
+    assert "exec /usr/bin/startx /usr/bin/openbox" in launcher
+    assert "-nolisten tcp" in launcher

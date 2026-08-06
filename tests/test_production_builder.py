@@ -589,3 +589,16 @@ def test_installer_configures_hostname_and_dhcp() -> None:
     assert "xaac-wired.nmconnection" in source
     assert "match-device=type:ethernet" in source
     assert source.count("method=auto") >= 2
+
+
+def test_production_builder_applies_definitive_kiosk_stack() -> None:
+    import inspect
+    from xaac_thin_client_os.production_builder import ProductionIsoBuilder
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "create_compositor_plan" in source
+    assert "create_session_manager_plan" in source
+    assert "create_thin_client_launcher_plan" in source
+    assert "create_session_supervisor_plan" in source
+    assert 'enable", "greetd.service"' in source
+    assert 'set-default", "graphical.target"' in source
+    assert "ConditionKernelCommandLine=!xaac.mode=installer" in source

@@ -190,6 +190,10 @@ fi
 
 from xaac_thin_client_os.configuration import load_project_configuration
 from xaac_thin_client_os.packages import resolve_packages
+from xaac_thin_client_os.compositor import CompositorConfigurator, create_compositor_plan
+from xaac_thin_client_os.session_manager import SessionManagerConfigurator, create_session_manager_plan
+from xaac_thin_client_os.session_supervisor import SessionSupervisorConfigurator, create_session_supervisor_plan
+from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
 
 
 class ProductionBuildError(RuntimeError):
@@ -275,6 +279,14 @@ class BuildSettings:
             "python3-venv",
             "openssl",
             "pamtester",
+            "greetd",
+            "labwc",
+            "openbox",
+            "xinit",
+            "xwayland",
+            "python3-gi",
+            "gir1.2-gtk-4.0",
+            "socat",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []
@@ -774,6 +786,26 @@ class ProductionIsoBuilder:
         self._atomic_write(self._inside("/etc/issue"), f"XAAC Thin Client OS {self.settings.version} \\n \\l\n")
         self._atomic_write(self._inside("/etc/issue.net"), f"XAAC Thin Client OS {self.settings.version}\n")
         self._atomic_write(self._inside("/etc/motd"), "XAAC Thin Client OS\nAdministració local restringida a personal autoritzat.\n")
+        # Apply the definitive kiosk stack to the real production rootfs.
+        # The order is intentional: the supervisor owns compositor autostart
+        # and therefore must be applied after the base compositor plan.
+        CompositorConfigurator().execute(
+            create_compositor_plan(self.paths.rootfs, self.paths.project_root / "config/compositor.yaml")
+        )
+        SessionManagerConfigurator().execute(
+            create_session_manager_plan(self.paths.rootfs, self.paths.project_root / "config/session-manager.yaml")
+        )
+        ThinClientLauncherConfigurator().execute(
+            create_thin_client_launcher_plan(self.paths.rootfs, self.paths.project_root / "config/thin-client-launcher.yaml")
+        )
+        SessionSupervisorConfigurator().execute(
+            create_session_supervisor_plan(self.paths.rootfs, self.paths.project_root / "config/session-supervisor.yaml")
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
+            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
+        )
+
         self._atomic_write(
             self._inside("/etc/default/xaac-os"),
             f'XAAC_OS_VERSION="{self.settings.version}"\n'
@@ -1200,6 +1232,8 @@ class ProductionIsoBuilder:
             self._chroot(["systemctl", "enable", "NetworkManager.service"], phase="configure-networkmanager")
             self._chroot(["systemctl", "enable", "ssh.service"], phase="configure-ssh")
             self._chroot(["systemctl", "enable", "nftables.service"], phase="configure-firewall")
+            self._chroot(["systemctl", "enable", "greetd.service"], phase="configure-greetd")
+            self._chroot(["systemctl", "set-default", "graphical.target"], phase="configure-graphical-target")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
         with contextlib.suppress(FileNotFoundError):
             self._inside("/usr/sbin/policy-rc.d").unlink()

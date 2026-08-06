@@ -1329,3 +1329,12 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Muntatges de chroot confinats amb propagació `rslave` i neteja ordenada.
 - Sanejament de `machine-id`, claus SSH i `random-seed`.
 - Marcatge del primer arrencament, desactivació de l’instal·lador i resum persistent en la partició de recuperació.
+
+## Bloc 5 — Integració definitiva de XAAC Thin Client
+
+- Integrada la pila gràfica de quiosc dins del constructor real de la ISO de producció.
+- Habilitada l'arrencada automàtica de `xaac-kiosk` amb `greetd` i `graphical.target`.
+- Establit Wayland/labwc com a camí principal i X11/Openbox com a fallback controlat.
+- Afegida una pantalla d'espera GTK 4 a pantalla completa durant l'inici del client.
+- Consolidat el supervisor com a únic punt d'autostart, amb reinici limitat i backoff.
+- Evitada l'activació de `greetd` durant el mode instal·lador.

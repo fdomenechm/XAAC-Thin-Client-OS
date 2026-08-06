@@ -5,6 +5,9 @@ supervision:
   client_command: /usr/local/libexec/xaac-thin-client-launch
   supervisor_command: /usr/local/libexec/xaac-session-supervisor
   error_screen_command: /usr/local/libexec/xaac-session-error
+  startup_screen_command: /usr/local/libexec/xaac-startup-screen
+  startup_screen_minimum_seconds: 2
+  startup_screen_timeout_seconds: 20
   max_restarts: 5
   restart_window_seconds: 60
   initial_backoff_seconds: 2
@@ -22,5 +25,6 @@ packages:
 files:
   supervisor: /usr/local/libexec/xaac-session-supervisor
   error_screen: /usr/local/libexec/xaac-session-error
+  startup_screen: /usr/local/libexec/xaac-startup-screen
   policy: /etc/xaac/session/session-supervisor-policy.json
   labwc_autostart: /etc/xaac/labwc/autostart

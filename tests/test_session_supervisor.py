@@ -107,3 +107,16 @@ def test_cli_exposes_supervisor_command() -> None:
     from xaac_thin_client_os.cli import build_parser
     args = build_parser().parse_args(["configure-session-supervisor", "--dry-run"])
     assert args.command == "configure-session-supervisor" and args.dry_run
+
+
+def test_startup_screen_is_fullscreen_and_bounded(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
+    files = {str(p): c for p, c, _ in plan.files}
+    splash = files["/usr/local/libexec/xaac-startup-screen"]
+    supervisor = files["/usr/local/libexec/xaac-session-supervisor"]
+    assert "window.fullscreen()" in splash
+    assert "Iniciant l'aplicació" in splash
+    assert "GLib.timeout_add_seconds(timeout, self.quit)" in splash
+    assert '"$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" &' in supervisor
+    assert 'kill "$splash_pid"' in supervisor
+    assert 'wait "$client_pid"' in supervisor
