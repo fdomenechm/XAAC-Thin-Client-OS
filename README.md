@@ -366,3 +366,20 @@ La fase final de l’instal·lador elimina tots els artefactes exclusius del med
 ### Hostname i xarxa durant la instal·lació
 
 L’instal·lador demana un hostname, amb `xaac-thin-client` com a valor per defecte, i configura automàticament la xarxa Ethernet per DHCP.
+
+### Eines i diagnòstic de xarxa
+
+El sistema inclou `iproute2` i `iputils-ping`. La IP assignada per DHCP es pot consultar amb:
+
+```bash
+ip -4 addr show scope global
+```
+
+També es pot consultar l’estat complet de NetworkManager amb:
+
+```bash
+nmcli device status
+nmcli device show
+```
+
+En builds de desenvolupament, `sudo /usr/local/libexec/xaac/diagnostics` incorpora una secció `network state` amb interfícies, adreces, passarel·la, DNS, connexions actives i rutes, sense modificar la configuració.

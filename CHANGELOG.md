@@ -1,3 +1,10 @@
+## 2026-08-06 — Eines bàsiques i diagnòstic de xarxa
+
+- Afegits `iproute2` i `iputils-ping` als paquets obligatoris del rootfs.
+- L’ordre `ip` queda disponible en el sistema instal·lat per consultar interfícies, adreces i rutes.
+- Ampliat el diagnòstic de desenvolupament amb hostname, dispositius NetworkManager, connexions actives, IPv4, passarel·la, DNS, estat dels enllaços i rutes IPv4/IPv6.
+- El diagnòstic continua sent estrictament de només lectura.
+
 ## 2026-08-06 — Hostname i xarxa DHCP durant la instal·lació
 
 - L’instal·lador demana i valida el hostname.

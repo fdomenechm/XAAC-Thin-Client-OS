@@ -25,6 +25,8 @@ def test_resolve_project_packages(project_root: Path) -> None:
     assert "systemd" in resolved.packages
     assert "shim-signed" in resolved.packages
     assert "grub-efi-amd64-signed" in resolved.packages
+    assert "iproute2" in resolved.packages
+    assert "iputils-ping" in resolved.packages
     assert "firmware-linux" in resolved.packages
     assert "task-desktop" in resolved.excluded
     assert len(resolved.packages) == len(set(resolved.packages))

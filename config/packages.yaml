@@ -13,6 +13,8 @@ base:
 - parted
 - ca-certificates
 - apt
+- iproute2
+- iputils-ping
 - locales
 - keyboard-configuration
 - console-setup

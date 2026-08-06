@@ -566,6 +566,12 @@ def test_development_diagnostics_is_restricted_and_read_only() -> None:
     assert "getty@tty2.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "ssh.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "xaac-installer-welcome.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "[network state]" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "ip -brief address show" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "ip -4 route show" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "IP4.GATEWAY" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "IP4.DNS" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
 
 
 def test_development_diagnostics_script_has_valid_shell_syntax(tmp_path: Path) -> None:

@@ -117,6 +117,34 @@ esp_uuid=$(uuid_for_source "$esp_source")
 printf 'ESP source: %s\n' "${esp_source:-not-mounted}"
 printf 'ESP UUID: %s\n' "${esp_uuid:-unavailable}"
 
+printf '\n%s\n' '[network state]'
+printf 'Hostname: '; hostname 2>/dev/null || true
+if command -v nmcli >/dev/null 2>&1; then
+    printf '%s\n' 'NetworkManager devices:'
+    nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status 2>/dev/null || true
+    printf '%s\n' 'Active NetworkManager connections:'
+    nmcli -t -f NAME,UUID,TYPE,DEVICE connection show --active 2>/dev/null || true
+    printf '%s\n' 'IPv4 addresses:'
+    nmcli -g GENERAL.DEVICE,IP4.ADDRESS device show 2>/dev/null || true
+    printf '%s\n' 'IPv4 gateways:'
+    nmcli -g GENERAL.DEVICE,IP4.GATEWAY device show 2>/dev/null || true
+    printf '%s\n' 'DNS servers:'
+    nmcli -g GENERAL.DEVICE,IP4.DNS,IP6.DNS device show 2>/dev/null || true
+else
+    printf '%s\n' 'nmcli: unavailable'
+fi
+if command -v ip >/dev/null 2>&1; then
+    printf '%s\n' 'Kernel interfaces and addresses:'
+    ip -brief link show 2>/dev/null || true
+    ip -brief address show 2>/dev/null || true
+    printf '%s\n' 'IPv4 routes:'
+    ip -4 route show 2>/dev/null || true
+    printf '%s\n' 'IPv6 routes:'
+    ip -6 route show 2>/dev/null || true
+else
+    printf '%s\n' 'ip: unavailable (iproute2 is required)'
+fi
+
 printf '\n%s\n' '[GRUB and UEFI boot state]'
 for cfg in /boot/grub/grub.cfg /boot/efi/EFI/BOOT/grub.cfg /boot/efi/EFI/XAAC/grub.cfg /boot/efi/EFI/debian/grub.cfg; do
     if [ -f "$cfg" ]; then
