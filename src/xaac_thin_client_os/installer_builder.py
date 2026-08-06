@@ -234,11 +234,32 @@ install -m 0644 "$SOURCE_DIR/initrd.img" "$WORK/root/boot/initrd.img-$KERNEL_VER
 ln -sfn "vmlinuz-$KERNEL_VERSION" "$WORK/root/boot/vmlinuz"
 ln -sfn "initrd.img-$KERNEL_VERSION" "$WORK/root/boot/initrd.img"
 mkdir -p "$WORK/root/boot/efi"; mount "${P}1" "$WORK/root/boot/efi"
+ROOT_UUID=$(blkid -s UUID -o value "${P}2")
+[ -n "$ROOT_UUID" ] || fail "root filesystem UUID could not be determined"
 mount --bind /dev "$WORK/root/dev"; mount -t proc proc "$WORK/root/proc"; mount -t sysfs sys "$WORK/root/sys"
+mkdir -p "$WORK/root/etc/default/grub.d" "$WORK/root/etc/grub.d"
+cat > "$WORK/root/etc/default/grub.d/10-xaac-identity.cfg" <<'EOF'
+GRUB_DISTRIBUTOR="XAAC Thin Client OS"
+GRUB_DISABLE_SUBMENU=y
+EOF
+cat > "$WORK/root/etc/grub.d/09_xaac" <<EOF
+#!/bin/sh
+cat <<'XAAC_ENTRY'
+menuentry 'XAAC Thin Client OS' --class xaac --class gnu-linux --class gnu --class os {
+    insmod part_gpt
+    insmod ext2
+    search --no-floppy --fs-uuid --set=root $ROOT_UUID
+    linux /boot/vmlinuz root=UUID=$ROOT_UUID ro quiet
+    initrd /boot/initrd.img
+}
+XAAC_ENTRY
+EOF
+chmod 0755 "$WORK/root/etc/grub.d/09_xaac"
+chmod -x "$WORK/root/etc/grub.d/10_linux"
 chroot "$WORK/root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram
 chroot "$WORK/root" update-grub
 [ -s "$WORK/root/boot/grub/grub.cfg" ] || fail "grub.cfg was not generated"
-grep -Eq '^[[:space:]]*menuentry[[:space:]]+.*(XAAC|Debian|GNU/Linux)' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no bootable Linux menuentry"
+grep -Fq "menuentry 'XAAC Thin Client OS'" "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no XAAC Thin Client OS menuentry"
 grep -Eq '^[[:space:]]*linux[[:space:]]+.*vmlinuz' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no linux kernel command"
 grep -Eq '^[[:space:]]*initrd[[:space:]]+.*initrd' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no initrd command"
 ADMIN_HASH=$(printf '%s' "$ADMIN_PASSWORD" | openssl passwd -6 -stdin)

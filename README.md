@@ -349,6 +349,11 @@ La contrasenya es demana interactivament i no es desa. Aquesta infraestructura n
 
 L’instal·lador escriu el hash xifrat de `xaac-admin` amb `chpasswd --encrypted`, comprova que el valor exacte ha quedat en l’`/etc/shadow` del disc de destinació i repeteix la comprovació al final de la postinstal·lació. El diagnòstic de desenvolupament mostra només informació segura i busca directives XAAC que pogueren tornar a bloquejar el compte.
 
-## Arrencada del sistema instal·lat
+## Arrencada
+### Identitat del menú GRUB
+
+El sistema instal·lat genera una entrada principal amb el nom exacte **XAAC Thin Client OS**. La configuració es manté en `/etc/default/grub.d/10-xaac-identity.cfg` i `/etc/grub.d/09_xaac`; no es modifica manualment el fitxer generat `/boot/grub/grub.cfg`.
+
+ del sistema instal·lat
 
 El rootfs comprimit exclou `/boot` per no duplicar el nucli dins de la ISO. Durant la instal·lació, el constructor copia explícitament `live/vmlinuz` i `live/initrd.img` al `/boot` del disc amb la versió detectada en `/lib/modules`, crea els enllaços estàndard i només accepta el `grub.cfg` si conté una entrada Linux completa.

@@ -251,7 +251,10 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "fsck.vfat -n" in source
     assert "sgdisk -i 1" in source
     assert "update-grub" in source
-    assert "grub.cfg no conté cap entrada Linux arrancable" in source
+    assert 'GRUB_DISTRIBUTOR="XAAC Thin Client OS"' in source
+    assert "menuentry \'XAAC Thin Client OS\'" in source
+    assert 'chmod -x "$mount_root/etc/grub.d/10_linux"' in source
+    assert "grub.cfg no conté l’entrada XAAC Thin Client OS" in source
     assert "grub.cfg no conté cap ordre linux" in source
     assert "grub.cfg no conté cap ordre initrd" in source
     assert "etc/machine-id" in source

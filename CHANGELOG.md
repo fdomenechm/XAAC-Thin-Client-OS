@@ -12,6 +12,12 @@
 
 ## Unreleased
 
+- El menú GRUB del sistema instal·lat mostra ara exactament `XAAC Thin Client OS`.
+- S'ha afegit un generador GRUB propi (`/etc/grub.d/09_xaac`) basat en els enllaços estables `/boot/vmlinuz` i `/boot/initrd.img`.
+- El generador genèric `10_linux` queda desactivat per evitar entrades visibles `GNU/Linux` o `Debian GNU/Linux`.
+- `GRUB_DISTRIBUTOR` queda fixat a `XAAC Thin Client OS` en `/etc/default/grub.d/10-xaac-identity.cfg`.
+
+
 - Reforçada l’activació de `xaac-admin` amb `chpasswd --encrypted`, comparació exacta del hash i verificació final.
 - Ampliat el diagnòstic amb prefix segur de shadow i detecció de directives de bloqueig.
 

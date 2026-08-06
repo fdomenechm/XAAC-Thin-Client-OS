@@ -43,7 +43,10 @@ def test_prepares_installer_assets(tmp_path):
     assert "INSTALL XAAC" in script and "grub-install --target=x86_64-efi" in script
     assert 'KERNEL_VERSION=$(find "$WORK/root/lib/modules"' in script
     assert 'install -m 0644 "$SOURCE_DIR/vmlinuz"' in script
-    assert 'grub.cfg has no bootable Linux menuentry' in script
+    assert 'grub.cfg has no XAAC Thin Client OS menuentry' in script
+    assert 'GRUB_DISTRIBUTOR="XAAC Thin Client OS"' in script
+    assert "menuentry 'XAAC Thin Client OS'" in script
+    assert 'chmod -x "$WORK/root/etc/grub.d/10_linux"' in script
     assert "sha256sum -c" in script and "findmnt" in script
     assert "xaac-admin password" in script
     assert "stty -echo" in script
