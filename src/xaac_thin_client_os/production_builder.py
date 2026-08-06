@@ -870,7 +870,18 @@ class ProductionIsoBuilder:
             "rootfs_image=/run/live/medium/live/filesystem.squashfs\n"
             "[ -r \"$rootfs_image\" ] || { printf '%s\\n' 'No s’ha trobat filesystem.squashfs al mitjà Live.'; exit 1; }\n"
             "unsquashfs -f -d \"$mount_root\" \"$rootfs_image\"\n"
-            "printf '%s\\n' '[5/8] Generant la configuració de muntatge...'\n"
+            "printf '%s\\n' '[5/9] Instal·lant el nucli i l’initramfs al sistema de destinació...'\n"
+            'kernel_version=$(find "$mount_root/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf \'%f\\n\' | sort -V | tail -n1)\n'
+            '[ -n "$kernel_version" ] || { printf \'%s\\n\' \'No s’ha pogut determinar la versió del nucli instal·lat.\'; exit 1; }\n'
+            '[ -r /run/live/medium/live/vmlinuz ] || { printf \'%s\\n\' \'No s’ha trobat el nucli del mitjà Live.\'; exit 1; }\n'
+            '[ -r /run/live/medium/live/initrd.img ] || { printf \'%s\\n\' \'No s’ha trobat l’initramfs del mitjà Live.\'; exit 1; }\n'
+            'mkdir -p "$mount_root/boot"\n'
+            'install -m 0644 /run/live/medium/live/vmlinuz "$mount_root/boot/vmlinuz-$kernel_version"\n'
+            'install -m 0644 /run/live/medium/live/initrd.img "$mount_root/boot/initrd.img-$kernel_version"\n'
+            'ln -sfn "vmlinuz-$kernel_version" "$mount_root/boot/vmlinuz"\n'
+            'ln -sfn "initrd.img-$kernel_version" "$mount_root/boot/initrd.img"\n'
+            '[ -s "$mount_root/boot/vmlinuz-$kernel_version" ] && [ -s "$mount_root/boot/initrd.img-$kernel_version" ] || { printf \'%s\\n\' \'El nucli o l’initramfs no han quedat instal·lats a /boot.\'; exit 1; }\n'
+            "printf '%s\\n' '[6/9] Generant la configuració de muntatge...'\n"
             'root_uuid=$(blkid -s UUID -o value "$p2"); efi_uuid=$(blkid -s UUID -o value "$p1"); data_uuid=$(blkid -s UUID -o value "$p3"); recovery_uuid=$(blkid -s UUID -o value "$p4")\n'
             '[ -n "$root_uuid" ] && [ -n "$efi_uuid" ] && [ -n "$data_uuid" ] && [ -n "$recovery_uuid" ] || { printf \'%s\\n\' \'No s’han pogut obtindre tots els UUID.\'; exit 1; }\n'
             'cat > "$mount_root/etc/fstab" <<EOF\n'
@@ -879,7 +890,7 @@ class ProductionIsoBuilder:
             'UUID=$data_uuid /data ext4 defaults,noatime 0 2\n'
             'UUID=$recovery_uuid /recovery ext4 defaults,noatime 0 2\n'
             'EOF\n'
-            "printf '%s\\n' '[6/8] Instal·lant GRUB UEFI...'\n"
+            "printf '%s\\n' '[7/9] Instal·lant GRUB UEFI...'\n"
             'mkdir -p "$mount_root/dev" "$mount_root/proc" "$mount_root/sys" "$mount_root/run"\n'
             'mount --rbind /dev "$mount_root/dev"; mount --make-rslave "$mount_root/dev"\n'
             'mount -t proc proc "$mount_root/proc"\n'
@@ -905,13 +916,16 @@ class ProductionIsoBuilder:
             'EOF\n'
             'cp "$mount_root/boot/efi/EFI/BOOT/grub.cfg" "$mount_root/boot/efi/EFI/XAAC/grub.cfg"\n'
             '[ -s "$mount_root/boot/grub/grub.cfg" ] || { printf \'%s\\n\' \'No s’ha generat grub.cfg.\'; exit 1; }\n'
+            'grep -Eq "^[[:space:]]*menuentry[[:space:]]+.*(XAAC|Debian|GNU/Linux)" "$mount_root/boot/grub/grub.cfg" || { printf \'%s\\n\' \'grub.cfg no conté cap entrada Linux arrancable.\'; exit 1; }\n'
+            'grep -Eq "^[[:space:]]*linux[[:space:]]+.*vmlinuz" "$mount_root/boot/grub/grub.cfg" || { printf \'%s\\n\' \'grub.cfg no conté cap ordre linux per carregar el nucli.\'; exit 1; }\n'
+            'grep -Eq "^[[:space:]]*initrd[[:space:]]+.*initrd" "$mount_root/boot/grub/grub.cfg" || { printf \'%s\\n\' \'grub.cfg no conté cap ordre initrd.\'; exit 1; }\n'
             'for efi_file in "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI" "$mount_root/boot/efi/EFI/BOOT/grubx64.efi"; do [ -s "$efi_file" ] || { printf \'No existeix o està buit: %s\\n\' "$efi_file"; exit 1; }; [ "$(od -An -tx1 -N2 "$efi_file" | tr -d \' \\n\')" = 4d5a ] || { printf \'No és un executable PE/COFF vàlid: %s\\n\' "$efi_file"; exit 1; }; done\n'
             'grep -Fq "$root_uuid" "$mount_root/boot/efi/EFI/BOOT/grub.cfg" || { printf \'%s\\n\' \'El fallback GRUB no referencia l’UUID arrel.\'; exit 1; }\n'
             'sgdisk -i 1 "$target" | grep -Eqi \'EF00|EFI system partition\' || { printf \'%s\\n\' \'La primera partició no és una ESP GPT vàlida.\'; exit 1; }\n'
             'sync; umount "$mount_root/boot/efi"\n'
             'fsck.vfat -n "$p1" >/dev/null || { printf \'%s\\n\' \'La partició EFI FAT32 no supera la verificació.\'; exit 1; }\n'
             'mount "$p1" "$mount_root/boot/efi"\n'
-            "printf '%s\\n' '[7/9] Configurant l’administrador local...'\n"
+            "printf '%s\\n' '[8/10] Configurant l’administrador local...'\n"
             'admin_hash=$(printf \'%s\' "$admin_password" | openssl passwd -6 -stdin)\n'
             'case "$admin_hash" in \'$6$\'*) ;; *) printf \'%s\\n\' \'No s’ha pogut generar el hash SHA-512 de xaac-admin.\'; exit 1 ;; esac\n'
             "printf 'xaac-admin:%s\\n' \"$admin_hash\" | chroot \"$mount_root\" chpasswd --encrypted\n"
@@ -926,13 +940,13 @@ class ProductionIsoBuilder:
             'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
-            "printf '%s\\n' '[8/9] Preparant el primer arrencament...'\n"
+            "printf '%s\\n' '[9/10] Preparant el primer arrencament...'\n"
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
             'mkdir -p "$mount_root/var/lib/xaac" "$mount_root/recovery/installer"\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
             'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
-            "printf '%s\\n' '[9/9] Verificant la instal·lació...'\n"
+            "printf '%s\\n' '[10/10] Verificant la instal·lació...'\n"
             'test -x "$mount_root/usr/bin/systemctl"\n'
             'test -f "$mount_root/etc/fstab"\n'
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'

@@ -1,3 +1,10 @@
+## Unreleased — Bloc 1: arrencada del sistema instal·lat
+
+- Corregit el desplegament: `filesystem.squashfs` exclou deliberadament `/boot`, de manera que l’instal·lador ara copia explícitament el nucli i l’initramfs del mitjà Live al `/boot` del sistema instal·lat amb noms versionats.
+- Afegits els enllaços `/boot/vmlinuz` i `/boot/initrd.img`.
+- `update-grub` només es considera correcte si `grub.cfg` conté una entrada Linux, una ordre `linux` i una ordre `initrd`.
+- La instal·lació s’atura abans d’indicar èxit si el disc quedaria amb un GRUB buit.
+
 ## Unreleased
 
 - Reforçada l’activació de `xaac-admin` amb `chpasswd --encrypted`, comparació exacta del hash i verificació final.

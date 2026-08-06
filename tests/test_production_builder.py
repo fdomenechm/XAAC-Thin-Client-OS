@@ -233,6 +233,11 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "mkfs.ext4 -F -L XAAC_ROOT" in source
     assert "unsquashfs -f -d" in source
     assert "filesystem.squashfs" in source
+    assert 'kernel_version=$(find "$mount_root/lib/modules"' in source
+    assert '/run/live/medium/live/vmlinuz' in source
+    assert '/run/live/medium/live/initrd.img' in source
+    assert 'vmlinuz-$kernel_version' in source
+    assert 'initrd.img-$kernel_version' in source
     assert "UUID=$root_uuid / ext4 defaults,noatime 0 1" in source
     assert "trap cleanup_install EXIT HUP INT TERM" in source
     assert "grub-install --target=x86_64-efi" in source
@@ -246,6 +251,9 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "fsck.vfat -n" in source
     assert "sgdisk -i 1" in source
     assert "update-grub" in source
+    assert "grub.cfg no conté cap entrada Linux arrancable" in source
+    assert "grub.cfg no conté cap ordre linux" in source
+    assert "grub.cfg no conté cap ordre initrd" in source
     assert "etc/machine-id" in source
     assert "ssh_host_*" in source
     assert "first-boot.pending" in source

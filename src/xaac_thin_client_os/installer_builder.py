@@ -225,10 +225,22 @@ mkfs.ext4 -F -L XAAC_RECOVERY "${P}4"
 WORK=$(mktemp -d); trap 'umount "$WORK/root/boot/efi" "$WORK/root" 2>/dev/null || true; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/root"; mount "${P}2" "$WORK/root"
 unsquashfs -f -d "$WORK/root" "$ROOTFS"
+KERNEL_VERSION=$(find "$WORK/root/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)
+[ -n "$KERNEL_VERSION" ] || fail "installed kernel version could not be determined"
+[ -s "$SOURCE_DIR/vmlinuz" ] && [ -s "$SOURCE_DIR/initrd.img" ] || fail "kernel or initramfs is missing from installation source"
+mkdir -p "$WORK/root/boot"
+install -m 0644 "$SOURCE_DIR/vmlinuz" "$WORK/root/boot/vmlinuz-$KERNEL_VERSION"
+install -m 0644 "$SOURCE_DIR/initrd.img" "$WORK/root/boot/initrd.img-$KERNEL_VERSION"
+ln -sfn "vmlinuz-$KERNEL_VERSION" "$WORK/root/boot/vmlinuz"
+ln -sfn "initrd.img-$KERNEL_VERSION" "$WORK/root/boot/initrd.img"
 mkdir -p "$WORK/root/boot/efi"; mount "${P}1" "$WORK/root/boot/efi"
 mount --bind /dev "$WORK/root/dev"; mount -t proc proc "$WORK/root/proc"; mount -t sysfs sys "$WORK/root/sys"
 chroot "$WORK/root" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=XAAC --removable --no-nvram
 chroot "$WORK/root" update-grub
+[ -s "$WORK/root/boot/grub/grub.cfg" ] || fail "grub.cfg was not generated"
+grep -Eq '^[[:space:]]*menuentry[[:space:]]+.*(XAAC|Debian|GNU/Linux)' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no bootable Linux menuentry"
+grep -Eq '^[[:space:]]*linux[[:space:]]+.*vmlinuz' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no linux kernel command"
+grep -Eq '^[[:space:]]*initrd[[:space:]]+.*initrd' "$WORK/root/boot/grub/grub.cfg" || fail "grub.cfg has no initrd command"
 ADMIN_HASH=$(printf '%s' "$ADMIN_PASSWORD" | openssl passwd -6 -stdin)
 case "$ADMIN_HASH" in '$6$'*) ;; *) fail "xaac-admin SHA-512 password hash generation failed" ;; esac
 chroot "$WORK/root" usermod --password "$ADMIN_HASH" --unlock --shell /bin/bash xaac-admin
