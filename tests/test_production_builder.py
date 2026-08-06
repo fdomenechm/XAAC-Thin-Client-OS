@@ -602,3 +602,24 @@ def test_production_builder_applies_definitive_kiosk_stack() -> None:
     assert 'enable", "greetd.service"' in source
     assert 'set-default", "graphical.target"' in source
     assert "ConditionKernelCommandLine=!xaac.mode=installer" in source
+
+
+def test_destructive_clean_refuses_active_chroot_mounts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.dry_run = False
+    builder.paths.rootfs.mkdir(parents=True)
+    mounted = builder.paths.rootfs.resolve() / "dev"
+    monkeypatch.setattr(builder, "cleanup_chroot_mounts", lambda: None)
+    monkeypatch.setattr(builder, "_mounted_paths_below_rootfs", lambda: (mounted,))
+
+    with pytest.raises(ProductionBuildError, match="Operació insegura"):
+        builder.clean()
+
+
+def test_build_script_uses_private_mount_namespace() -> None:
+    project = Path(__file__).resolve().parents[1]
+    script = (project / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
+    assert "unshare --mount --propagation private" in script
+    assert "XAAC_PRIVATE_MOUNT_NS" in script

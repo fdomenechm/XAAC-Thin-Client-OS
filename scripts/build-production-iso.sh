@@ -12,7 +12,7 @@ if [[ ! -x "$PYTHON" ]]; then
     exit 1
 fi
 
-for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync; do
+for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync unshare; do
     command -v "$command" >/dev/null 2>&1 || {
         printf 'Error: falta la dependència del sistema: %s\n' "$command" >&2
         printf 'Executa: sudo ./scripts/install-build-dependencies.sh\n' >&2
@@ -26,6 +26,14 @@ if [[ ${EUID} -ne 0 ]]; then
         exit 3
     }
     exec sudo --preserve-env=PYTHON "$0" "$@"
+fi
+
+# Run the complete build in a private mount namespace. This prevents mount
+# propagation to the host and guarantees that any residual chroot mounts
+# disappear when the namespace terminates, even after an abnormal exit.
+if [[ ${XAAC_PRIVATE_MOUNT_NS:-0} != 1 ]]; then
+    export XAAC_PRIVATE_MOUNT_NS=1
+    exec unshare --mount --propagation private -- "$0" "$@"
 fi
 
 cd "$PROJECT_ROOT"

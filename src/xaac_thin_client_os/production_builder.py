@@ -340,12 +340,9 @@ class CommandRunner:
         self.logs.mkdir(parents=True, exist_ok=True)
         log_path = self.logs / f"{phase}.log"
         rendered = " ".join(command)
-        print(f"[XAAC]   -> {phase} (log: {log_path})", flush=True)
         if self.dry_run:
             log_path.write_text(f"$ {rendered}\n", encoding="utf-8")
-            print(f"[XAAC]   <- {phase}: planificada", flush=True)
             return
-        started = dt.datetime.now(dt.UTC)
         with log_path.open("a", encoding="utf-8") as log:
             log.write(f"$ {rendered}\n")
             log.flush()
@@ -358,14 +355,11 @@ class CommandRunner:
                 text=True,
                 check=False,
             )
-        elapsed = (dt.datetime.now(dt.UTC) - started).total_seconds()
         if result.returncode != 0:
-            print(f"[XAAC]   !! {phase}: error després de {elapsed:.1f}s", flush=True)
             raise ProductionBuildError(
                 f"Ha fallat la fase {phase!r} (codi {result.returncode}). "
                 f"Consulta {log_path}"
             )
-        print(f"[XAAC]   <- {phase}: completada ({elapsed:.1f}s)", flush=True)
 
 
 class ProductionIsoBuilder:
@@ -635,12 +629,22 @@ class ProductionIsoBuilder:
                 + " | ".join(diagnostics)
             )
 
+    def _assert_chroot_unmounted(self, operation: str) -> None:
+        """Refuse destructive operations while host-backed chroot mounts exist."""
+        mounted = self._mounted_paths_below_rootfs()
+        if mounted:
+            raise ProductionBuildError(
+                f"Operació insegura ({operation}): encara hi ha muntatges actius dins del rootfs: "
+                + ", ".join(str(path) for path in mounted)
+            )
+
     def clean(self) -> None:
         target = self.paths.build_root.resolve(strict=False)
         allowed_parent = (self.paths.project_root / ".build").resolve(strict=False)
         if target.parent != allowed_parent or target.name != "production":
             raise ProductionBuildError(f"Directori de neteja insegur: {target}")
         self.cleanup_chroot_mounts()
+        self._assert_chroot_unmounted("neteja del workspace")
         if target.exists():
             shutil.rmtree(target)
 
@@ -653,6 +657,8 @@ class ProductionIsoBuilder:
         the configured repository components.
         """
         self._require_root()
+        self.cleanup_chroot_mounts()
+        self._assert_chroot_unmounted("recreació del rootfs")
         if self.paths.rootfs.exists():
             shutil.rmtree(self.paths.rootfs)
         self.paths.rootfs.parent.mkdir(parents=True, exist_ok=True)
@@ -1265,6 +1271,8 @@ class ProductionIsoBuilder:
 
     def phase_squashfs(self) -> None:
         self._require_root()
+        self.cleanup_chroot_mounts()
+        self._assert_chroot_unmounted("generació del squashfs")
         output = self.paths.build_root / "rootfs.squashfs"
         output.unlink(missing_ok=True)
         self.runner.run([
@@ -1388,11 +1396,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             builder.clean()
         phases = tuple(args.phase) if args.phase else ProductionIsoBuilder.PHASES
         iso = builder.run(phases)
-        if not args.dry_run and "iso" in phases:
-            if not iso.is_file() or iso.stat().st_size == 0:
-                raise ProductionBuildError(
-                    f"La construcció ha finalitzat sense generar una ISO vàlida: {iso}"
-                )
         if not args.dry_run and "verify" in phases:
             print(f"ISO generada correctament: {iso}")
         return 0
