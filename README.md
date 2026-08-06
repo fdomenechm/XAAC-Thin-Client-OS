@@ -357,3 +357,8 @@ El sistema instal·lat genera una entrada principal amb el nom exacte **XAAC Thi
  del sistema instal·lat
 
 El rootfs comprimit exclou `/boot` per no duplicar el nucli dins de la ISO. Durant la instal·lació, el constructor copia explícitament `live/vmlinuz` i `live/initrd.img` al `/boot` del disc amb la versió detectada en `/lib/modules`, crea els enllaços estàndard i només accepta el `grub.cfg` si conté una entrada Linux completa.
+
+
+## Consolidació de la instal·lació
+
+La fase final de l’instal·lador elimina tots els artefactes exclusius del medi Live, fixa la identitat visible com a **XAAC Thin Client OS**, prepara una identitat nova per al primer arrencament i crea `/var/lib/xaac/installation/consolidated`. La instal·lació no es declara completada si l’instal·lador continua habilitat o si la identitat del sistema no és coherent.

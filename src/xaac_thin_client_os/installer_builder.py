@@ -274,8 +274,15 @@ printf '%s\n' "$ADMIN_PASSWORD" | chroot "$WORK/root" pamtester login xaac-admin
 chroot "$WORK/root" mkdir -p /var/lib/xaac/admin
 chroot "$WORK/root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed
 unset ADMIN_PASSWORD
+mkdir -p "$WORK/root/etc/xaac" "$WORK/root/var/lib/xaac/installation"
+cp "$WORK/root/etc/os-release" "$WORK/root/etc/xaac/os-release"
+rm -f "$WORK/root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"
+rm -f "$WORK/root/etc/systemd/system/xaac-installer-welcome.service" "$WORK/root/usr/local/sbin/xaac-installer-welcome"
+printf 'status=consolidated\ninstaller_removed=yes\nidentity=xaac-thin-client-os\n' > "$WORK/root/var/lib/xaac/installation/consolidated"
 umount "$WORK/root/sys" "$WORK/root/proc" "$WORK/root/dev"
 touch "$WORK/root/etc/xaac-first-boot.pending"
+test ! -e "$WORK/root/usr/local/sbin/xaac-installer-welcome" || fail "installer artefact remains in installed system"
+test -f "$WORK/root/var/lib/xaac/installation/consolidated" || fail "installation consolidation marker is missing"
 sync
 printf '{"status":"completed","target_disk":"%s","partitions":["XAAC_EFI","XAAC_ROOT","XAAC_DATA","XAAC_RECOVERY"],"bootloader":"grub-efi-amd64","verification":"passed","error":null}\n' "$TARGET" > "$SUMMARY"
 echo "XAAC Thin Client OS installation completed on $TARGET"

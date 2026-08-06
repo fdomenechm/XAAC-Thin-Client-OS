@@ -733,15 +733,19 @@ class ProductionIsoBuilder:
         localtime.symlink_to(f"/usr/share/zoneinfo/{self.settings.timezone}")
 
         build_id = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-        self._atomic_write(
-            self._inside("/etc/xaac/os-release"),
+        os_release = (
             "NAME=\"XAAC Thin Client OS\"\n"
             f"VERSION=\"{self.settings.version}\"\n"
-            "ID=xaac-thin-client-os\n"
+            "ID=xaac-thin-client-os\nID_LIKE=debian\n"
             f"VERSION_ID=\"{self.settings.version}\"\n"
-            f"XAAC_PROFILE=\"{self.settings.profile}\"\n"
-            f"XAAC_BUILD_ID=\"{build_id}\"\n",
+            f"PRETTY_NAME=\"XAAC Thin Client OS {self.settings.version}\"\n"
+            f"XAAC_PROFILE=\"{self.settings.profile}\"\nXAAC_BUILD_ID=\"{build_id}\"\n"
         )
+        self._atomic_write(self._inside("/etc/os-release"), os_release)
+        self._atomic_write(self._inside("/etc/xaac/os-release"), os_release)
+        self._atomic_write(self._inside("/etc/issue"), f"XAAC Thin Client OS {self.settings.version} \\n \\l\n")
+        self._atomic_write(self._inside("/etc/issue.net"), f"XAAC Thin Client OS {self.settings.version}\n")
+        self._atomic_write(self._inside("/etc/motd"), "XAAC Thin Client OS\nAdministració local restringida a personal autoritzat.\n")
         self._atomic_write(
             self._inside("/etc/default/xaac-os"),
             f'XAAC_OS_VERSION="{self.settings.version}"\n'
@@ -1028,17 +1032,25 @@ class ProductionIsoBuilder:
             'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
-            "printf '%s\\n' '[9/10] Preparant el primer arrencament...'\n"
+            "printf '%s\\n' '[9/10] Consolidant el sistema instal·lat i preparant el primer arrencament...'\n"
+            'mkdir -p "$mount_root/etc/xaac" "$mount_root/var/lib/xaac/installation" "$mount_root/recovery/installer"\n'
+            'cp "$mount_root/etc/os-release" "$mount_root/etc/xaac/os-release"\n'
+            'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
+            'rm -f "$mount_root/etc/systemd/system/xaac-installer-welcome.service" "$mount_root/usr/local/sbin/xaac-installer-welcome"\n'
+            'rm -f "$mount_root/run/xaac-installer"* "$mount_root/tmp/xaac-installer"* 2>/dev/null || true\n'
+            'printf "status=consolidated\\ninstaller_removed=yes\\nidentity=xaac-thin-client-os\\n" > "$mount_root/var/lib/xaac/installation/consolidated"\n'
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
-            'mkdir -p "$mount_root/var/lib/xaac" "$mount_root/recovery/installer"\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
-            'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
             "printf '%s\\n' '[10/10] Verificant la instal·lació...'\n"
             'test -x "$mount_root/usr/bin/systemctl"\n'
             'test -f "$mount_root/etc/fstab"\n'
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
             'test -s "$mount_root/boot/grub/grub.cfg"\n'
+            'grep -Fq "PRETTY_NAME=\\"XAAC Thin Client OS" "$mount_root/etc/os-release" || { printf \'%s\\n\' \'La identitat del sistema instal·lat no és correcta.\'; exit 1; }\n'
+            'test ! -e "$mount_root/usr/local/sbin/xaac-installer-welcome" || { printf \'%s\\n\' \'L’instal·lador continua present al sistema instal·lat.\'; exit 1; }\n'
+            'test ! -e "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service" || { printf \'%s\\n\' \'El servei de l’instal·lador continua habilitat.\'; exit 1; }\n'
+            'test -f "$mount_root/var/lib/xaac/installation/consolidated" || { printf \'%s\\n\' \'No existeix el marcador de consolidació.\'; exit 1; }\n'
             "final_shadow_password=$(awk -F: '$1 == \"xaac-admin\" {print $2}' \"$mount_root/etc/shadow\")\n"
             '[ "$final_shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'La verificació final ha detectat que xaac-admin ha tornat a quedar bloquejat o alterat.\'; exit 1; }\n'
             "admin_hash_fingerprint=$(printf '%s' \"$admin_hash\" | sha256sum | awk '{print $1}')\n"

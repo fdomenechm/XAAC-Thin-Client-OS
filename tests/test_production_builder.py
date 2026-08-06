@@ -269,6 +269,9 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert 'passwd -S xaac-admin' in source
     assert '/var/lib/xaac/admin/password-changed' in source
     assert 'unset admin_password' in source
+    assert '/var/lib/xaac/installation/consolidated' in source
+    assert 'L’instal·lador continua present al sistema instal·lat' in source
+    assert 'PRETTY_NAME=\\"XAAC Thin Client OS' in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
 
 def test_installer_grub_entry_uses_multi_user_target(tmp_path: Path) -> None:

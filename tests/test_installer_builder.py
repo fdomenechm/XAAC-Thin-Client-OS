@@ -59,6 +59,9 @@ def test_prepares_installer_assets(tmp_path):
     assert "getent shadow xaac-admin" in script
     assert '/var/lib/xaac/admin/password-changed' in script
     assert 'unset ADMIN_PASSWORD' in script
+    assert '/var/lib/xaac/installation/consolidated' in script
+    assert 'xaac-installer-welcome' in script
+    assert 'installer artefact remains in installed system' in script
     assert plan.output("installer_script").stat().st_mode & 0o777 == 0o750
 
 

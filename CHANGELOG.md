@@ -1,3 +1,12 @@
+## Unreleased — Bloc 4: consolidació de la instal·lació
+
+- Consolidada la identitat visible en `/etc/os-release`, `/etc/issue`, `/etc/issue.net` i `/etc/motd`.
+- Eliminats del sistema instal·lat el servei, l’executable i els enllaços d’activació de l’instal·lador Live.
+- Eliminats artefactes temporals de l’instal·lador abans de finalitzar.
+- Afegit el marcador persistent `/var/lib/xaac/installation/consolidated`.
+- Reforçades les verificacions finals perquè la instal·lació falle si la identitat o la neteja no són correctes.
+- Mantinguda la preparació idempotent de `machine-id`, claus SSH, `random-seed` i primer arrencament.
+
 ## Unreleased — Bloc 1: arrencada del sistema instal·lat
 - Consolidat el diagnòstic de desenvolupament perquè identifique inequívocament el mode `LIVE` o `INSTALLED`.
 - Afegida informació de dispositiu arrel, tipus de sistema de fitxers i UUID de l’arrel i de l’ESP.
