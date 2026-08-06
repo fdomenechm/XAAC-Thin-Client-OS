@@ -340,9 +340,12 @@ class CommandRunner:
         self.logs.mkdir(parents=True, exist_ok=True)
         log_path = self.logs / f"{phase}.log"
         rendered = " ".join(command)
+        print(f"[XAAC]   -> {phase} (log: {log_path})", flush=True)
         if self.dry_run:
             log_path.write_text(f"$ {rendered}\n", encoding="utf-8")
+            print(f"[XAAC]   <- {phase}: planificada", flush=True)
             return
+        started = dt.datetime.now(dt.UTC)
         with log_path.open("a", encoding="utf-8") as log:
             log.write(f"$ {rendered}\n")
             log.flush()
@@ -355,11 +358,14 @@ class CommandRunner:
                 text=True,
                 check=False,
             )
+        elapsed = (dt.datetime.now(dt.UTC) - started).total_seconds()
         if result.returncode != 0:
+            print(f"[XAAC]   !! {phase}: error després de {elapsed:.1f}s", flush=True)
             raise ProductionBuildError(
                 f"Ha fallat la fase {phase!r} (codi {result.returncode}). "
                 f"Consulta {log_path}"
             )
+        print(f"[XAAC]   <- {phase}: completada ({elapsed:.1f}s)", flush=True)
 
 
 class ProductionIsoBuilder:
@@ -1382,6 +1388,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             builder.clean()
         phases = tuple(args.phase) if args.phase else ProductionIsoBuilder.PHASES
         iso = builder.run(phases)
+        if not args.dry_run and "iso" in phases:
+            if not iso.is_file() or iso.stat().st_size == 0:
+                raise ProductionBuildError(
+                    f"La construcció ha finalitzat sense generar una ISO vàlida: {iso}"
+                )
         if not args.dry_run and "verify" in phases:
             print(f"ISO generada correctament: {iso}")
         return 0

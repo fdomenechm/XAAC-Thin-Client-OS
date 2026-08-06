@@ -1338,3 +1338,9 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Afegida una pantalla d'espera GTK 4 a pantalla completa durant l'inici del client.
 - Consolidat el supervisor com a únic punt d'autostart, amb reinici limitat i backoff.
 - Evitada l'activació de `greetd` durant el mode instal·lador.
+
+### Constructor ISO de producció
+
+- Mostra el progrés de cada subfase executada i el fitxer de log associat.
+- Mostra la duració i el resultat de cada ordre llarga del `chroot`.
+- Valida explícitament que la fase `iso` haja generat un artefacte no buit abans de retornar codi 0.
