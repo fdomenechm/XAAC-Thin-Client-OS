@@ -1,9 +1,3 @@
-
-## Unreleased
-
-- El constructor ISO s’executa dins d’un espai de noms de muntatge privat.
-- Les operacions destructives sobre `.build/production/rootfs` es bloquegen mentre hi haja qualsevol muntatge actiu.
-- `rootfs`, `clean` i `squashfs` verifiquen explícitament que `/dev`, `/proc`, `/sys` i `/run` estan desmuntats.
 ## 2026-08-06 — Eines bàsiques i diagnòstic de xarxa
 
 - Afegits `iproute2` i `iputils-ping` als paquets obligatoris del rootfs.
@@ -1344,3 +1338,9 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Afegida una pantalla d'espera GTK 4 a pantalla completa durant l'inici del client.
 - Consolidat el supervisor com a únic punt d'autostart, amb reinici limitat i backoff.
 - Evitada l'activació de `greetd` durant el mode instal·lador.
+
+### Correcció de visibilitat del constructor ISO
+
+- El constructor mostra l'inici i la finalització de cada ordre llarga.
+- Cada 30 segons informa que la subfase continua activa i mostra el temps transcorregut.
+- Els logs per fase continuen disponibles sota `.build/production/logs/`.

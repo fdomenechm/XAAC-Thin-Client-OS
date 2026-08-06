@@ -343,23 +343,45 @@ class CommandRunner:
         if self.dry_run:
             log_path.write_text(f"$ {rendered}\n", encoding="utf-8")
             return
+        started = time.monotonic()
+        print(f"[XAAC]   -> {phase} (log: {log_path})", flush=True)
         with log_path.open("a", encoding="utf-8") as log:
             log.write(f"$ {rendered}\n")
             log.flush()
-            result = subprocess.run(
+            process = subprocess.Popen(
                 list(command),
                 cwd=cwd,
                 env=env,
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 text=True,
-                check=False,
             )
-        if result.returncode != 0:
+            next_report = started + 30.0
+            while True:
+                returncode = process.poll()
+                if returncode is not None:
+                    break
+                now = time.monotonic()
+                if now >= next_report:
+                    elapsed = int(now - started)
+                    print(
+                        f"[XAAC]      {phase}: continua en execució ({elapsed}s)...",
+                        flush=True,
+                    )
+                    next_report = now + 30.0
+                time.sleep(1.0)
+        elapsed = time.monotonic() - started
+        if returncode != 0:
+            print(
+                f"[XAAC]   !! {phase}: ha fallat després de {elapsed:.1f}s",
+                file=sys.stderr,
+                flush=True,
+            )
             raise ProductionBuildError(
-                f"Ha fallat la fase {phase!r} (codi {result.returncode}). "
+                f"Ha fallat la fase {phase!r} (codi {returncode}). "
                 f"Consulta {log_path}"
             )
+        print(f"[XAAC]   <- {phase}: completada ({elapsed:.1f}s)", flush=True)
 
 
 class ProductionIsoBuilder:
