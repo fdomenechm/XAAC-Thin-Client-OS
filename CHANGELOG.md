@@ -1,3 +1,10 @@
+## 2026-08-06 — Hostname i xarxa DHCP durant la instal·lació
+
+- L’instal·lador demana i valida el hostname.
+- Configura `/etc/hostname` i `/etc/hosts`.
+- Configura Ethernet amb DHCP automàtic mitjançant NetworkManager.
+- Verifica la configuració abans de completar la instal·lació.
+
 ## Unreleased — Bloc 4: consolidació de la instal·lació
 
 - Consolidada la identitat visible en `/etc/os-release`, `/etc/issue`, `/etc/issue.net` i `/etc/motd`.

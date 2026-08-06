@@ -574,3 +574,12 @@ def test_development_diagnostics_script_has_valid_shell_syntax(tmp_path: Path) -
     script = tmp_path / "diagnostics"
     script.write_text(DEVELOPMENT_DIAGNOSTICS_SCRIPT, encoding="utf-8")
     subprocess.run(["sh", "-n", str(script)], check=True)
+
+
+def test_installer_configures_hostname_and_dhcp() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "Hostname [xaac-thin-client]" in source
+    assert "install_hostname=xaac-thin-client" in source
+    assert "xaac-wired.nmconnection" in source
+    assert "match-device=type:ethernet" in source
+    assert source.count("method=auto") >= 2

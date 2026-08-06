@@ -362,3 +362,7 @@ El rootfs comprimit exclou `/boot` per no duplicar el nucli dins de la ISO. Dura
 ## Consolidació de la instal·lació
 
 La fase final de l’instal·lador elimina tots els artefactes exclusius del medi Live, fixa la identitat visible com a **XAAC Thin Client OS**, prepara una identitat nova per al primer arrencament i crea `/var/lib/xaac/installation/consolidated`. La instal·lació no es declara completada si l’instal·lador continua habilitat o si la identitat del sistema no és coherent.
+
+### Hostname i xarxa durant la instal·lació
+
+L’instal·lador demana un hostname, amb `xaac-thin-client` com a valor per defecte, i configura automàticament la xarxa Ethernet per DHCP.

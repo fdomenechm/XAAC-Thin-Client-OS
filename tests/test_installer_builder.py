@@ -129,3 +129,12 @@ def test_installer_verifies_admin_password_with_pam(project_root: Path, tmp_path
     assert "usermod --password" in script
     assert "pamtester login xaac-admin authenticate" in script
     assert "chpasswd" not in script
+
+
+def test_installer_script_configures_hostname_and_dhcp(project_root: Path) -> None:
+    plan = create_installer_build_plan(project_root, project_root / "config/installer-builder.yaml")
+    InstallerBuilder().prepare(plan)
+    script = plan.output("installer_script").read_text(encoding="utf-8")
+    assert "Hostname [xaac-thin-client]" in script
+    assert "INSTALL_HOSTNAME=xaac-thin-client" in script
+    assert "xaac-wired.nmconnection" in script

@@ -200,6 +200,15 @@ while :; do
 done
 trap - HUP INT TERM
 unset ADMIN_PASSWORD_CONFIRM
+while :; do
+  printf '%s' 'Hostname [xaac-thin-client]: '
+  IFS= read -r INSTALL_HOSTNAME
+  [ -n "$INSTALL_HOSTNAME" ] || INSTALL_HOSTNAME=xaac-thin-client
+  case "$INSTALL_HOSTNAME" in *[!a-z0-9-]*|-*|*-) echo 'Invalid hostname.' >&2; continue ;; esac
+  [ "${#INSTALL_HOSTNAME}" -le 63 ] || { echo 'Hostname too long.' >&2; continue; }
+  break
+done
+echo 'Ethernet will use DHCP automatically.'
 case "$TARGET" in /dev/mmcblk*|/dev/sd*|/dev/nvme*n*) ;; *) fail "unsupported target disk" ;; esac
 findmnt -rn -S "$TARGET" >/dev/null 2>&1 && fail "target disk is mounted"
 ROOT_SOURCE=$(findmnt -nro SOURCE / || true)
@@ -274,6 +283,24 @@ printf '%s\n' "$ADMIN_PASSWORD" | chroot "$WORK/root" pamtester login xaac-admin
 chroot "$WORK/root" mkdir -p /var/lib/xaac/admin
 chroot "$WORK/root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed
 unset ADMIN_PASSWORD
+printf '%s\n' "$INSTALL_HOSTNAME" > "$WORK/root/etc/hostname"
+printf '127.0.0.1 localhost\n127.0.1.1 %s\n::1 localhost ip6-localhost ip6-loopback\n' "$INSTALL_HOSTNAME" > "$WORK/root/etc/hosts"
+mkdir -p "$WORK/root/etc/NetworkManager/system-connections"
+cat > "$WORK/root/etc/NetworkManager/system-connections/xaac-wired.nmconnection" <<'EOF'
+[connection]
+id=XAAC Wired DHCP
+type=ethernet
+autoconnect=true
+match-device=type:ethernet
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+EOF
+chmod 0600 "$WORK/root/etc/NetworkManager/system-connections/xaac-wired.nmconnection"
+chroot "$WORK/root" systemctl enable NetworkManager.service >/dev/null
 mkdir -p "$WORK/root/etc/xaac" "$WORK/root/var/lib/xaac/installation"
 cp "$WORK/root/etc/os-release" "$WORK/root/etc/xaac/os-release"
 rm -f "$WORK/root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"

@@ -898,6 +898,16 @@ class ProductionIsoBuilder:
             "done\n"
             "trap - HUP INT TERM\n"
             "unset admin_password_confirm\n"
+            "printf '\n%s\n' 'Configureu el nom de la màquina.'\n"
+            "while :; do\n"
+            "    printf '%s' 'Hostname [xaac-thin-client]: '\n"
+            "    IFS= read -r install_hostname\n"
+            "    [ -n \"$install_hostname\" ] || install_hostname=xaac-thin-client\n"
+            "    case $install_hostname in *[!a-z0-9-]*|-*|*-) printf '%s\n' 'Hostname no vàlid.'; continue ;; esac\n"
+            "    [ \"${#install_hostname}\" -le 63 ] || { printf '%s\n' 'Hostname massa llarg.'; continue; }\n"
+            "    break\n"
+            "done\n"
+            "printf '%s\n' 'La xarxa Ethernet es configurarà automàticament per DHCP.'\n"
             "printf '%s\\n' 'Contrasenya administrativa validada. Comença la instal·lació.'\n"
             "live_source=$(findmnt -nro SOURCE /run/live/medium 2>/dev/null || true)\n"
             "if [ -n \"$live_source\" ]; then\n"
@@ -1033,6 +1043,24 @@ class ProductionIsoBuilder:
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
             "printf '%s\\n' '[9/10] Consolidant el sistema instal·lat i preparant el primer arrencament...'\n"
+            'printf \'%s\\n\' "$install_hostname" > "$mount_root/etc/hostname"\n'
+            'printf \'127.0.0.1 localhost\\n127.0.1.1 %s\\n::1 localhost ip6-localhost ip6-loopback\\n\' "$install_hostname" > "$mount_root/etc/hosts"\n'
+            'mkdir -p "$mount_root/etc/NetworkManager/system-connections"\n'
+            'cat > "$mount_root/etc/NetworkManager/system-connections/xaac-wired.nmconnection" <<EOF\n'
+            '[connection]\n'
+            'id=XAAC Wired DHCP\n'
+            'type=ethernet\n'
+            'autoconnect=true\n'
+            'match-device=type:ethernet\n'
+            '\n'
+            '[ipv4]\n'
+            'method=auto\n'
+            '\n'
+            '[ipv6]\n'
+            'method=auto\n'
+            'EOF\n'
+            'chmod 0600 "$mount_root/etc/NetworkManager/system-connections/xaac-wired.nmconnection"\n'
+            'chroot "$mount_root" systemctl enable NetworkManager.service >/dev/null\n'
             'mkdir -p "$mount_root/etc/xaac" "$mount_root/var/lib/xaac/installation" "$mount_root/recovery/installer"\n'
             'cp "$mount_root/etc/os-release" "$mount_root/etc/xaac/os-release"\n'
             'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
@@ -1051,6 +1079,9 @@ class ProductionIsoBuilder:
             'test ! -e "$mount_root/usr/local/sbin/xaac-installer-welcome" || { printf \'%s\\n\' \'L’instal·lador continua present al sistema instal·lat.\'; exit 1; }\n'
             'test ! -e "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service" || { printf \'%s\\n\' \'El servei de l’instal·lador continua habilitat.\'; exit 1; }\n'
             'test -f "$mount_root/var/lib/xaac/installation/consolidated" || { printf \'%s\\n\' \'No existeix el marcador de consolidació.\'; exit 1; }\n'
+            '[ "$(cat "$mount_root/etc/hostname")" = "$install_hostname" ] || { printf \'%s\\n\' \'El hostname no ha quedat configurat.\'; exit 1; }\n'
+            'grep -Fq "127.0.1.1 $install_hostname" "$mount_root/etc/hosts" || { printf \'%s\\n\' \'/etc/hosts no conté el hostname.\'; exit 1; }\n'
+            'grep -Fq "method=auto" "$mount_root/etc/NetworkManager/system-connections/xaac-wired.nmconnection" || { printf \'%s\\n\' \'La xarxa DHCP no ha quedat configurada.\'; exit 1; }\n'
             "final_shadow_password=$(awk -F: '$1 == \"xaac-admin\" {print $2}' \"$mount_root/etc/shadow\")\n"
             '[ "$final_shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'La verificació final ha detectat que xaac-admin ha tornat a quedar bloquejat o alterat.\'; exit 1; }\n'
             "admin_hash_fingerprint=$(printf '%s' \"$admin_hash\" | sha256sum | awk '{print $1}')\n"
