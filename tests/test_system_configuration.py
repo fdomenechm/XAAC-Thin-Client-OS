@@ -123,3 +123,11 @@ def test_default_locale_internal_symlink_is_supported(tmp_path: Path) -> None:
     SystemConfigurator(geteuid=lambda: 0, runner=runner).execute(plan, tmp_path / "log")
     assert target.is_symlink()
     assert 'LANG="ca_ES.UTF-8"' in (plan.rootfs / "etc/locale.conf").read_text()
+
+
+def test_plan_preserves_uppercase_hostname(tmp_path: Path) -> None:
+    plan = create_system_configuration_plan(
+        tmp_path / "runs/build/rootfs",
+        _config(tmp_path / "system.yaml", hostname="XAAC-TC-059"),
+    )
+    assert plan.hostname == "XAAC-TC-059"

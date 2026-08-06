@@ -383,3 +383,7 @@ nmcli device show
 ```
 
 En builds de desenvolupament, `sudo /usr/local/libexec/xaac/diagnostics` incorpora una secció `network state` amb interfícies, adreces, passarel·la, DNS, connexions actives i rutes, sense modificar la configuració.
+
+### Bloc 5 — arrencada definitiva del quiosc
+
+El sistema instal·lat reserva `tty1` per a `greetd`, inicia la sessió `xaac-kiosk` sense shell interactiva i usa `graphical.target` com a target predeterminat. L'instal·lador accepta hostnames amb majúscules i la imatge inclou obligatòriament la família tipogràfica Roboto.

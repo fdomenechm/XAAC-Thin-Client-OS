@@ -138,3 +138,10 @@ def test_installer_script_configures_hostname_and_dhcp(project_root: Path) -> No
     assert "Hostname [xaac-thin-client]" in script
     assert "INSTALL_HOSTNAME=xaac-thin-client" in script
     assert "xaac-wired.nmconnection" in script
+
+
+def test_installer_builder_hostname_accepts_uppercase(project_root: Path) -> None:
+    plan = create_installer_build_plan(project_root, project_root / "config/installer-builder.yaml")
+    InstallerBuilder().prepare(plan)
+    script = plan.output("installer_script").read_text(encoding="utf-8")
+    assert "*[!A-Za-z0-9-]*" in script

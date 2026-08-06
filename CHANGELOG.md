@@ -1,3 +1,11 @@
+
+## Bloc 5 — correcció d’arrencada definitiva
+
+- El sistema instal·lat reserva `tty1` exclusivament per a `greetd` i elimina qualsevol autologin d’`agetty`.
+- El compte `xaac-kiosk` torna a usar `/usr/sbin/nologin`; la sessió és iniciada directament per `greetd`.
+- L’instal·lador admet hostnames amb lletres majúscules sense convertir-los a minúscules.
+- `fonts-roboto` és un paquet obligatori del constructor de producció.
+
 ## 2026-08-06 — Eines bàsiques i diagnòstic de xarxa
 
 ### Bloc 5 — correcció del bloqueig interactiu de dpkg

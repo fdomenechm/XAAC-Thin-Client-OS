@@ -287,6 +287,7 @@ class BuildSettings:
             "python3-gi",
             "gir1.2-gtk-4.0",
             "socat",
+            "fonts-roboto",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []
@@ -885,11 +886,6 @@ class ProductionIsoBuilder:
             with contextlib.suppress(FileNotFoundError):
                 self._inside(stale).unlink()
         self._atomic_write(
-            self._inside("/etc/systemd/system/getty@tty1.service.d/99-xaac-autologin.conf"),
-            "[Service]\nExecStart=\n"
-            "ExecStart=-/sbin/agetty --autologin xaac-kiosk --noclear %I $TERM\n",
-        )
-        self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"
             "set -eu\n"
@@ -1006,7 +1002,7 @@ class ProductionIsoBuilder:
             "    printf '%s' 'Hostname [xaac-thin-client]: '\n"
             "    IFS= read -r install_hostname\n"
             "    [ -n \"$install_hostname\" ] || install_hostname=xaac-thin-client\n"
-            "    case $install_hostname in *[!a-z0-9-]*|-*|*-) printf '%s\n' 'Hostname no vàlid.'; continue ;; esac\n"
+            "    case $install_hostname in *[!A-Za-z0-9-]*|-*|*-) printf '%s\n' 'Hostname no vàlid.'; continue ;; esac\n"
             "    [ \"${#install_hostname}\" -le 63 ] || { printf '%s\n' 'Hostname massa llarg.'; continue; }\n"
             "    break\n"
             "done\n"
@@ -1168,6 +1164,12 @@ class ProductionIsoBuilder:
             'cp "$mount_root/etc/os-release" "$mount_root/etc/xaac/os-release"\n'
             'rm -f "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"\n'
             'rm -f "$mount_root/etc/systemd/system/xaac-installer-welcome.service" "$mount_root/usr/local/sbin/xaac-installer-welcome"\n'
+            'rm -rf "$mount_root/etc/systemd/system/getty@tty1.service.d"\n'
+            'rm -f "$mount_root/etc/systemd/system/getty.target.wants/getty@tty1.service"\n'
+            'ln -sfn /dev/null "$mount_root/etc/systemd/system/getty@tty1.service"\n'
+            'chroot "$mount_root" usermod --shell /usr/sbin/nologin xaac-kiosk\n'
+            'chroot "$mount_root" systemctl enable greetd.service >/dev/null\n'
+            'chroot "$mount_root" systemctl set-default graphical.target >/dev/null\n'
             'rm -f "$mount_root/run/xaac-installer"* "$mount_root/tmp/xaac-installer"* 2>/dev/null || true\n'
             'printf "status=consolidated\\ninstaller_removed=yes\\nidentity=xaac-thin-client-os\\n" > "$mount_root/var/lib/xaac/installation/consolidated"\n'
             ': > "$mount_root/etc/machine-id"\n'
@@ -1266,12 +1268,11 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-c",
                 "id xaac-kiosk >/dev/null 2>&1 || useradd --system --home-dir /var/lib/xaac-kiosk "
-                "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk",
+                "--create-home --shell /usr/sbin/nologin --gid xaac-kiosk xaac-kiosk",
             ], phase="configure-user-kiosk")
-            # The kiosk account is an autologin session account, so it must have
-            # a valid login shell. Enforce it even on incremental builds where
-            # the account may already exist from an earlier rootfs.
-            self._chroot(["usermod", "--shell", "/bin/bash", "xaac-kiosk"], phase="configure-shell-kiosk")
+            # greetd launches the dedicated session directly; the kiosk account
+            # must never expose an interactive login shell.
+            self._chroot(["usermod", "--shell", "/usr/sbin/nologin", "xaac-kiosk"], phase="configure-shell-kiosk")
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
             if debs:

@@ -16,7 +16,7 @@ class SystemConfigurationError(RuntimeError):
     """Raised when the rootfs system configuration cannot be applied."""
 
 
-_HOSTNAME_RE = re.compile(r"^(?=.{1,63}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
+_HOSTNAME_RE = re.compile(r"^(?=.{1,63}$)[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$")
 _LOCALE_RE = re.compile(r"^[A-Za-z]{2,3}_[A-Za-z]{2,3}\.UTF-8$")
 _TIMEZONE_RE = re.compile(r"^[A-Za-z0-9_+.-]+(?:/[A-Za-z0-9_+.-]+)+$")
 
@@ -70,7 +70,7 @@ def create_system_configuration_plan(rootfs: Path, config_path: Path) -> SystemC
     unknown = set(raw) - {"schema_version", "hostname", "timezone", "locale", "fallback_locales"}
     if unknown:
         raise SystemConfigurationError(f"Claus desconegudes en system.yaml: {', '.join(sorted(unknown))}")
-    hostname = _text(raw.get("hostname"), "hostname").lower()
+    hostname = _text(raw.get("hostname"), "hostname")
     timezone = _text(raw.get("timezone"), "timezone")
     locale = _text(raw.get("locale"), "locale")
     fallbacks = raw.get("fallback_locales", [])

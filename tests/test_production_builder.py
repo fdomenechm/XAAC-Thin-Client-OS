@@ -173,14 +173,13 @@ def test_iso_phase_does_not_forward_invalid_volume_option_to_xorriso(tmp_path: P
     assert "live-config" not in grub
 
 
-def test_production_kiosk_account_has_login_shell() -> None:
+def test_production_kiosk_account_has_no_interactive_shell() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
-    assert "--create-home --shell /bin/bash --gid xaac-kiosk xaac-kiosk" in source
-    assert '["usermod", "--shell", "/bin/bash", "xaac-kiosk"]' in source
-    assert "--shell /usr/sbin/nologin --gid xaac-kiosk" not in source
-
+    assert "--create-home --shell /usr/sbin/nologin --gid xaac-kiosk xaac-kiosk" in source
+    assert '["usermod", "--shell", "/usr/sbin/nologin", "xaac-kiosk"]' in source
+    assert "--shell /bin/bash --gid xaac-kiosk" not in source
 
 def test_localization_defaults_are_catalan_with_spanish_keyboard() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -388,20 +387,16 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_tty1_failure_restores_getty_and_autologin_is_scoped() -> None:
+def test_installer_tty1_failure_restores_authenticated_getty_without_autologin() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
-    assert "getty@tty1.service.d/99-xaac-autologin.conf" in source
+    assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
+    assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "ImportCredential=\\n" not in source
-    assert "ExecStart=-/sbin/agetty -o" not in source
-    assert "/etc/live/config.conf.d/xaac.conf" in source
-    assert "LIVE_CONFIG_CMDLINE" not in source
     assert "OnFailure=xaac-installer-restore-getty.service" in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
-
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -645,3 +640,23 @@ def test_kiosk_configuration_is_applied_after_runtime_packages() -> None:
     kiosk_source = inspect.getsource(ProductionIsoBuilder._apply_kiosk_stack)
     assert "SessionManagerConfigurator().execute" in kiosk_source
     assert '10-xaac-mode.conf' in kiosk_source
+
+
+def test_installed_system_uses_greetd_without_tty1_autologin() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "agetty --autologin xaac-kiosk" not in source
+    assert 'ln -sfn /dev/null "$mount_root/etc/systemd/system/getty@tty1.service"' in source
+    assert 'usermod --shell /usr/sbin/nologin xaac-kiosk' in source
+    assert 'systemctl enable greetd.service' in source
+    assert 'systemctl set-default graphical.target' in source
+
+
+def test_production_package_set_always_contains_roboto() -> None:
+    import inspect
+    from xaac_thin_client_os.production_builder import BuildSettings
+    assert '"fonts-roboto"' in inspect.getsource(BuildSettings.load)
+
+
+def test_installer_hostname_accepts_uppercase_letters() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "*[!A-Za-z0-9-]*" in source

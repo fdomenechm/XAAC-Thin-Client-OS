@@ -204,7 +204,7 @@ while :; do
   printf '%s' 'Hostname [xaac-thin-client]: '
   IFS= read -r INSTALL_HOSTNAME
   [ -n "$INSTALL_HOSTNAME" ] || INSTALL_HOSTNAME=xaac-thin-client
-  case "$INSTALL_HOSTNAME" in *[!a-z0-9-]*|-*|*-) echo 'Invalid hostname.' >&2; continue ;; esac
+  case "$INSTALL_HOSTNAME" in *[!A-Za-z0-9-]*|-*|*-) echo 'Invalid hostname.' >&2; continue ;; esac
   [ "${#INSTALL_HOSTNAME}" -le 63 ] || { echo 'Hostname too long.' >&2; continue; }
   break
 done
