@@ -541,12 +541,25 @@ def test_development_diagnostics_is_restricted_and_read_only() -> None:
     assert "rm -" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "mount " not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "usermod --password" not in DEVELOPMENT_DIAGNOSTICS_SCRIPT
-    assert "passwd -S xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
-    assert "getent shadow xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert 'passwd -S "$account"' in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert 'getent shadow "$account"' in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "pamtester login xaac-admin authenticate" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "${#field}" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "prefix=%s" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
     assert "XAAC account lock directives" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "System mode: %s" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "Root UUID: %s" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "ESP UUID: %s" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "[GRUB and UEFI boot state]" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "/boot/grub/grub.cfg" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "BOOTX64.EFI" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "account_report xaac-kiosk" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "account_report xaac-admin" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "display-manager.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "getty@tty1.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "getty@tty2.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "ssh.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
+    assert "xaac-installer-welcome.service" in DEVELOPMENT_DIAGNOSTICS_SCRIPT
 
 
 def test_development_diagnostics_script_has_valid_shell_syntax(tmp_path: Path) -> None:

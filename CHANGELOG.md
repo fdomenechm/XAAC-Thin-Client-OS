@@ -1,4 +1,9 @@
 ## Unreleased — Bloc 1: arrencada del sistema instal·lat
+- Consolidat el diagnòstic de desenvolupament perquè identifique inequívocament el mode `LIVE` o `INSTALLED`.
+- Afegida informació de dispositiu arrel, tipus de sistema de fitxers i UUID de l’arrel i de l’ESP.
+- Afegit un resum de GRUB/UEFI amb configuracions, entrades Linux i executables EFI detectats.
+- Afegit l’estat segur de `xaac-kiosk` i `xaac-admin`, i dels serveis principals del sistema.
+- Mantingut el diagnòstic estrictament de només lectura i sense canvis en GRUB ni en el procés d’arrencada.
 
 - Corregit el desplegament: `filesystem.squashfs` exclou deliberadament `/boot`, de manera que l’instal·lador ara copia explícitament el nucli i l’initramfs del mitjà Live al `/boot` del sistema instal·lat amb noms versionats.
 - Afegits els enllaços `/boot/vmlinuz` i `/boot/initrd.img`.

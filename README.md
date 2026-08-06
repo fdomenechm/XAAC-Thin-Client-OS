@@ -335,7 +335,7 @@ Quan `config/build.yaml` defineix `channel: development`, la imatge incorpora un
 sudo /usr/local/libexec/xaac/diagnostics
 ```
 
-La regla de `sudoers` només autoritza aquest executable concret i no concedeix `sudo` general ni una shell de `root`. L'informe mostra l'estat real de `xaac-admin`, la seua shell i grups, l'estat segur del camp de contrasenya, les dades de caducitat, la pila PAM de `login` i els missatges recents d'autenticació. Mai imprimeix el hash complet.
+La regla de `sudoers` només autoritza aquest executable concret i no concedeix `sudo` general ni una shell de `root`. L'informe identifica primer si s'executa sobre el sistema `LIVE` o `INSTALLED`, mostra el dispositiu i el tipus del sistema de fitxers arrel, els UUID de l'arrel i de l'ESP, i resumeix l'estat de GRUB i dels executables UEFI. També mostra les entrades Linux detectades, l'estat segur de `xaac-kiosk` i `xaac-admin`, les dades de caducitat, la pila PAM i l'estat dels serveis principals (`display-manager`, `getty@tty1`, `getty@tty2`, `ssh` i l'instal·lador). Mai imprimeix cap hash complet ni modifica el sistema.
 
 Per provar la contrasenya introduïda durant la instal·lació contra la mateixa pila PAM usada per `login`:
 

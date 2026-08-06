@@ -35,53 +35,122 @@ if [ ! -f /etc/xaac/development-mode ]; then
     exit 1
 fi
 
-printf '%s\n' 'XAAC local account diagnostics (read-only)'
+safe_cmdline=$(cat /proc/cmdline 2>/dev/null || true)
+root_source=$(findmnt -n -o SOURCE / 2>/dev/null || printf '%s' unknown)
+root_fstype=$(findmnt -n -o FSTYPE / 2>/dev/null || printf '%s' unknown)
+case " $safe_cmdline " in
+    *' boot=live '*) system_mode=LIVE ;;
+    *)
+        case "$root_fstype" in
+            overlay|squashfs) system_mode=LIVE ;;
+            *) system_mode=INSTALLED ;;
+        esac
+        ;;
+esac
+
+uuid_for_source() {
+    source=$1
+    case "$source" in
+        /dev/*) blkid -s UUID -o value "$source" 2>/dev/null || true ;;
+        *) printf '%s' '' ;;
+    esac
+}
+
+account_report() {
+    account=$1
+    printf '\n[%s identity]\n' "$account"
+    if getent passwd "$account" >/dev/null 2>&1; then
+        getent passwd "$account"
+        id "$account"
+    else
+        printf 'MISSING: %s does not exist\n' "$account"
+        return
+    fi
+    printf '[%s password state]\n' "$account"
+    passwd -S "$account" 2>&1 || true
+    shadow=$(getent shadow "$account" 2>/dev/null || true)
+    if [ -z "$shadow" ]; then
+        printf '%s\n' 'shadow: missing'
+    else
+        field=$(printf '%s\n' "$shadow" | cut -d: -f2)
+        case $field in
+            '') state=empty; prefix=none ;;
+            '!') state=locked; prefix=locked ;;
+            '!'*) state=locked; prefix=$(printf '%s' "${field#!}" | cut -c1-3) ;;
+            '\*'*) state=locked; prefix=asterisk ;;
+            '$'*) state=configured; prefix=$(printf '%s' "$field" | cut -d'$' -f2) ;;
+            *) state=configured; prefix=legacy ;;
+        esac
+        preview=$(printf '%s' "$field" | cut -c1-4)
+        [ "$state" = configured ] || preview=$(printf '%s' "$field" | cut -c1-2)
+        printf 'shadow: %s (scheme=%s, length=%s, prefix=%s)\n' "$state" "$prefix" "${#field}" "$preview"
+    fi
+    chage -l "$account" 2>&1 || true
+}
+
+service_report() {
+    unit=$1
+    printf '%-34s active=%-12s enabled=%s\n' \
+        "$unit" \
+        "$(systemctl is-active "$unit" 2>/dev/null || true)" \
+        "$(systemctl is-enabled "$unit" 2>/dev/null || true)"
+}
+
+printf '%s\n' 'XAAC Thin Client OS diagnostics (read-only)'
 printf '%s\n' '==========================================='
 printf 'Date: '; date -u '+%Y-%m-%dT%H:%M:%SZ'
+printf 'System mode: %s\n' "$system_mode"
 printf 'Kernel: '; uname -srmo
-printf 'Boot mode: '
+printf 'Firmware: '
 if [ -d /sys/firmware/efi ]; then printf '%s\n' UEFI; else printf '%s\n' BIOS; fi
+printf 'Kernel command line: %s\n' "$safe_cmdline"
+printf 'Root source: %s\n' "$root_source"
+printf 'Root filesystem: %s\n' "$root_fstype"
+root_uuid=$(uuid_for_source "$root_source")
+printf 'Root UUID: %s\n' "${root_uuid:-unavailable}"
 
-printf '\n%s\n' '[xaac-admin identity]'
-if getent passwd xaac-admin >/dev/null 2>&1; then
-    getent passwd xaac-admin
-    id xaac-admin
-else
-    printf '%s\n' 'MISSING: xaac-admin does not exist'
-fi
+printf '\n%s\n' '[filesystems and boot partitions]'
+findmnt -rno TARGET,SOURCE,FSTYPE,OPTIONS / /boot /boot/efi 2>/dev/null || true
+lsblk -o NAME,TYPE,FSTYPE,LABEL,UUID,PARTTYPE,MOUNTPOINTS 2>/dev/null || true
+esp_source=$(findmnt -n -o SOURCE /boot/efi 2>/dev/null || true)
+esp_uuid=$(uuid_for_source "$esp_source")
+printf 'ESP source: %s\n' "${esp_source:-not-mounted}"
+printf 'ESP UUID: %s\n' "${esp_uuid:-unavailable}"
 
-printf '\n%s\n' '[password state]'
-passwd -S xaac-admin 2>&1 || true
-shadow=$(getent shadow xaac-admin 2>/dev/null || true)
-if [ -z "$shadow" ]; then
-    printf '%s\n' 'shadow: missing'
-else
-    field=$(printf '%s\n' "$shadow" | cut -d: -f2)
-    case $field in
-        '') state=empty; prefix=none ;;
-        '!') state=locked; prefix=locked ;;
-        '!'*) state=locked; prefix=$(printf '%s' "${field#!}" | cut -c1-3) ;;
-        '\*'*) state=locked; prefix=asterisk ;;
-        '$'*) state=configured; prefix=$(printf '%s' "$field" | cut -d'$' -f2) ;;
-        *) state=configured; prefix=legacy ;;
-    esac
-    preview=$(printf '%s' "$field" | cut -c1-4)
-    [ "$state" = configured ] || preview=$(printf '%s' "$field" | cut -c1-2)
-    printf 'shadow: %s (scheme=%s, length=%s, prefix=%s)\n' "$state" "$prefix" "${#field}" "$preview"
-fi
+printf '\n%s\n' '[GRUB and UEFI boot state]'
+for cfg in /boot/grub/grub.cfg /boot/efi/EFI/BOOT/grub.cfg /boot/efi/EFI/XAAC/grub.cfg /boot/efi/EFI/debian/grub.cfg; do
+    if [ -f "$cfg" ]; then
+        printf 'CONFIG %s size=%s\n' "$cfg" "$(wc -c < "$cfg")"
+        grep -nE '^[[:space:]]*(menuentry|linux|initrd)[[:space:]]' "$cfg" 2>/dev/null | head -n 40 || true
+    else
+        printf 'MISSING %s\n' "$cfg"
+    fi
+done
+for efi in /boot/efi/EFI/BOOT/BOOTX64.EFI /boot/efi/EFI/BOOT/grubx64.efi /boot/efi/EFI/XAAC/grubx64.efi /boot/efi/EFI/debian/grubx64.efi; do
+    if [ -f "$efi" ]; then
+        printf 'EFI %s size=%s\n' "$efi" "$(wc -c < "$efi")"
+    fi
+done
+
+account_report xaac-kiosk
+account_report xaac-admin
+
+printf '\n%s\n' '[administrative groups]'
+getent group sudo 2>&1 || true
 
 printf '\n%s\n' '[XAAC account lock directives]'
 grep -RInE 'passwd[[:space:]]+--lock[[:space:]]+xaac-admin|usermod[[:space:]].*(-L|--lock)[[:space:]]+xaac-admin' /usr/local/libexec /usr/local/sbin /etc/systemd /etc/xaac 2>/dev/null || printf '%s\n' 'No runtime XAAC lock directives found.'
 
-printf '\n%s\n' '[age and groups]'
-chage -l xaac-admin 2>&1 || true
-getent group sudo 2>&1 || true
+printf '\n%s\n' '[systemd services]'
+for unit in display-manager.service getty@tty1.service getty@tty2.service ssh.service xaac-installer-welcome.service; do
+    service_report "$unit"
+done
 
 printf '\n%s\n' '[PAM login stack]'
 sed -n '1,160p' /etc/pam.d/login 2>/dev/null || true
 
-printf '\n%s\n' '[recent authentication messages]'
-journalctl --no-pager -b -n 80 -u 'getty@tty2.service' 2>/dev/null || true
+printf '\n%s\n' '[recent boot and authentication messages]'
+journalctl --no-pager -b -n 80 -u 'getty@tty1.service' -u 'getty@tty2.service' 2>/dev/null || true
 journalctl --no-pager -b -n 80 _COMM=login 2>/dev/null || true
 
 if [ "${1:-}" = '--pam-test' ]; then
