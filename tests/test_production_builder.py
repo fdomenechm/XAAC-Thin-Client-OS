@@ -595,13 +595,14 @@ def test_production_builder_applies_definitive_kiosk_stack() -> None:
     import inspect
     from xaac_thin_client_os.production_builder import ProductionIsoBuilder
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
-    assert "create_compositor_plan" in source
-    assert "create_session_manager_plan" in source
-    assert "create_thin_client_launcher_plan" in source
-    assert "create_session_supervisor_plan" in source
+    kiosk_source = inspect.getsource(ProductionIsoBuilder._apply_kiosk_stack)
+    assert "create_compositor_plan" in kiosk_source
+    assert "create_session_manager_plan" in kiosk_source
+    assert "create_thin_client_launcher_plan" in kiosk_source
+    assert "create_session_supervisor_plan" in kiosk_source
     assert 'enable", "greetd.service"' in source
     assert 'set-default", "graphical.target"' in source
-    assert "ConditionKernelCommandLine=!xaac.mode=installer" in source
+    assert "ConditionKernelCommandLine=!xaac.mode=installer" in kiosk_source
 
 
 def test_destructive_clean_refuses_active_chroot_mounts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -623,3 +624,24 @@ def test_build_script_uses_private_mount_namespace() -> None:
     script = (project / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
     assert "unshare --mount --propagation private" in script
     assert "XAAC_PRIVATE_MOUNT_NS" in script
+
+
+def test_runtime_apt_install_never_prompts_for_conffiles() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder._install_runtime_packages)
+    assert "Dpkg::Options::=--force-confdef" in source
+    assert "Dpkg::Options::=--force-confold" in source
+
+
+def test_kiosk_configuration_is_applied_after_runtime_packages() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    install = source.index("self._install_runtime_packages()")
+    kiosk = source.index("self._apply_kiosk_stack()")
+    assert install < kiosk
+
+    kiosk_source = inspect.getsource(ProductionIsoBuilder._apply_kiosk_stack)
+    assert "SessionManagerConfigurator().execute" in kiosk_source
+    assert '10-xaac-mode.conf' in kiosk_source

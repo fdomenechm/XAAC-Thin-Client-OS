@@ -769,10 +769,39 @@ class ProductionIsoBuilder:
 
     def _install_runtime_packages(self) -> None:
         self._chroot(["apt-get", "update"], phase="configure-apt-update")
+        # DEBIAN_FRONTEND=noninteractive does not answer dpkg conffile prompts.
+        # Keep files intentionally prepared by the image builder and never let
+        # an unattended ISO build wait for an invisible Y/I/N/O question.
         self._chroot([
             "apt-get", "install", "--yes", "--no-install-recommends",
+            "-o", "Dpkg::Options::=--force-confdef",
+            "-o", "Dpkg::Options::=--force-confold",
             *self.settings.packages,
         ], phase="configure-apt-install")
+
+    def _apply_kiosk_stack(self) -> None:
+        """Apply XAAC-owned kiosk configuration after Debian packages exist.
+
+        In particular, greetd ships /etc/greetd/config.toml as a conffile.
+        Writing our version before apt installs greetd makes dpkg ask an
+        interactive conffile question and stalls the unattended build.
+        """
+        CompositorConfigurator().execute(
+            create_compositor_plan(self.paths.rootfs, self.paths.project_root / "config/compositor.yaml")
+        )
+        SessionManagerConfigurator().execute(
+            create_session_manager_plan(self.paths.rootfs, self.paths.project_root / "config/session-manager.yaml")
+        )
+        ThinClientLauncherConfigurator().execute(
+            create_thin_client_launcher_plan(self.paths.rootfs, self.paths.project_root / "config/thin-client-launcher.yaml")
+        )
+        SessionSupervisorConfigurator().execute(
+            create_session_supervisor_plan(self.paths.rootfs, self.paths.project_root / "config/session-supervisor.yaml")
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
+            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
+        )
 
     def phase_configure(self) -> None:
         self._require_root()
@@ -820,26 +849,6 @@ class ProductionIsoBuilder:
         self._atomic_write(self._inside("/etc/issue"), f"XAAC Thin Client OS {self.settings.version} \\n \\l\n")
         self._atomic_write(self._inside("/etc/issue.net"), f"XAAC Thin Client OS {self.settings.version}\n")
         self._atomic_write(self._inside("/etc/motd"), "XAAC Thin Client OS\nAdministració local restringida a personal autoritzat.\n")
-        # Apply the definitive kiosk stack to the real production rootfs.
-        # The order is intentional: the supervisor owns compositor autostart
-        # and therefore must be applied after the base compositor plan.
-        CompositorConfigurator().execute(
-            create_compositor_plan(self.paths.rootfs, self.paths.project_root / "config/compositor.yaml")
-        )
-        SessionManagerConfigurator().execute(
-            create_session_manager_plan(self.paths.rootfs, self.paths.project_root / "config/session-manager.yaml")
-        )
-        ThinClientLauncherConfigurator().execute(
-            create_thin_client_launcher_plan(self.paths.rootfs, self.paths.project_root / "config/thin-client-launcher.yaml")
-        )
-        SessionSupervisorConfigurator().execute(
-            create_session_supervisor_plan(self.paths.rootfs, self.paths.project_root / "config/session-supervisor.yaml")
-        )
-        self._atomic_write(
-            self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
-            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
-        )
-
         self._atomic_write(
             self._inside("/etc/default/xaac-os"),
             f'XAAC_OS_VERSION="{self.settings.version}"\n'
@@ -1237,6 +1246,10 @@ class ProductionIsoBuilder:
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
             self._install_runtime_packages()
+            # Package-owned conffiles must exist before XAAC replaces them.
+            # This ordering prevents greetd (and similar packages) from
+            # blocking dpkg with an interactive conffile prompt.
+            self._apply_kiosk_stack()
             self._chroot(["locale-gen"], phase="configure-locales")
             self._chroot(["update-locale", f"LANG={self.settings.locale}"], phase="configure-update-locale")
             self._chroot(

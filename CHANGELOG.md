@@ -1,5 +1,12 @@
 ## 2026-08-06 — Eines bàsiques i diagnòstic de xarxa
 
+### Bloc 5 — correcció del bloqueig interactiu de dpkg
+
+- La configuració definitiva de `greetd` i de la pila de quiosc s'aplica després d'instal·lar els paquets Debian.
+- `apt-get install` força una política no interactiva de `conffiles` (`--force-confdef` + `--force-confold`) per evitar preguntes invisibles de `dpkg`.
+- Afegides proves de regressió per garantir l'ordre `apt install -> configuració XAAC` i l'absència de prompts de `conffiles`.
+
+
 - Afegits `iproute2` i `iputils-ping` als paquets obligatoris del rootfs.
 - L’ordre `ip` queda disponible en el sistema instal·lat per consultar interfícies, adreces i rutes.
 - Ampliat el diagnòstic de desenvolupament amb hostname, dispositius NetworkManager, connexions actives, IPv4, passarel·la, DNS, estat dels enllaços i rutes IPv4/IPv6.
