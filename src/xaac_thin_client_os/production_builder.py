@@ -826,6 +826,19 @@ class ProductionIsoBuilder:
             "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
         )
 
+    def _customize_xaac_thinclient_theme(self) -> None:
+        """Apply the XAAC OS visual baseline to the packaged GTK client."""
+        css = self._inside("/usr/lib/python3/dist-packages/xaac_thinclient/resources/style.css")
+        if not css.is_file():
+            raise ProductionBuildError("No s’ha trobat el full d’estils de XAAC Thin Client")
+        content = css.read_text(encoding="utf-8")
+        if ".application-background" not in content:
+            raise ProductionBuildError("El full d’estils de XAAC Thin Client no conté application-background")
+        content = content.replace("background: #e8eef5;", "background: #dce4ed;", 1)
+        if 'font-family: "Roboto";' not in content:
+            content = '* {\n    font-family: "Roboto";\n}\n\n' + content
+        self._atomic_write(css, content, 0o644)
+
     def phase_configure(self) -> None:
         self._require_root()
         if not (self.paths.rootfs / "etc/debian_version").is_file():
@@ -1028,6 +1041,20 @@ class ProductionIsoBuilder:
             "    [ \"${#install_hostname}\" -le 63 ] || { printf '%s\n' 'Hostname massa llarg.'; continue; }\n"
             "    break\n"
             "done\n"
+            "printf '\n%s\n' 'Configureu el servidor RDP principal.'\n"
+            "while :; do\n"
+            "    printf '%s' 'Servidor RDP (nom DNS o IP): '\n"
+            "    IFS= read -r install_rdp_host\n"
+            "    [ -n \"$install_rdp_host\" ] || { printf '%s\n' 'El servidor RDP no pot estar buit.'; continue; }\n"
+            "    case $install_rdp_host in *[!A-Za-z0-9.:-]*) printf '%s\n' 'Servidor RDP no vàlid.'; continue ;; esac\n"
+            "    break\n"
+            "done\n"
+            "while :; do\n"
+            "    printf '%s' 'Domini RDP: '\n"
+            "    IFS= read -r install_rdp_domain\n"
+            "    [ -n \"$install_rdp_domain\" ] || { printf '%s\n' 'El domini RDP no pot estar buit.'; continue; }\n"
+            "    break\n"
+            "done\n"
             "printf '%s\n' 'La xarxa Ethernet es configurarà automàticament per DHCP.'\n"
             "printf '%s\\n' 'Contrasenya administrativa validada. Comença la instal·lació.'\n"
             "live_source=$(findmnt -nro SOURCE /run/live/medium 2>/dev/null || true)\n"
@@ -1166,6 +1193,8 @@ class ProductionIsoBuilder:
             "printf '%s\\n' '[9/10] Consolidant el sistema instal·lat i preparant el primer arrencament...'\n"
             'printf \'%s\\n\' "$install_hostname" > "$mount_root/etc/hostname"\n'
             'printf \'127.0.0.1 localhost\\n127.0.1.1 %s\\n::1 localhost ip6-localhost ip6-loopback\\n\' "$install_hostname" > "$mount_root/etc/hosts"\n'
+            'if [ -f "$mount_root/etc/xaac-thinclient/device.ini" ]; then sed -i "s/^device_name[[:space:]]*=.*/device_name = $install_hostname/" "$mount_root/etc/xaac-thinclient/device.ini"; fi\n'
+            'if [ -f "$mount_root/etc/xaac-thinclient/servers.ini" ]; then sed -i "s/^host[[:space:]]*=.*/host = $install_rdp_host/; s/^domain[[:space:]]*=.*/domain = $install_rdp_domain/; s/^enabled[[:space:]]*=.*/enabled = true/" "$mount_root/etc/xaac-thinclient/servers.ini"; fi\n'
             'mkdir -p "$mount_root/etc/NetworkManager/system-connections"\n'
             'cat > "$mount_root/etc/NetworkManager/system-connections/xaac-wired.nmconnection" <<EOF\n'
             '[connection]\n'
@@ -1317,6 +1346,7 @@ class ProductionIsoBuilder:
                 "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
+            self._customize_xaac_thinclient_theme()
             thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
             if not thinclient_deb.is_file():
                 raise ProductionBuildError("Falta packages/xaac-thinclient_1.0.0_all.deb")

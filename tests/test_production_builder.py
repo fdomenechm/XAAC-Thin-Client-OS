@@ -705,3 +705,22 @@ def test_production_build_script_forces_current_checkout_source() -> None:
     assert 'xaac_thin_client_os.production_builder as m' in script
     assert 'EXPECTED_BUILDER_MODULE="$PROJECT_ROOT/src/xaac_thin_client_os/production_builder.py"' in script
     assert 'constructor XAAC diferent del codi font actual' in script
+
+
+def test_block5_installer_provisions_thinclient_identity_and_rdp() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "Servidor RDP (nom DNS o IP)" in source
+    assert "Domini RDP:" in source
+    assert 'device_name = $install_hostname' in source
+    assert 'host = $install_rdp_host' in source
+    assert 'domain = $install_rdp_domain' in source
+    assert 'enabled = true' in source
+
+
+def test_block5_thinclient_theme_forces_roboto_and_darker_background() -> None:
+    import inspect
+    source = inspect.getsource(ProductionIsoBuilder._customize_xaac_thinclient_theme)
+    assert 'font-family: "Roboto"' in source
+    assert '#dce4ed' in source
+    configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert 'self._customize_xaac_thinclient_theme()' in configure
