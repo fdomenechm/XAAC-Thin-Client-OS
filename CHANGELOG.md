@@ -1,4 +1,12 @@
 
+- Corregit un defecte crític de reproduïbilitat del constructor: `scripts/build-production-iso.sh` força ara `PYTHONPATH` al `src/` del checkout actual i verifica la ruta real de `xaac_thin_client_os.production_builder` abans de construir. Això impedeix generar una ISO amb una còpia antiga del constructor instal·lada a `.venv` mentre els tests validen el codi nou.
+
+- Bloc 5: integració del paquet real `xaac-thinclient_1.0.0_all.deb` en la ISO de producció.
+- El llançador del quiosc usa `/usr/bin/xaac-thinclient` (paquet Debian) i elimina l'antic supòsit `/opt/xaac-thin-client/.venv`.
+- La construcció falla si `xaac-thinclient` no queda instal·lat en el rootfs.
+- Deshabilitat l'autostart genèric systemd-user del paquet per evitar duplicats amb el supervisor XAAC.
+- `labwc` queda sense menú contextual ni bindings per defecte i l'autostart del supervisor no substitueix el shell del compositor.
+
 ## Bloc 5 — correcció d’arrencada definitiva
 
 - El sistema instal·lat reserva `tty1` exclusivament per a `greetd` i elimina qualsevol autologin d’`agetty`.
@@ -1359,3 +1367,13 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - El constructor mostra l'inici i la finalització de cada ordre llarga.
 - Cada 30 segons informa que la subfase continua activa i mostra el temps transcorregut.
 - Els logs per fase continuen disponibles sota `.build/production/logs/`.
+
+## 2026-08-07 — Bloc 5: integració verificable de XAAC Thin Client
+
+- El paquet real `xaac-thinclient_1.0.0_all.deb` és l'únic artefacte de XAAC Thin Client inclòs a `packages/`.
+- La construcció falla si `/usr/bin/xaac-thinclient`, `/etc/xaac-thinclient` o l'estat `dpkg` de la versió 1.0.0 no són presents al rootfs.
+- El SquashFS es verifica després de crear-se per confirmar que conté el binari del client i el marcador d'integració del Bloc 5.
+- L'instal·lador torna a verificar el paquet i el binari després de desplegar el SquashFS al disc de destinació.
+- La sessió Wayland exporta `XDG_CONFIG_HOME=/etc/xaac`, de manera que labwc carrega també `/etc/xaac/labwc/autostart` i inicia el supervisor XAAC.
+- La configuració de labwc continua sense menús ni bindings per defecte per impedir `Reconfigure`/`Exit` en el quiosc.
+- Proves: 1394 superades.

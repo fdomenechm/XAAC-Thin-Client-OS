@@ -30,6 +30,7 @@ packages:
 files:
   greetd_config: /etc/greetd/config.toml
   session_launcher: /usr/local/libexec/xaac-session
+  x11_session: /usr/local/libexec/xaac-x11-session
   wayland_session: /usr/share/wayland-sessions/xaac-kiosk.desktop
   environment: /etc/xaac/session/session-manager.env
   policy: /etc/xaac/session/session-manager-policy.json

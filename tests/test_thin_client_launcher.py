@@ -7,25 +7,26 @@ from xaac_thin_client_os.thin_client_launcher import (
 )
 
 
-def test_profile_uses_python_313_and_kiosk_user(project_root: Path) -> None:
+def test_profile_uses_packaged_executable_and_kiosk_user(project_root: Path) -> None:
     profile = load_thin_client_launcher_profile(project_root / "config/thin-client-launcher.yaml")
     assert profile["application"]["user"] == "xaac-kiosk"
-    assert profile["application"]["minimum_python"] == "3.13"
+    assert profile["application"]["executable"] == "/usr/bin/xaac-thinclient"
     assert profile["launch"]["prevent_duplicates"] is True
 
 
 def test_plan_contains_runtime_dependencies(tmp_path: Path, project_root: Path) -> None:
     plan = create_thin_client_launcher_plan(tmp_path / "build/rootfs", project_root / "config/thin-client-launcher.yaml")
-    assert {"python3.13", "python3.13-venv", "gir1.2-gtk-4.0", "util-linux"} <= set(plan.packages)
+    assert {"python3", "gir1.2-gtk-4.0", "util-linux"} <= set(plan.packages)
 
 
 def test_launcher_checks_dependencies_and_prevents_duplicates(tmp_path: Path, project_root: Path) -> None:
     plan = create_thin_client_launcher_plan(tmp_path / "build/rootfs", project_root / "config/thin-client-launcher.yaml")
     files = {str(path): (content, mode) for path, content, mode in plan.files}
     launcher, mode = files["/usr/local/libexec/xaac-thin-client-launch"]
-    assert "sys.version_info[:2] == (3, 13)" in launcher
+    assert 'EXECUTABLE=/usr/bin/xaac-thinclient' in launcher
     assert "/usr/bin/flock -n" in launcher
-    assert '"$PYTHON" -m "$MODULE" --config "$CONFIG"' in launcher
+    assert 'exec /usr/bin/flock -n "$LOCK" "$EXECUTABLE"' in launcher
+    assert "--config" not in launcher
     assert mode == 0o755
 
 
@@ -33,16 +34,15 @@ def test_environment_and_default_configuration(tmp_path: Path, project_root: Pat
     plan = create_thin_client_launcher_plan(tmp_path / "build/rootfs", project_root / "config/thin-client-launcher.yaml")
     files = {str(path): (content, mode) for path, content, mode in plan.files}
     env, _ = files["/etc/xaac/session/thin-client.env"]
-    config, config_mode = files["/etc/xaac/thin-client/config.yaml"]
     assert "PYTHONDONTWRITEBYTECODE=1" in env and "GDK_BACKEND=wayland,x11" in env
-    assert "mode: kiosk" in config and config_mode == 0o640
+    assert "/etc/xaac/thin-client/config.yaml" not in files
 
 
 def test_policy_declares_journald_logging(tmp_path: Path, project_root: Path) -> None:
     plan = create_thin_client_launcher_plan(tmp_path / "build/rootfs", project_root / "config/thin-client-launcher.yaml")
     policy = next(content for path, content, _ in plan.files if str(path).endswith("thin-client-launch-policy.json"))
     assert '"destination": "journald"' in policy
-    assert '"identifier": "xaac-thin-client"' in policy
+    assert '"identifier": "xaac-thinclient"' in policy
 
 
 def test_execute_is_idempotent(tmp_path: Path, project_root: Path) -> None:
@@ -68,10 +68,9 @@ def test_unsafe_rootfs_and_symlink_rejected(tmp_path: Path, project_root: Path) 
 
 @pytest.mark.parametrize("old,new", [
     ("user: xaac-kiosk", "user: root"),
-    ("minimum_python: '3.13'", "minimum_python: '3.12'"),
+    ("executable: /usr/bin/xaac-thinclient", "executable: ../xaac-thinclient"),
     ("prevent_duplicates: true", "prevent_duplicates: false"),
     ("backend: wayland", "backend: invalid"),
-    ("python: /opt/xaac-thin-client/.venv/bin/python", "python: ../python"),
     ("    - gir1.2-gtk-4.0", "    - invalid-gtk"),
 ])
 def test_invalid_profiles_are_rejected(tmp_path: Path, project_root: Path, old: str, new: str) -> None:

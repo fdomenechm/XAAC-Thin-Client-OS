@@ -133,6 +133,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "export XDG_SESSION_TYPE=wayland\n"
         "export XDG_CURRENT_DESKTOP=XAAC\n"
         "export XDG_SESSION_DESKTOP=xaac-kiosk\n"
+        "export XDG_CONFIG_HOME=/etc/xaac\n"
         "export GDK_BACKEND=wayland,x11\n"
         "if [ -x /usr/bin/labwc ] && [ -e /dev/dri/card0 ]; then\n"
         "    export XDG_SESSION_TYPE=wayland\n"
@@ -140,7 +141,15 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "fi\n"
         "export XDG_SESSION_TYPE=x11\n"
         "export GDK_BACKEND=x11\n"
-        "exec /usr/bin/startx /usr/bin/openbox -- -nolisten tcp -nocursor vt1\n"
+        "exec /usr/bin/startx /usr/local/libexec/xaac-x11-session -- -nolisten tcp -nocursor vt1\n"
+    )
+    x11_session = (
+        "#!/bin/sh\n"
+        "set -eu\n"
+        "/usr/bin/openbox --config-file /etc/xaac/openbox/rc.xml &\n"
+        "wm_pid=$!\n"
+        "trap 'kill \"$wm_pid\" 2>/dev/null || true' EXIT HUP INT TERM\n"
+        "/usr/local/libexec/xaac-session-supervisor\n"
     )
     desktop = (
         "[Desktop Entry]\n"
@@ -154,12 +163,14 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "XDG_SESSION_TYPE=wayland\n"
         "XDG_CURRENT_DESKTOP=XAAC\n"
         "XDG_SESSION_DESKTOP=xaac-kiosk\n"
+        "XDG_CONFIG_HOME=/etc/xaac\n"
         "GDK_BACKEND=wayland,x11\n"
     )
     policy = json.dumps({"manager": p["manager"], "session": p["session"], "autologin": p["autologin"], "restrictions": p["restrictions"]}, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     planned = (
         (_safe_absolute(files["greetd_config"], "greetd_config"), greetd, 0o600),
         (_safe_absolute(files["session_launcher"], "session_launcher"), launcher, 0o755),
+        (_safe_absolute(files["x11_session"], "x11_session"), x11_session, 0o755),
         (_safe_absolute(files["wayland_session"], "wayland_session"), desktop, 0o644),
         (_safe_absolute(files["environment"], "environment"), environment, 0o644),
         (_safe_absolute(files["policy"], "policy"), policy, 0o644),

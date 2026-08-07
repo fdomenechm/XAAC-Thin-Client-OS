@@ -182,7 +182,7 @@ raise SystemExit(app.run(sys.argv[:1]))
     policy = json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
 # Managed by XAAC Thin Client OS — Block 5 — definitive integration
-exec {cfg["supervisor_command"]}
+{cfg["supervisor_command"]} &
 '''
     planned = (
         (_safe_absolute(files["supervisor"], "supervisor"), supervisor, 0o755),

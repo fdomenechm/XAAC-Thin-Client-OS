@@ -2,26 +2,21 @@ schema_version: 1
 profile: xaac-thin-client-launcher
 application:
   user: xaac-kiosk
-  python: /opt/xaac-thin-client/.venv/bin/python
-  module: xaac_thin_client
-  working_directory: /opt/xaac-thin-client
-  configuration: /etc/xaac/thin-client/config.yaml
-  minimum_python: '3.13'
+  executable: /usr/bin/xaac-thinclient
+  configuration_directory: /etc/xaac-thinclient
 launch:
   command: /usr/local/libexec/xaac-thin-client-launch
   lock_file: /run/user/xaac-kiosk/xaac-thin-client.lock
-  log_identifier: xaac-thin-client
+  log_identifier: xaac-thinclient
   prevent_duplicates: true
   backend: wayland
 packages:
   required:
-    - python3.13
-    - python3.13-venv
+    - python3
     - python3-gi
     - gir1.2-gtk-4.0
     - util-linux
 files:
   launcher: /usr/local/libexec/xaac-thin-client-launch
   environment: /etc/xaac/session/thin-client.env
-  default_configuration: /etc/xaac/thin-client/config.yaml
   policy: /etc/xaac/session/thin-client-launch-policy.json

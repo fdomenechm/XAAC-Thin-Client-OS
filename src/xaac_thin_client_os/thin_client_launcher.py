@@ -31,19 +31,19 @@ def load_thin_client_launcher_profile(path: Path) -> dict[str, Any]:
     ):
         raise ThinClientLauncherError("Perfil de llançament invàlid o esquema no suportat")
     app = raw["application"]
-    if app.get("user") != "xaac-kiosk" or app.get("minimum_python") != "3.13":
-        raise ThinClientLauncherError("El client ha d'executar-se com xaac-kiosk amb Python 3.13")
-    for key in ("python", "working_directory", "configuration"):
-        _safe_absolute(app.get(key), key)
-    if not isinstance(app.get("module"), str) or not app["module"].replace("_", "").isalnum():
-        raise ThinClientLauncherError("Mòdul Python invàlid")
+    if app.get("user") != "xaac-kiosk":
+        raise ThinClientLauncherError("El client ha d'executar-se com xaac-kiosk")
+    if set(app) != {"user", "executable", "configuration_directory"}:
+        raise ThinClientLauncherError("Configuració de l'aplicació incompleta")
+    _safe_absolute(app.get("executable"), "executable")
+    _safe_absolute(app.get("configuration_directory"), "configuration_directory")
     launch = raw["launch"]
     if launch.get("prevent_duplicates") is not True or launch.get("backend") not in {"wayland", "x11"}:
         raise ThinClientLauncherError("Política de llançament insegura")
     _safe_absolute(launch.get("command"), "command")
     _safe_absolute(launch.get("lock_file"), "lock_file")
     packages = raw["packages"].get("required")
-    if not isinstance(packages, list) or "python3.13" not in packages or "gir1.2-gtk-4.0" not in packages:
+    if not isinstance(packages, list) or "python3" not in packages or "gir1.2-gtk-4.0" not in packages:
         raise ThinClientLauncherError("Dependències obligatòries incompletes")
     for name, value in raw["files"].items():
         _safe_absolute(value, name)
@@ -70,28 +70,21 @@ def create_thin_client_launcher_plan(rootfs: Path, profile_path: Path) -> ThinCl
     files = profile["files"]
     launcher = f'''#!/bin/sh
 set -eu
-PYTHON={app["python"]!s}
-WORKDIR={app["working_directory"]!s}
-CONFIG={app["configuration"]!s}
+EXECUTABLE={app["executable"]!s}
+CONFIG_DIR={app["configuration_directory"]!s}
 LOCK={launch["lock_file"]!s}
-MODULE={app["module"]!s}
 
-[ -x "$PYTHON" ] || {{ echo "Python 3.13 del client no disponible" >&2; exit 69; }}
-[ -d "$WORKDIR" ] || {{ echo "Directori de XAAC Thin Client absent" >&2; exit 72; }}
-[ -r "$CONFIG" ] || {{ echo "Configuració de XAAC Thin Client absent" >&2; exit 78; }}
-"$PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 13) else 1)' || {{ echo "Versió Python incompatible" >&2; exit 69; }}
-cd "$WORKDIR"
-exec /usr/bin/flock -n "$LOCK" "$PYTHON" -m "$MODULE" --config "$CONFIG"
+[ -x "$EXECUTABLE" ] || {{ echo "XAAC Thin Client no està instal·lat" >&2; exit 69; }}
+[ -d "$CONFIG_DIR" ] || {{ echo "Configuració de XAAC Thin Client absent" >&2; exit 78; }}
+exec /usr/bin/flock -n "$LOCK" "$EXECUTABLE"
 '''
     environment = (
         "PYTHONUNBUFFERED=1\n"
         "PYTHONDONTWRITEBYTECODE=1\n"
         "GDK_BACKEND=wayland,x11\n"
         "XDG_CURRENT_DESKTOP=XAAC\n"
-        f"XAAC_CONFIG={app['configuration']}\n"
         f"XAAC_LOG_IDENTIFIER={launch['log_identifier']}\n"
     )
-    default_config = "schema_version: 1\nmanaged: true\nmode: kiosk\n"
     policy = json.dumps(
         {"application": app, "launch": launch, "logging": {"destination": "journald", "identifier": launch["log_identifier"]}},
         ensure_ascii=False, indent=2, sort_keys=True,
@@ -99,7 +92,6 @@ exec /usr/bin/flock -n "$LOCK" "$PYTHON" -m "$MODULE" --config "$CONFIG"
     planned = (
         (_safe_absolute(files["launcher"], "launcher"), launcher, 0o755),
         (_safe_absolute(files["environment"], "environment"), environment, 0o644),
-        (_safe_absolute(files["default_configuration"], "default_configuration"), default_config, 0o640),
         (_safe_absolute(files["policy"], "policy"), policy, 0o644),
     )
     return ThinClientLauncherPlan(root, tuple(dict.fromkeys(profile["packages"]["required"])), planned)

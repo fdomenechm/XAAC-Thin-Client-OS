@@ -1,9 +1,9 @@
 schema_version: 1
 package:
-  name: xaac-thin-client
-  architecture: amd64
+  name: xaac-thinclient
+  architecture: all
   version: "1.0.0"
-  artifact: packages/xaac-thin-client_1.0.0_amd64.deb
+  artifact: packages/xaac-thinclient_1.0.0_all.deb
   sha256: null
   allow_newer_patch: true
   dependencies:
@@ -11,9 +11,9 @@ package:
     - python3-gi
     - gir1.2-gtk-4.0
 installation:
-  cache_path: /var/cache/xaac/packages/xaac-thin-client.deb
+  cache_path: /var/cache/xaac/packages/xaac-thinclient.deb
   configuration_path: /etc/xaac/thin-client/package.json
-  apt_preferences_path: /etc/apt/preferences.d/90-xaac-thin-client
+  apt_preferences_path: /etc/apt/preferences.d/90-xaac-thinclient
   install_recommends: false
   fail_on_downgrade: true
 update:

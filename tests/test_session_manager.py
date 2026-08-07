@@ -106,5 +106,25 @@ def test_session_has_controlled_x11_fallback(tmp_path: Path, project_root: Path)
     assert {"greetd", "xinit"} <= set(plan.packages)
     launcher = next(c for p, c, _ in plan.files if str(p).endswith("xaac-session"))
     assert "exec /usr/bin/labwc" in launcher
-    assert "exec /usr/bin/startx /usr/bin/openbox" in launcher
+    assert "exec /usr/bin/startx /usr/local/libexec/xaac-x11-session" in launcher
     assert "-nolisten tcp" in launcher
+
+
+def test_x11_fallback_starts_supervisor_after_x_server(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
+    files = {str(path): content for path, content, _ in plan.files}
+    launcher = files["/usr/local/libexec/xaac-session"]
+    x11 = files["/usr/local/libexec/xaac-x11-session"]
+    assert "startx /usr/local/libexec/xaac-x11-session" in launcher
+    assert "/usr/bin/openbox --config-file /etc/xaac/openbox/rc.xml &" in x11
+    assert "/usr/local/libexec/xaac-session-supervisor" in x11
+
+
+def test_wayland_session_points_labwc_at_xaac_config_home(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
+    files = {p.as_posix(): content for p, content, _ in plan.files}
+    launcher = files["/usr/local/libexec/xaac-session"]
+    environment = files["/etc/xaac/session/session-manager.env"]
+    assert "export XDG_CONFIG_HOME=/etc/xaac" in launcher
+    assert "XDG_CONFIG_HOME=/etc/xaac" in environment
+    assert "exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml" in launcher

@@ -7,10 +7,26 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH
 PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON="${PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
 
+# Always execute the builder from this checkout.  Pytest already adds src/ to
+# sys.path, but a stale/non-editable .venv installation could otherwise make
+# production builds import an older xaac_thin_client_os package.
+export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+
 if [[ ! -x "$PYTHON" ]]; then
     printf 'Error: no existeix %s. Executa scripts/create-venv.sh.\n' "$PYTHON" >&2
     exit 1
 fi
+
+BUILDER_MODULE_PATH="$("$PYTHON" -c 'import pathlib, xaac_thin_client_os.production_builder as m; print(pathlib.Path(m.__file__).resolve())')"
+EXPECTED_BUILDER_MODULE="$PROJECT_ROOT/src/xaac_thin_client_os/production_builder.py"
+if [[ "$BUILDER_MODULE_PATH" != "$EXPECTED_BUILDER_MODULE" ]]; then
+    printf 'Error: Python està carregant un constructor XAAC diferent del codi font actual.\n' >&2
+    printf 'Esperat: %s\n' "$EXPECTED_BUILDER_MODULE" >&2
+    printf 'Carregat: %s\n' "$BUILDER_MODULE_PATH" >&2
+    printf 'Reconstrueix .venv amb scripts/create-venv.sh abans de continuar.\n' >&2
+    exit 4
+fi
+printf '[XAAC] Constructor: %s\n' "$BUILDER_MODULE_PATH"
 
 for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync unshare; do
     command -v "$command" >/dev/null 2>&1 || {

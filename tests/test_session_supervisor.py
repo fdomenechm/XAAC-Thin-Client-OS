@@ -56,7 +56,7 @@ def test_agent_notification_is_best_effort(tmp_path: Path, project_root: Path) -
 def test_autostart_launches_supervisor(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
     content, mode = next((c, m) for p, c, m in plan.files if str(p).endswith("labwc/autostart"))
-    assert "exec /usr/local/libexec/xaac-session-supervisor" in content
+    assert "/usr/local/libexec/xaac-session-supervisor &" in content
     assert "xaac-thin-client-launch" not in content
     assert mode == 0o755
 

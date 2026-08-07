@@ -41,9 +41,9 @@ def load_xaac_thin_client_package_profile(path: Path) -> dict[str, Any]:
     expected_package = {"name", "architecture", "version", "artifact", "sha256", "allow_newer_patch", "dependencies"}
     if not isinstance(package, dict) or set(package) != expected_package:
         raise XaacThinClientPackageError("Metadades del paquet incompletes")
-    if package["name"] != "xaac-thin-client" or not _PACKAGE.fullmatch(str(package["name"])):
+    if package["name"] != "xaac-thinclient" or not _PACKAGE.fullmatch(str(package["name"])):
         raise XaacThinClientPackageError("Nom de paquet invàlid")
-    if package["architecture"] != "amd64" or not _VERSION.fullmatch(str(package["version"])):
+    if package["architecture"] != "all" or not _VERSION.fullmatch(str(package["version"])):
         raise XaacThinClientPackageError("Arquitectura o versió del paquet invàlida")
     artifact = Path(str(package["artifact"]))
     if artifact.is_absolute() or ".." in artifact.parts or artifact.suffix != ".deb":
@@ -98,7 +98,7 @@ def inspect_debian_package(artifact: Path, *, runner: MetadataRunner = subproces
     lines = result.stdout.splitlines()
     if len(lines) < 3:
         raise XaacThinClientPackageError("Metadades dpkg-deb incompletes")
-    dependencies = tuple(sorted({part.strip().split(" ")[0] for part in (lines[3] if len(lines) > 3 else "").split(",") if part.strip()}))
+    dependencies = tuple(sorted({part.strip().split(" ")[0].split(":", 1)[0] for part in (lines[3] if len(lines) > 3 else "").split(",") if part.strip()}))
     return DebianPackageMetadata(lines[0], lines[1], lines[2], dependencies, hashlib.sha256(artifact.read_bytes()).hexdigest())
 
 

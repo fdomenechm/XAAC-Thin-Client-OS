@@ -415,6 +415,28 @@ class ProductionIsoBuilder:
             with contextlib.suppress(FileNotFoundError):
                 os.unlink(temporary)
 
+
+    def _verify_thinclient_rootfs(self, *, context: str) -> None:
+        """Fail closed unless the real XAAC Thin Client package is present."""
+        if self.dry_run:
+            return
+        binary = self._inside("/usr/bin/xaac-thinclient")
+        status = self._inside("/var/lib/dpkg/status")
+        config_dir = self._inside("/etc/xaac-thinclient")
+        if not binary.is_file() or not os.access(binary, os.X_OK):
+            raise ProductionBuildError(
+                f"{context}: falta /usr/bin/xaac-thinclient executable al rootfs"
+            )
+        if not config_dir.is_dir():
+            raise ProductionBuildError(
+                f"{context}: falta /etc/xaac-thinclient al rootfs"
+            )
+        text = status.read_text(encoding="utf-8", errors="replace") if status.is_file() else ""
+        if "Package: xaac-thinclient\n" not in text or "Version: 1.0.0\n" not in text:
+            raise ProductionBuildError(
+                f"{context}: xaac-thinclient 1.0.0 no consta en la base de dades dpkg"
+            )
+
     def _inside(self, absolute: str) -> Path:
         """Return a host path lexically confined to the build rootfs.
 
@@ -1180,6 +1202,9 @@ class ProductionIsoBuilder:
             'test -f "$mount_root/etc/fstab"\n'
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
             'test -s "$mount_root/boot/grub/grub.cfg"\n'
+            "test -x \"$mount_root/usr/bin/xaac-thinclient\" || { printf '%s\\n' 'XAAC Thin Client no existeix al sistema instal·lat.'; exit 1; }\n"
+            "test -f \"$mount_root/etc/xaac/block5-integration\" || { printf '%s\\n' 'Falta el marcador d’integració del Bloc 5.'; exit 1; }\n"
+            "chroot \"$mount_root\" dpkg-query -W -f='${Status} ${Version}\\n' xaac-thinclient | grep -Fq 'install ok installed 1.0.0' || { printf '%s\\n' 'xaac-thinclient 1.0.0 no consta instal·lat.'; exit 1; }\n"
             'grep -Fq "PRETTY_NAME=\\"XAAC Thin Client OS" "$mount_root/etc/os-release" || { printf \'%s\\n\' \'La identitat del sistema instal·lat no és correcta.\'; exit 1; }\n'
             'test ! -e "$mount_root/usr/local/sbin/xaac-installer-welcome" || { printf \'%s\\n\' \'L’instal·lador continua present al sistema instal·lat.\'; exit 1; }\n'
             'test ! -e "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service" || { printf \'%s\\n\' \'El servei de l’instal·lador continua habilitat.\'; exit 1; }\n'
@@ -1276,7 +1301,37 @@ class ProductionIsoBuilder:
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
             if debs:
-                self._chroot(["apt-get", "install", "--yes", *debs], phase="configure-xaac-packages")
+                self._chroot([
+                    "apt-get", "install", "--yes", "--no-install-recommends",
+                    "-o", "Dpkg::Options::=--force-confdef",
+                    "-o", "Dpkg::Options::=--force-confold",
+                    *debs,
+                ], phase="configure-xaac-packages")
+            # Block 5 invariant: the application package must be present in the
+            # final rootfs.  Never produce a kiosk ISO that can only start the
+            # compositor and then show a black screen.
+            self._chroot([
+                "/bin/sh", "-ec",
+                "command -v xaac-thinclient >/dev/null; "
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thinclient)\" = 'install ok installed'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
+            ], phase="configure-verify-xaac-thinclient")
+            self._verify_thinclient_rootfs(context="configure")
+            thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+            if not thinclient_deb.is_file():
+                raise ProductionBuildError("Falta packages/xaac-thinclient_1.0.0_all.deb")
+            thinclient_sha = hashlib.sha256(thinclient_deb.read_bytes()).hexdigest()
+            self._atomic_write(
+                self._inside("/etc/xaac/block5-integration"),
+                f"thinclient_package=xaac-thinclient\nversion=1.0.0\nsha256={thinclient_sha}\n",
+            )
+            # The .deb enables its user service globally for generic Debian
+            # desktops.  XAAC Thin Client OS has its own bounded supervisor, so
+            # disable the package's generic autostart to prevent duplicates.
+            self._chroot([
+                "/bin/sh", "-c",
+                "systemctl --global disable xaac-thinclient.service >/dev/null 2>&1 || true",
+            ], phase="configure-disable-generic-xaac-autostart")
             self._chroot(["systemctl", "enable", "NetworkManager.service"], phase="configure-networkmanager")
             self._chroot(["systemctl", "enable", "ssh.service"], phase="configure-ssh")
             self._chroot(["systemctl", "enable", "nftables.service"], phase="configure-firewall")
@@ -1309,6 +1364,7 @@ class ProductionIsoBuilder:
         self._require_root()
         self.cleanup_chroot_mounts()
         self._assert_chroot_unmounted("generació del squashfs")
+        self._verify_thinclient_rootfs(context="pre-squashfs")
         output = self.paths.build_root / "rootfs.squashfs"
         output.unlink(missing_ok=True)
         self.runner.run([
@@ -1316,6 +1372,13 @@ class ProductionIsoBuilder:
             "-comp", "xz", "-b", "1M", "-noappend", "-no-progress",
             "-e", "boot",
         ], phase="squashfs")
+        if not self.dry_run:
+            self.runner.run([
+                "unsquashfs", "-cat", str(output), "usr/bin/xaac-thinclient"
+            ], phase="squashfs-verify-xaac-thinclient")
+            self.runner.run([
+                "unsquashfs", "-cat", str(output), "etc/xaac/block5-integration"
+            ], phase="squashfs-verify-block5-marker")
         self._save_state("squashfs")
 
     def phase_iso(self) -> None:

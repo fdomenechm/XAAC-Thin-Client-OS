@@ -660,3 +660,48 @@ def test_production_package_set_always_contains_roboto() -> None:
 def test_installer_hostname_accepts_uppercase_letters() -> None:
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     assert "*[!A-Za-z0-9-]*" in source
+
+
+def test_production_builder_requires_real_xaac_thinclient_package(project_root: Path) -> None:
+    package = project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+    assert package.is_file()
+    assert package.read_bytes()[:8] == b"!<arch>\n"
+    source = (project_root / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "configure-verify-xaac-thinclient" in source
+    assert "command -v xaac-thinclient" in source
+    assert "systemctl --global disable xaac-thinclient.service" in source
+
+def test_kiosk_configs_do_not_expose_labwc_menu_or_default_bindings(project_root: Path, tmp_path: Path) -> None:
+    from xaac_thin_client_os.compositor import create_compositor_plan
+    plan = create_compositor_plan(tmp_path / "rootfs", project_root / "config/compositor.yaml")
+    files = {str(path): content for path, content, _ in plan.files}
+    rc = files["/etc/xaac/labwc/rc.xml"]
+    assert "<menu" not in rc
+    assert "<default" not in rc
+    assert "<keyboard />" in rc and "<mouse />" in rc
+
+
+def test_block5_is_verified_in_rootfs_squashfs_and_installed_system() -> None:
+    import inspect
+
+    configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    squashfs = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
+    verify = inspect.getsource(ProductionIsoBuilder._verify_thinclient_rootfs)
+    assert 'packages/xaac-thinclient_1.0.0_all.deb' in configure
+    assert '/etc/xaac/block5-integration' in configure
+    assert '/usr/bin/xaac-thinclient' in verify
+    assert 'Package: xaac-thinclient' in verify
+    assert 'Version: 1.0.0' in verify
+    assert 'squashfs-verify-xaac-thinclient' in squashfs
+    assert 'squashfs-verify-block5-marker' in squashfs
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert 'XAAC Thin Client no existeix al sistema instal·lat.' in source
+    assert 'xaac-thinclient 1.0.0 no consta instal·lat.' in source
+
+
+def test_production_build_script_forces_current_checkout_source() -> None:
+    script = (Path(__file__).parents[1] / "scripts" / "build-production-iso.sh").read_text()
+    assert 'export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"' in script
+    assert 'xaac_thin_client_os.production_builder as m' in script
+    assert 'EXPECTED_BUILDER_MODULE="$PROJECT_ROOT/src/xaac_thin_client_os/production_builder.py"' in script
+    assert 'constructor XAAC diferent del codi font actual' in script
