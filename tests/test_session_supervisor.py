@@ -103,6 +103,17 @@ def test_invalid_profiles_rejected(tmp_path: Path, project_root: Path, old: str,
         load_session_supervisor_profile(path)
 
 
+
+def test_supervisor_waits_for_graphical_session_socket(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
+    script = next(c for p, c, _ in plan.files if str(p).endswith("xaac-session-supervisor"))
+    assert 'wait_graphical_session()' in script
+    assert '[ ! -S "$socket" ]' in script
+    assert 'GRAPHICAL_READY_TIMEOUT=30' in script
+    assert 'if ! wait_graphical_session; then' in script
+    assert 'exec "$ERROR_SCREEN" 70 0' in script
+
+
 def test_cli_exposes_supervisor_command() -> None:
     from xaac_thin_client_os.cli import build_parser
     args = build_parser().parse_args(["configure-session-supervisor", "--dry-run"])

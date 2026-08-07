@@ -1,3 +1,11 @@
+## 2026-08-07 — Bloc 5: espera activa de Wayland i editor administratiu
+
+- El supervisor de sessió espera fins a 30 segons que el socket `WAYLAND_DISPLAY` siga real abans de llançar XAAC Thin Client.
+- Si la sessió gràfica no arriba a estar preparada, entra en mode segur en lloc de consumir reintents del client.
+- El fallback X11 continua permés quan `DISPLAY` està definit.
+- `nano` passa a ser paquet base obligatori per disposar d'un editor de text administratiu.
+- Afegides proves de regressió per a l'espera de Wayland i la presència de `nano`.
+
 
 - Corregit un defecte crític de reproduïbilitat del constructor: `scripts/build-production-iso.sh` força ara `PYTHONPATH` al `src/` del checkout actual i verifica la ruta real de `xaac_thin_client_os.production_builder` abans de construir. Això impedeix generar una ISO amb una còpia antiga del constructor instal·lada a `.venv` mentre els tests validen el codi nou.
 

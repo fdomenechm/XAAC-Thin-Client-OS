@@ -391,3 +391,9 @@ El sistema instal·lat reserva `tty1` per a `greetd`, inicia la sessió `xaac-ki
 ### Garantia de codi font del constructor
 
 `./scripts/build-production-iso.sh` força la importació de `xaac_thin_client_os` des de `src/` del checkout actual i valida la ruta del mòdul abans de començar. D'aquesta manera una `.venv` antiga no pot produir silenciosament una ISO amb un constructor diferent del que s'està provant i revisant.
+
+
+### Robustesa de l'arrencada del quiosc
+
+El supervisor de `xaac-kiosk` no llança XAAC Thin Client fins que el socket Wayland anunciat per `WAYLAND_DISPLAY` existeix realment dins de `XDG_RUNTIME_DIR`. Aquesta espera elimina la carrera entre l'arrencada de `labwc` i la del client. Les imatges de producció també inclouen `nano` com a editor de text administratiu mínim.
+

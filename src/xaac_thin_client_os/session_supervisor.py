@@ -35,7 +35,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError("La supervisió ha d'usar xaac-kiosk i notificar l'Agent")
     for key in ("client_command", "supervisor_command", "error_screen_command", "startup_screen_command", "status_file", "agent_socket"):
         _safe_absolute(cfg.get(key), key)
-    for key in ("max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds"):
+    for key in ("max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds", "graphical_session_ready_timeout_seconds"):
         if not isinstance(cfg.get(key), int) or cfg[key] <= 0:
             raise SessionSupervisorError(f"Valor de supervisió invàlid: {key}")
     if cfg["initial_backoff_seconds"] > cfg["maximum_backoff_seconds"] or cfg["max_restarts"] > 20:
@@ -77,6 +77,7 @@ ERROR_SCREEN={cfg["error_screen_command"]}
 STARTUP_SCREEN={cfg["startup_screen_command"]}
 STARTUP_MIN={cfg["startup_screen_minimum_seconds"]}
 STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
+GRAPHICAL_READY_TIMEOUT={cfg["graphical_session_ready_timeout_seconds"]}
 STATUS={cfg["status_file"]}
 AGENT_SOCKET={cfg["agent_socket"]}
 MAX_RESTARTS={cfg["max_restarts"]}
@@ -98,6 +99,35 @@ notify_agent() {{
   [ -S "$AGENT_SOCKET" ] || return 0
   printf '{{"event":"%s","exit_code":%s,"component":"xaac-thin-client"}}\n' "$event" "$code" | /usr/bin/socat - "UNIX-CONNECT:$AGENT_SOCKET" >/dev/null 2>&1 || true
 }}
+wait_graphical_session() {{
+  # labwc exports WAYLAND_DISPLAY before running autostart, but the socket can
+  # appear a little later. Never launch the client until the compositor is
+  # actually accepting Wayland connections.
+  if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
+    runtime_dir=${{XDG_RUNTIME_DIR:-}}
+    [ -n "$runtime_dir" ] || return 1
+    case "$WAYLAND_DISPLAY" in
+      /*) socket="$WAYLAND_DISPLAY" ;;
+      *) socket="$runtime_dir/$WAYLAND_DISPLAY" ;;
+    esac
+    waited=0
+    while [ ! -S "$socket" ]; do
+      [ "$waited" -ge "$GRAPHICAL_READY_TIMEOUT" ] && return 1
+      sleep 1
+      waited=$((waited + 1))
+    done
+    return 0
+  fi
+  # X11 fallback: DISPLAY is enough; the launcher/application will perform the
+  # final connection check.
+  [ -n "${{DISPLAY:-}}" ]
+}}
+
+if ! wait_graphical_session; then
+  write_status degraded 70 0
+  notify_agent session-degraded 70
+  exec "$ERROR_SCREEN" 70 0
+fi
 
 attempts=0
 window_start=$(date +%s)
