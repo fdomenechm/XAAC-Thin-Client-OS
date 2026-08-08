@@ -288,6 +288,7 @@ class BuildSettings:
             "gir1.2-gtk-4.0",
             "socat",
             "fonts-roboto",
+            "nano",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []

@@ -1,11 +1,3 @@
-## 2026-08-07 — Bloc 5: espera activa de Wayland i editor administratiu
-
-- El supervisor de sessió espera fins a 30 segons que el socket `WAYLAND_DISPLAY` siga real abans de llançar XAAC Thin Client.
-- Si la sessió gràfica no arriba a estar preparada, entra en mode segur en lloc de consumir reintents del client.
-- El fallback X11 continua permés quan `DISPLAY` està definit.
-- `nano` passa a ser paquet base obligatori per disposar d'un editor de text administratiu.
-- Afegides proves de regressió per a l'espera de Wayland i la presència de `nano`.
-
 
 - Corregit un defecte crític de reproduïbilitat del constructor: `scripts/build-production-iso.sh` força ara `PYTHONPATH` al `src/` del checkout actual i verifica la ruta real de `xaac_thin_client_os.production_builder` abans de construir. Això impedeix generar una ISO amb una còpia antiga del constructor instal·lada a `.venv` mentre els tests validen el codi nou.
 
@@ -1385,3 +1377,9 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - La sessió Wayland exporta `XDG_CONFIG_HOME=/etc/xaac`, de manera que labwc carrega també `/etc/xaac/labwc/autostart` i inicia el supervisor XAAC.
 - La configuració de labwc continua sense menús ni bindings per defecte per impedir `Reconfigure`/`Exit` en el quiosc.
 - Proves: 1394 superades.
+
+### Bloc 5 — correcció runtime XDG del quiosc
+- Corregit el launcher de XAAC Thin Client perquè el lock de `flock` use `XDG_RUNTIME_DIR` (p. ex. `/run/user/989`) en lloc de la ruta invàlida `/run/user/xaac-kiosk`.
+- Corregit el fitxer d'estat del supervisor perquè use igualment el runtime XDG real de l'UID del quiosc.
+- El launcher i el supervisor esperen el socket Wayland real abans d'intentar iniciar el client.
+- `nano` s'incorpora com a paquet obligatori de la imatge de producció.

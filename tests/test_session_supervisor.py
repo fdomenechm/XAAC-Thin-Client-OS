@@ -104,15 +104,14 @@ def test_invalid_profiles_rejected(tmp_path: Path, project_root: Path, old: str,
 
 
 
-def test_supervisor_waits_for_graphical_session_socket(tmp_path: Path, project_root: Path) -> None:
+def test_supervisor_uses_numeric_xdg_runtime_and_waits_for_wayland(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
     script = next(c for p, c, _ in plan.files if str(p).endswith("xaac-session-supervisor"))
-    assert 'wait_graphical_session()' in script
-    assert '[ ! -S "$socket" ]' in script
-    assert 'GRAPHICAL_READY_TIMEOUT=30' in script
-    assert 'if ! wait_graphical_session; then' in script
-    assert 'exec "$ERROR_SCREEN" 70 0' in script
-
+    assert 'RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}' in script
+    assert 'STATUS="$RUNTIME_DIR/$STATUS_NAME"' in script
+    assert '/run/user/xaac-kiosk/xaac-session-supervisor.json' not in script
+    assert 'wait_for_graphics()' in script
+    assert '[ -S "$socket" ]' in script
 
 def test_cli_exposes_supervisor_command() -> None:
     from xaac_thin_client_os.cli import build_parser

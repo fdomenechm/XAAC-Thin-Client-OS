@@ -68,14 +68,35 @@ def create_thin_client_launcher_plan(rootfs: Path, profile_path: Path) -> ThinCl
     app = profile["application"]
     launch = profile["launch"]
     files = profile["files"]
+    lock_name = PurePosixPath(str(launch["lock_file"])).name
     launcher = f'''#!/bin/sh
 set -eu
 EXECUTABLE={app["executable"]!s}
 CONFIG_DIR={app["configuration_directory"]!s}
-LOCK={launch["lock_file"]!s}
+LOCK_NAME={lock_name!s}
+
+# /run/user is keyed by the numeric UID (for example /run/user/989), not by
+# the account name.  Never use /run/user/xaac-kiosk here: flock would fail
+# before XAAC Thin Client was ever executed.
+RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
+LOCK="$RUNTIME_DIR/$LOCK_NAME"
 
 [ -x "$EXECUTABLE" ] || {{ echo "XAAC Thin Client no està instal·lat" >&2; exit 69; }}
 [ -d "$CONFIG_DIR" ] || {{ echo "Configuració de XAAC Thin Client absent" >&2; exit 78; }}
+[ -d "$RUNTIME_DIR" ] && [ -w "$RUNTIME_DIR" ] || {{ echo "Runtime XDG no disponible: $RUNTIME_DIR" >&2; exit 75; }}
+
+# When running on Wayland, do not consume a supervisor retry until the
+# compositor has actually published its socket.
+if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
+    socket="$RUNTIME_DIR/$WAYLAND_DISPLAY"
+    waited=0
+    while [ ! -S "$socket" ] && [ "$waited" -lt 30 ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    [ -S "$socket" ] || {{ echo "Socket Wayland no disponible: $socket" >&2; exit 75; }}
+fi
+
 exec /usr/bin/flock -n "$LOCK" "$EXECUTABLE"
 '''
     environment = (

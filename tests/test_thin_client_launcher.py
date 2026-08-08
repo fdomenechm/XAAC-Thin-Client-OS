@@ -26,6 +26,10 @@ def test_launcher_checks_dependencies_and_prevents_duplicates(tmp_path: Path, pr
     assert 'EXECUTABLE=/usr/bin/xaac-thinclient' in launcher
     assert "/usr/bin/flock -n" in launcher
     assert 'exec /usr/bin/flock -n "$LOCK" "$EXECUTABLE"' in launcher
+    assert 'RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}' in launcher
+    assert 'LOCK="$RUNTIME_DIR/$LOCK_NAME"' in launcher
+    assert '/run/user/xaac-kiosk/xaac-thin-client.lock' not in launcher
+    assert '[ -S "$socket" ]' in launcher
     assert "--config" not in launcher
     assert mode == 0o755
 

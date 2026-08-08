@@ -655,6 +655,7 @@ def test_production_package_set_always_contains_roboto() -> None:
     import inspect
     from xaac_thin_client_os.production_builder import BuildSettings
     assert '"fonts-roboto"' in inspect.getsource(BuildSettings.load)
+    assert '"nano"' in inspect.getsource(BuildSettings.load)
 
 
 def test_installer_hostname_accepts_uppercase_letters() -> None:

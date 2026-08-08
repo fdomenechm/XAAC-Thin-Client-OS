@@ -35,7 +35,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError("La supervisió ha d'usar xaac-kiosk i notificar l'Agent")
     for key in ("client_command", "supervisor_command", "error_screen_command", "startup_screen_command", "status_file", "agent_socket"):
         _safe_absolute(cfg.get(key), key)
-    for key in ("max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds", "graphical_session_ready_timeout_seconds"):
+    for key in ("max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds"):
         if not isinstance(cfg.get(key), int) or cfg[key] <= 0:
             raise SessionSupervisorError(f"Valor de supervisió invàlid: {key}")
     if cfg["initial_backoff_seconds"] > cfg["maximum_backoff_seconds"] or cfg["max_restarts"] > 20:
@@ -70,6 +70,7 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     profile = load_session_supervisor_profile(profile_path)
     cfg, files = profile["supervision"], profile["files"]
     voluntary = " ".join(str(code) for code in cfg["voluntary_exit_codes"])
+    status_name = PurePosixPath(str(cfg["status_file"])).name
     supervisor = f'''#!/bin/sh
 set -u
 CLIENT={cfg["client_command"]}
@@ -77,8 +78,9 @@ ERROR_SCREEN={cfg["error_screen_command"]}
 STARTUP_SCREEN={cfg["startup_screen_command"]}
 STARTUP_MIN={cfg["startup_screen_minimum_seconds"]}
 STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
-GRAPHICAL_READY_TIMEOUT={cfg["graphical_session_ready_timeout_seconds"]}
-STATUS={cfg["status_file"]}
+STATUS_NAME={status_name}
+RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
+STATUS="$RUNTIME_DIR/$STATUS_NAME"
 AGENT_SOCKET={cfg["agent_socket"]}
 MAX_RESTARTS={cfg["max_restarts"]}
 WINDOW={cfg["restart_window_seconds"]}
@@ -99,38 +101,30 @@ notify_agent() {{
   [ -S "$AGENT_SOCKET" ] || return 0
   printf '{{"event":"%s","exit_code":%s,"component":"xaac-thin-client"}}\n' "$event" "$code" | /usr/bin/socat - "UNIX-CONNECT:$AGENT_SOCKET" >/dev/null 2>&1 || true
 }}
-wait_graphical_session() {{
-  # labwc exports WAYLAND_DISPLAY before running autostart, but the socket can
-  # appear a little later. Never launch the client until the compositor is
-  # actually accepting Wayland connections.
+
+wait_for_graphics() {{
+  # labwc exports WAYLAND_DISPLAY to autostart children, but the socket can
+  # appear a fraction later.  Wait for the real socket instead of racing it.
   if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
-    runtime_dir=${{XDG_RUNTIME_DIR:-}}
-    [ -n "$runtime_dir" ] || return 1
-    case "$WAYLAND_DISPLAY" in
-      /*) socket="$WAYLAND_DISPLAY" ;;
-      *) socket="$runtime_dir/$WAYLAND_DISPLAY" ;;
-    esac
+    socket="$RUNTIME_DIR/$WAYLAND_DISPLAY"
     waited=0
-    while [ ! -S "$socket" ]; do
-      [ "$waited" -ge "$GRAPHICAL_READY_TIMEOUT" ] && return 1
+    while [ ! -S "$socket" ] && [ "$waited" -lt 30 ]; do
       sleep 1
       waited=$((waited + 1))
     done
+    [ -S "$socket" ] || return 1
     return 0
   fi
-  # X11 fallback: DISPLAY is enough; the launcher/application will perform the
-  # final connection check.
   [ -n "${{DISPLAY:-}}" ]
 }}
 
-if ! wait_graphical_session; then
-  write_status degraded 70 0
-  notify_agent session-degraded 70
-  exec "$ERROR_SCREEN" 70 0
-fi
-
 attempts=0
 window_start=$(date +%s)
+if ! wait_for_graphics; then
+  write_status degraded 75 0
+  notify_agent session-degraded 75
+  exec "$ERROR_SCREEN" 75 0
+fi
 while :; do
   started=$(date +%s)
   write_status starting 0 "$attempts"

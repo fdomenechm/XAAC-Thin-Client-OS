@@ -8,7 +8,6 @@ supervision:
   startup_screen_command: /usr/local/libexec/xaac-startup-screen
   startup_screen_minimum_seconds: 2
   startup_screen_timeout_seconds: 20
-  graphical_session_ready_timeout_seconds: 30
   max_restarts: 5
   restart_window_seconds: 60
   initial_backoff_seconds: 2
