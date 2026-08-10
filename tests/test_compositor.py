@@ -47,7 +47,10 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert {"waybar", "tint2", "rofi", "wofi"} <= set(plan.forbidden_packages)
     files = {p.as_posix(): content for p, content, _ in plan.files}
     assert "/etc/xaac/labwc/rc.xml" in files
-    assert "ToggleFullscreen" in files["/etc/xaac/labwc/rc.xml"]
+    rc = files["/etc/xaac/labwc/rc.xml"]
+    assert "<policy>center</policy>" in rc
+    assert 'name="AutoPlace" policy="center"' in rc
+    assert "ToggleFullscreen" not in rc
     assert "<keyboard />" in files["/etc/xaac/openbox/rc.xml"]
 
 def test_execute_is_idempotent(tmp_path: Path, project_root: Path) -> None:

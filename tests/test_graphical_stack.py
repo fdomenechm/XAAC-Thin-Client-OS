@@ -81,6 +81,9 @@ def test_font_packages_are_included(tmp_path: Path, project_root: Path) -> None:
     assert "fonts-roboto" in plan.packages
     assert "fonts-noto-core" in plan.packages
     assert "fonts-dejavu-core" in plan.packages
+    assert "adwaita-icon-theme" in plan.packages
+    assert "adwaita-icon-theme-legacy" in plan.packages
+    assert "hicolor-icon-theme" in plan.packages
 
 
 def test_fontconfig_and_gtk4_files_are_planned(tmp_path: Path, project_root: Path) -> None:
@@ -90,7 +93,7 @@ def test_fontconfig_and_gtk4_files_are_planned(tmp_path: Path, project_root: Pat
     assert "<family>Roboto</family>" in fontconfig
     assert fontconfig.index("<family>Roboto</family>") < fontconfig.index("<family>Noto Sans</family>")
     assert fontconfig.index("<family>Noto Sans</family>") < fontconfig.index("<family>DejaVu Sans</family>")
-    assert files["/etc/gtk-4.0/settings.ini"] == "[Settings]\ngtk-font-name=Roboto 10\n"
+    assert files["/etc/gtk-4.0/settings.ini"] == "[Settings]\ngtk-font-name=Roboto 10\ngtk-icon-theme-name=Adwaita\n"
 
 
 def test_font_configuration_is_written_idempotently(tmp_path: Path, project_root: Path) -> None:

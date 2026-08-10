@@ -1,4 +1,11 @@
 
+## 2026-08-10 — Bloc 5: centrat de quiosc i icones GTK
+
+- La política de col·locació de `labwc` centra les finestres del quiosc en l'eixida activa i aplica `AutoPlace(center)` a les finestres noves.
+- S'elimina la regla genèrica `ToggleFullscreen`, que no corresponia al comportament de finestra centrada requerit per XAAC Thin Client.
+- S'incorporen `adwaita-icon-theme`, `adwaita-icon-theme-legacy` i `hicolor-icon-theme` al sistema mínim.
+- GTK 4 queda configurat explícitament amb `gtk-icon-theme-name=Adwaita`, mantenint Roboto 10 com a tipografia per defecte.
+
 - Corregit un defecte crític de reproduïbilitat del constructor: `scripts/build-production-iso.sh` força ara `PYTHONPATH` al `src/` del checkout actual i verifica la ruta real de `xaac_thin_client_os.production_builder` abans de construir. Això impedeix generar una ISO amb una còpia antiga del constructor instal·lada a `.venv` mentre els tests validen el codi nou.
 
 - Bloc 5: integració del paquet real `xaac-thinclient_1.0.0_all.deb` en la ISO de producció.

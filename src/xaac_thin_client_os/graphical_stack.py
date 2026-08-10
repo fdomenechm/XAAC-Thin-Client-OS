@@ -158,7 +158,11 @@ def create_graphical_stack_plan(rootfs: Path, profile_path: Path) -> GraphicalSt
     fontconfig_lines.append("</fontconfig>")
     fontconfig_content = "\n".join(fontconfig_lines) + "\n"
 
-    gtk4_content = "[Settings]\n" f"gtk-font-name={default_family} {int(fonts['default_size'])}\n"
+    gtk4_content = (
+        "[Settings]\n"
+        f"gtk-font-name={default_family} {int(fonts['default_size'])}\n"
+        "gtk-icon-theme-name=Adwaita\n"
+    )
     files = (
         (env_path, content, 0o644),
         (fontconfig_path, fontconfig_content, 0o644),

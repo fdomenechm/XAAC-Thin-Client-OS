@@ -18,6 +18,9 @@ packages:
     - fonts-roboto
     - fonts-noto-core
     - fonts-dejavu-core
+    - adwaita-icon-theme
+    - adwaita-icon-theme-legacy
+    - hicolor-icon-theme
   forbidden:
     - task-desktop
     - task-gnome-desktop

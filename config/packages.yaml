@@ -35,6 +35,9 @@ graphical:
 - mesa-utils
 - mesa-vulkan-drivers
 - fonts-dejavu-core
+- adwaita-icon-theme
+- adwaita-icon-theme-legacy
+- hicolor-icon-theme
 - alsa-utils
 - pipewire
 - pipewire-alsa

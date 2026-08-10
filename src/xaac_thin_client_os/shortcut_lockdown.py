@@ -101,7 +101,7 @@ def create_shortcut_lockdown_plan(rootfs: Path, profile_path: Path) -> ShortcutL
         raise ShortcutLockdownError(f"Rootfs insegur: {root}")
     profile = load_shortcut_lockdown_profile(profile_path)
     blocked = tuple(item for values in profile["categories"].values() for item in values)
-    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>server</decoration><gap>0</gap></core>\n  <theme><name>XAAC</name><cornerRadius>0</cornerRadius></theme>\n  <keyboard />\n  <mouse><context name=\"Root\" /></mouse>\n  <menu />\n  <windowRules><windowRule identifier=\"*\"><action name=\"ToggleFullscreen\" /></windowRule></windowRules>\n</labwc_config>\n"""
+    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>server</decoration><gap>0</gap></core>\n  <placement><policy>center</policy></placement>\n  <theme><name>XAAC</name><cornerRadius>0</cornerRadius></theme>\n  <keyboard />\n  <mouse />\n  <windowRules><windowRule identifier=\"*\"><action name=\"AutoPlace\" policy=\"center\" /></windowRule></windowRules>\n</labwc_config>\n"""
     openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<openbox_config xmlns=\"http://openbox.org/3.4/rc\">\n  <applications><application class=\"*\"><decor>no</decor><fullscreen>yes</fullscreen></application></applications>\n  <keyboard />\n  <mouse><context name=\"Root\" /></mouse>\n  <desktops><number>1</number></desktops>\n</openbox_config>\n"""
     effective = {
         "schema_version": profile["schema_version"],

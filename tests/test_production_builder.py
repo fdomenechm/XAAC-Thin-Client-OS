@@ -680,6 +680,8 @@ def test_kiosk_configs_do_not_expose_labwc_menu_or_default_bindings(project_root
     assert "<menu" not in rc
     assert "<default" not in rc
     assert "<keyboard />" in rc and "<mouse />" in rc
+    assert "<policy>center</policy>" in rc
+    assert 'name="AutoPlace" policy="center"' in rc
 
 
 def test_block5_is_verified_in_rootfs_squashfs_and_installed_system() -> None:

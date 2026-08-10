@@ -289,6 +289,9 @@ class BuildSettings:
             "socat",
             "fonts-roboto",
             "nano",
+            "adwaita-icon-theme",
+            "adwaita-icon-theme-legacy",
+            "hicolor-icon-theme",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
         kernel_parameters: list[str] = []
