@@ -76,7 +76,7 @@ def load_graphical_stack_profile(path: Path) -> dict[str, Any]:
         values = fonts.get(key)
         if not isinstance(values, list) or not values or not all(isinstance(value, str) and value.strip() for value in values):
             raise GraphicalStackError(f"La llista tipogràfica {key} és invàlida")
-    for key in ("fontconfig_file", "gtk4_settings_file"):
+    for key in ("fontconfig_file", "gtk3_settings_file", "gtk4_settings_file"):
         value = PurePosixPath(str(fonts.get(key, "")))
         if not value.is_absolute() or ".." in value.parts:
             raise GraphicalStackError(f"Ruta tipogràfica insegura: {key}")
@@ -135,6 +135,7 @@ def create_graphical_stack_plan(rootfs: Path, profile_path: Path) -> GraphicalSt
 
     fonts = profile["fonts"]
     fontconfig_path = PurePosixPath(str(fonts["fontconfig_file"]))
+    gtk3_path = PurePosixPath(str(fonts["gtk3_settings_file"]))
     gtk4_path = PurePosixPath(str(fonts["gtk4_settings_file"]))
     default_family = str(fonts["default_family"])
     sans_families = [default_family, *fonts["sans_fallbacks"]]
@@ -158,15 +159,16 @@ def create_graphical_stack_plan(rootfs: Path, profile_path: Path) -> GraphicalSt
     fontconfig_lines.append("</fontconfig>")
     fontconfig_content = "\n".join(fontconfig_lines) + "\n"
 
-    gtk4_content = (
+    gtk_settings_content = (
         "[Settings]\n"
         f"gtk-font-name={default_family} {int(fonts['default_size'])}\n"
-        "gtk-icon-theme-name=Adwaita\n"
+        "gtk-icon-theme-name=ZorinBlue-Light\n"
     )
     files = (
         (env_path, content, 0o644),
         (fontconfig_path, fontconfig_content, 0o644),
-        (gtk4_path, gtk4_content, 0o644),
+        (gtk3_path, gtk_settings_content, 0o644),
+        (gtk4_path, gtk_settings_content, 0o644),
     )
     packages = tuple(dict.fromkeys(profile["packages"]["required"]))
     forbidden = tuple(dict.fromkeys(profile["packages"].get("forbidden", [])))

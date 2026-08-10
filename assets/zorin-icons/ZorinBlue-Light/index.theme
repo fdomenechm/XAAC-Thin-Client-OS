@@ -1,0 +1,33 @@
+[Icon Theme]
+Name=ZorinBlue-Light
+Comment=XAAC subset of ZorinBlue-Light icons for XAAC Thin Client
+Inherits=Adwaita,hicolor
+Directories=scalable/actions,scalable/status,scalable/devices,scalable/apps
+
+[scalable/actions]
+Size=16
+Type=Scalable
+MinSize=8
+MaxSize=512
+Context=Actions
+
+[scalable/status]
+Size=16
+Type=Scalable
+MinSize=8
+MaxSize=512
+Context=Status
+
+[scalable/devices]
+Size=16
+Type=Scalable
+MinSize=8
+MaxSize=512
+Context=Devices
+
+[scalable/apps]
+Size=16
+Type=Scalable
+MinSize=8
+MaxSize=512
+Context=Applications

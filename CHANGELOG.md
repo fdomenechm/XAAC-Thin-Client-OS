@@ -1390,3 +1390,11 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Corregit el fitxer d'estat del supervisor perquè use igualment el runtime XDG real de l'UID del quiosc.
 - El launcher i el supervisor esperen el socket Wayland real abans d'intentar iniciar el client.
 - `nano` s'incorpora com a paquet obligatori de la imatge de producció.
+
+### Block 5 visual parity with development
+
+- XAAC Thin Client remains centered under labwc.
+- Wayland decorations switch to client-side decoration so GTK can render the rounded window container.
+- labwc keeps a 12 px corner-radius fallback for server-side decorated clients.
+- GTK 3 and GTK 4 select `ZorinBlue-Light` for the XAAC Thin Client icon theme.
+- A license-preserving subset of upstream Zorin icons used by XAAC Thin Client is bundled locally, with Adwaita/hicolor fallback.

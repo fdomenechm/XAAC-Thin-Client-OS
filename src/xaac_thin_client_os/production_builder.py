@@ -191,6 +191,7 @@ fi
 from xaac_thin_client_os.configuration import load_project_configuration
 from xaac_thin_client_os.packages import resolve_packages
 from xaac_thin_client_os.compositor import CompositorConfigurator, create_compositor_plan
+from xaac_thin_client_os.graphical_stack import GraphicalStackConfigurator, create_graphical_stack_plan
 from xaac_thin_client_os.session_manager import SessionManagerConfigurator, create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import SessionSupervisorConfigurator, create_session_supervisor_plan
 from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
@@ -813,6 +814,9 @@ class ProductionIsoBuilder:
         Writing our version before apt installs greetd makes dpkg ask an
         interactive conffile question and stalls the unattended build.
         """
+        GraphicalStackConfigurator().execute(
+            create_graphical_stack_plan(self.paths.rootfs, self.paths.project_root / "config/graphical-stack.yaml")
+        )
         CompositorConfigurator().execute(
             create_compositor_plan(self.paths.rootfs, self.paths.project_root / "config/compositor.yaml")
         )
@@ -829,6 +833,23 @@ class ProductionIsoBuilder:
             self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
             "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
         )
+
+    def _install_zorin_icon_subset(self) -> None:
+        """Install the audited ZorinBlue-Light icon subset used by XAAC Thin Client."""
+        source = self.paths.project_root / "assets/zorin-icons/ZorinBlue-Light"
+        if not (source / "index.theme").is_file():
+            raise ProductionBuildError("Falta el subconjunt d’icones ZorinBlue-Light")
+        destination = self._inside("/usr/share/icons/ZorinBlue-Light")
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(source, destination)
+        # A cache is optional for scalable themes, but generate it when the
+        # tool is available to match a normal desktop installation.
+        self._chroot([
+            "/bin/sh", "-c",
+            "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
+            "gtk-update-icon-cache -f /usr/share/icons/ZorinBlue-Light >/dev/null 2>&1 || true",
+        ], phase="configure-zorin-icon-cache")
 
     def _customize_xaac_thinclient_theme(self) -> None:
         """Apply the XAAC OS visual baseline to the packaged GTK client."""
@@ -1350,6 +1371,7 @@ class ProductionIsoBuilder:
                 "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
+            self._install_zorin_icon_subset()
             self._customize_xaac_thinclient_theme()
             thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
             if not thinclient_deb.is_file():
