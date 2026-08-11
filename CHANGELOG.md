@@ -1,3 +1,11 @@
+## 2026-08-11 — Icones XAAC exactes i mínimes
+
+- Substituït el snapshot complet d'icones Zorin per un tema mínim `XAAC-Zorin-Exact`.
+- Incloses únicament les 12 icones simbòliques que referencia XAAC Thin Client.
+- Cada SVG s'ha resolt i copiat des de la cadena real del desenvolupament
+  `ZorinBlue-Light → Zorin → Adwaita`, evitant diferències de versió en els fallbacks.
+- El payload d'icones específic de XAAC queda per sota de 10 KiB.
+
 
 - Integrat el snapshot GTK 3/4 real de `ZorinBlue-Light` exportat de la màquina de desenvolupament, seleccionat explícitament per GTK junt amb Roboto 10.
 - La barra de títol passa a decoració client GTK (`gtk-decoration-layout=:`), evitant que Labwc la substituïsca i mantenint el bloqueig de botons/menús del mode quiosc.

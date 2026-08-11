@@ -837,29 +837,29 @@ class ProductionIsoBuilder:
         )
 
     def _install_zorin_icon_theme(self) -> None:
-        """Install the exact Zorin icon-theme snapshot from development.
+        """Install only the exact development icons used by XAAC Thin Client.
 
-        Both ``ZorinBlue-Light`` and its ``Zorin`` parent are vendored in the
-        project from the development workstation.  Copying that snapshot
-        directly makes icon lookup deterministic and avoids version drift or
-        partial-theme fallbacks during ISO construction.
+        The vendored theme is deliberately minimal: it contains the 12 symbolic
+        SVGs referenced by the application, resolved from the development
+        machine's ZorinBlue-Light -> Zorin -> Adwaita chain.  This avoids both
+        icon-version drift and shipping tens of megabytes of unused icons.
         """
-        source_root = self.paths.project_root / "assets/zorin-icons"
-        for theme_name in ("Zorin", "ZorinBlue-Light"):
-            source = source_root / theme_name
-            if not (source / "index.theme").is_file():
-                raise ProductionBuildError(f"Falta assets/zorin-icons/{theme_name}/index.theme")
-            destination = self._inside(f"/usr/share/icons/{theme_name}")
-            if destination.exists():
-                shutil.rmtree(destination)
-            shutil.copytree(source, destination, symlinks=True)
+        source = self.paths.project_root / "assets/xaac-zorin-exact-icons"
+        if not (source / "index.theme").is_file():
+            raise ProductionBuildError(
+                "Falta assets/xaac-zorin-exact-icons/index.theme"
+            )
+        destination = self._inside("/usr/share/icons/XAAC-Zorin-Exact")
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(source, destination, symlinks=False)
         self._chroot([
             "/bin/sh", "-c",
-            "for theme in Zorin ZorinBlue-Light; do "
             "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
-            "gtk-update-icon-cache -f /usr/share/icons/$theme >/dev/null 2>&1 || true; "
-            "done",
+            "gtk-update-icon-cache -f /usr/share/icons/XAAC-Zorin-Exact "
+            ">/dev/null 2>&1 || true",
         ], phase="configure-zorin-icon-cache")
+
 
     def _install_zorin_gtk_theme(self) -> None:
         """Install the exact ZorinBlue-Light GTK snapshot from development."""
