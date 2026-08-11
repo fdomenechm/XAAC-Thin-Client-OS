@@ -86,3 +86,12 @@ def test_cli_exposes_shortcut_command() -> None:
     args = build_parser().parse_args(["configure-shortcut-lockdown", "--dry-run"])
     assert args.command == "configure-shortcut-lockdown"
     assert args.dry_run
+
+
+def test_kiosk_titlebar_uses_roboto(project_root, tmp_path):
+    from xaac_thin_client_os.shortcut_lockdown import create_shortcut_lockdown_plan
+    plan = create_shortcut_lockdown_plan(tmp_path / "rootfs", project_root / "config/shortcut-lockdown.yaml")
+    rc = next(content for path, content, _mode in plan.files if str(path).endswith("labwc/rc.xml"))
+    assert rc.count("<name>Roboto</name>") >= 2
+    assert 'place="ActiveWindow"' in rc
+    assert 'place="InactiveWindow"' in rc

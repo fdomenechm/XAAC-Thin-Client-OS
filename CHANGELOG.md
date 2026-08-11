@@ -1,6 +1,11 @@
 
 ## 2026-08-10 — Bloc 5: centrat de quiosc i icones GTK
 
+### Bloc 5 — fidelitat visual Zorin OS 17
+
+- Fixat `zorin-icon-themes` a la versió 3.3.1, corresponent a la família usada per Zorin OS 17, per reproduir les mateixes icones `ZorinBlue-Light` que l'entorn de desenvolupament.
+- La barra de títol server-side de `labwc` usa explícitament Roboto 10 tant en finestra activa com inactiva.
+
 - La política de col·locació de `labwc` centra les finestres del quiosc en l'eixida activa i aplica `AutoPlace(center)` a les finestres noves.
 - S'elimina la regla genèrica `ToggleFullscreen`, que no corresponia al comportament de finestra centrada requerit per XAAC Thin Client.
 - S'incorporen `adwaita-icon-theme`, `adwaita-icon-theme-legacy` i `hicolor-icon-theme` al sistema mínim.

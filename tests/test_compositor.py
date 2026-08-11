@@ -92,3 +92,12 @@ def test_cli_exposes_compositor_command() -> None:
     from xaac_thin_client_os.cli import build_parser
     args = build_parser().parse_args(["configure-compositor", "--dry-run"])
     assert args.command == "configure-compositor" and args.dry_run
+
+
+def test_kiosk_titlebar_uses_roboto(project_root, tmp_path):
+    from xaac_thin_client_os.compositor import create_compositor_plan
+    plan = create_compositor_plan(tmp_path / "rootfs", project_root / "config/compositor.yaml")
+    rc = next(content for path, content, _mode in plan.files if str(path).endswith("labwc/rc.xml"))
+    assert rc.count("<name>Roboto</name>") >= 2
+    assert 'place="ActiveWindow"' in rc
+    assert 'place="InactiveWindow"' in rc

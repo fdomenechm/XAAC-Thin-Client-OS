@@ -837,14 +837,14 @@ class ProductionIsoBuilder:
         )
 
     def _install_zorin_icon_theme(self) -> None:
-        """Install the complete upstream ZorinBlue-Light icon theme.
+        """Install the Zorin OS 17 ZorinBlue-Light icon theme used by development.
 
         The development workstation uses ZorinBlue-Light.  A partial icon
         subset is not sufficient because GTK resolves several symbolic icons
-        through the theme inheritance chain.  Pin the upstream release so ISO
-        builds remain deterministic with respect to the selected theme version.
+        through the theme inheritance chain.  Pin the Zorin OS 17 release (3.3.1) so the kiosk uses the same icon artwork
+        as the development workstation instead of the redesigned Zorin OS 18/4.x set.
         """
-        version = "4.0.8"
+        version = "3.3.1"
         url = f"https://github.com/ZorinOS/zorin-icon-themes/archive/refs/tags/{version}.tar.gz"
         cache_dir = self.paths.build_root / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
