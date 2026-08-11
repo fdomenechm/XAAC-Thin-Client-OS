@@ -93,8 +93,15 @@ def test_fontconfig_and_gtk4_files_are_planned(tmp_path: Path, project_root: Pat
     assert "<family>Roboto</family>" in fontconfig
     assert fontconfig.index("<family>Roboto</family>") < fontconfig.index("<family>Noto Sans</family>")
     assert fontconfig.index("<family>Noto Sans</family>") < fontconfig.index("<family>DejaVu Sans</family>")
-    assert files["/etc/gtk-3.0/settings.ini"] == "[Settings]\ngtk-font-name=Roboto 10\ngtk-icon-theme-name=ZorinBlue-Light\n"
-    assert files["/etc/gtk-4.0/settings.ini"] == "[Settings]\ngtk-font-name=Roboto 10\ngtk-icon-theme-name=ZorinBlue-Light\n"
+    expected_gtk = (
+        "[Settings]\n"
+        "gtk-font-name=Roboto 10\n"
+        "gtk-theme-name=ZorinBlue-Light\n"
+        "gtk-icon-theme-name=ZorinBlue-Light\n"
+        "gtk-decoration-layout=:\n"
+    )
+    assert files["/etc/gtk-3.0/settings.ini"] == expected_gtk
+    assert files["/etc/gtk-4.0/settings.ini"] == expected_gtk
 
 
 def test_font_configuration_is_written_idempotently(tmp_path: Path, project_root: Path) -> None:

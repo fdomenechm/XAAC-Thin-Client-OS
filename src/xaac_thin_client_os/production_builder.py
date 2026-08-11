@@ -890,6 +890,19 @@ class ProductionIsoBuilder:
             "done",
         ], phase="configure-zorin-icon-cache")
 
+    def _install_zorin_gtk_theme(self) -> None:
+        """Install the exact ZorinBlue-Light GTK snapshot from development."""
+        source = self.paths.project_root / "assets/zorin-theme/ZorinBlue-Light"
+        if not (source / "index.theme").is_file():
+            raise ProductionBuildError("Falta assets/zorin-theme/ZorinBlue-Light/index.theme")
+        for subdir in ("gtk-3.0", "gtk-4.0"):
+            if not (source / subdir / "gtk.css").is_file():
+                raise ProductionBuildError(f"Falta el tema GTK exportat: {subdir}/gtk.css")
+        destination = self._inside("/usr/share/themes/ZorinBlue-Light")
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(source, destination, symlinks=True)
+
     def _customize_xaac_thinclient_theme(self) -> None:
         """Apply the XAAC OS visual baseline to the packaged GTK client."""
         css = self._inside("/usr/lib/python3/dist-packages/xaac_thinclient/resources/style.css")
@@ -1411,6 +1424,7 @@ class ProductionIsoBuilder:
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
             self._install_zorin_icon_theme()
+            self._install_zorin_gtk_theme()
             self._customize_xaac_thinclient_theme()
             thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
             if not thinclient_deb.is_file():

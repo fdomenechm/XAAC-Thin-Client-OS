@@ -1,4 +1,7 @@
 
+- Integrat el snapshot GTK 3/4 real de `ZorinBlue-Light` exportat de la màquina de desenvolupament, seleccionat explícitament per GTK junt amb Roboto 10.
+- La barra de títol passa a decoració client GTK (`gtk-decoration-layout=:`), evitant que Labwc la substituïsca i mantenint el bloqueig de botons/menús del mode quiosc.
+
 ## 2026-08-10 — Bloc 5: centrat de quiosc i icones GTK
 
 ### Bloc 5 — fidelitat visual Zorin OS 17

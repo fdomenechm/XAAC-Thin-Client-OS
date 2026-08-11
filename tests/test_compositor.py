@@ -49,11 +49,8 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert "/etc/xaac/labwc/rc.xml" in files
     rc = files["/etc/xaac/labwc/rc.xml"]
     assert "<policy>center</policy>" in rc
-    assert "<decoration>server</decoration>" in rc
-    assert "<layout>:</layout>" in rc
-    assert "<showTitle>yes</showTitle>" in rc
-    assert 'serverDecoration="yes"' in rc
-    assert "<cornerRadius>12</cornerRadius>" in rc
+    assert "<decoration>client</decoration>" in rc
+    assert 'serverDecoration="no"' in rc
     assert 'name="AutoPlace" policy="center"' in rc
     assert "ToggleFullscreen" not in rc
     assert "<keyboard />" in files["/etc/xaac/openbox/rc.xml"]
@@ -94,10 +91,10 @@ def test_cli_exposes_compositor_command() -> None:
     assert args.command == "configure-compositor" and args.dry_run
 
 
-def test_kiosk_titlebar_uses_roboto(project_root, tmp_path):
+def test_kiosk_uses_client_side_gtk_decorations(project_root, tmp_path):
     from xaac_thin_client_os.compositor import create_compositor_plan
     plan = create_compositor_plan(tmp_path / "rootfs", project_root / "config/compositor.yaml")
     rc = next(content for path, content, _mode in plan.files if str(path).endswith("labwc/rc.xml"))
-    assert rc.count("<name>Roboto</name>") >= 2
-    assert 'place="ActiveWindow"' in rc
-    assert 'place="InactiveWindow"' in rc
+    assert "<decoration>client</decoration>" in rc
+    assert 'serverDecoration="no"' in rc
+    assert "<theme>" not in rc
