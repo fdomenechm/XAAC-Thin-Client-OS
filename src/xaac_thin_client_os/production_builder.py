@@ -837,29 +837,30 @@ class ProductionIsoBuilder:
         )
 
     def _install_zorin_icon_theme(self) -> None:
-        """Install only the exact development icons used by XAAC Thin Client.
+        """Install the minimal exact ZorinBlue-Light icon subset used by XAAC.
 
-        The vendored theme is deliberately minimal: it contains the 12 symbolic
-        SVGs referenced by the application, resolved from the development
-        machine's ZorinBlue-Light -> Zorin -> Adwaita chain.  This avoids both
-        icon-version drift and shipping tens of megabytes of unused icons.
+        The project vendors only the icons referenced directly by XAAC Thin
+        Client.  Their SVG contents and symbolic aliases come from the exact
+        effective Zorin development theme.  Keeping the original icon name,
+        category and alias target makes GTK lookup deterministic while the
+        standard Adwaita/gnome/hicolor inheritance remains available for GTK
+        internal icons.
         """
-        source = self.paths.project_root / "assets/xaac-zorin-exact-icons"
+        source = self.paths.project_root / "assets/zorin-icons/ZorinBlue-Light"
         if not (source / "index.theme").is_file():
             raise ProductionBuildError(
-                "Falta assets/xaac-zorin-exact-icons/index.theme"
+                "Falta assets/zorin-icons/ZorinBlue-Light/index.theme"
             )
-        destination = self._inside("/usr/share/icons/XAAC-Zorin-Exact")
+        destination = self._inside("/usr/share/icons/ZorinBlue-Light")
         if destination.exists():
             shutil.rmtree(destination)
-        shutil.copytree(source, destination, symlinks=False)
+        shutil.copytree(source, destination, symlinks=True)
         self._chroot([
             "/bin/sh", "-c",
             "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
-            "gtk-update-icon-cache -f /usr/share/icons/XAAC-Zorin-Exact "
+            "gtk-update-icon-cache -f /usr/share/icons/ZorinBlue-Light "
             ">/dev/null 2>&1 || true",
         ], phase="configure-zorin-icon-cache")
-
 
     def _install_zorin_gtk_theme(self) -> None:
         """Install the exact ZorinBlue-Light GTK snapshot from development."""

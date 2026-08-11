@@ -1,0 +1,34 @@
+[Icon Theme]
+Name=ZorinBlue-Light
+Comment=Minimal exact XAAC Thin Client icon subset captured from the development Zorin environment.
+Inherits=Adwaita,gnome,hicolor
+Example=computer
+Directories=scalable/actions,scalable/apps,scalable/devices,scalable/status
+
+[scalable/actions]
+Context=Actions
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[scalable/apps]
+Context=Applications
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[scalable/devices]
+Context=Devices
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+[scalable/status]
+Context=Status
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
