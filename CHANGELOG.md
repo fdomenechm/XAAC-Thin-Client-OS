@@ -1398,3 +1398,11 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - labwc keeps a 12 px corner-radius fallback for server-side decorated clients.
 - GTK 3 and GTK 4 select `ZorinBlue-Light` for the XAAC Thin Client icon theme.
 - A license-preserving subset of upstream Zorin icons used by XAAC Thin Client is bundled locally, with Adwaita/hicolor fallback.
+
+### Bloc 5 — quiosc visual: SSD bloquejada i tema Zorin complet
+
+- `labwc` torna a decoració server-side per mantindre cantonades arredonides sense exposar controls de finestra.
+- La barra de títol no conté botons de minimitzar, maximitzar, menú ni tancar (`<layout>:</layout>`).
+- Es força `serverDecoration=yes`, es manté el centrat automàtic i es desactiven keybindings/mousebindings de gestió.
+- La construcció instal·la el tema oficial complet `ZorinBlue-Light` i la seua base `Zorin`, fixats a la versió 4.0.8, en lloc d'un subconjunt parcial.
+- Es conserva Adwaita/hicolor únicament com a fallback i es regeneren les caches GTK.

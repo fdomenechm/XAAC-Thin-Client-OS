@@ -20,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import tarfile
+import urllib.request
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
@@ -834,21 +836,58 @@ class ProductionIsoBuilder:
             "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
         )
 
-    def _install_zorin_icon_subset(self) -> None:
-        """Install the audited ZorinBlue-Light icon subset used by XAAC Thin Client."""
-        source = self.paths.project_root / "assets/zorin-icons/ZorinBlue-Light"
-        if not (source / "index.theme").is_file():
-            raise ProductionBuildError("Falta el subconjunt d’icones ZorinBlue-Light")
-        destination = self._inside("/usr/share/icons/ZorinBlue-Light")
-        if destination.exists():
-            shutil.rmtree(destination)
-        shutil.copytree(source, destination)
-        # A cache is optional for scalable themes, but generate it when the
-        # tool is available to match a normal desktop installation.
+    def _install_zorin_icon_theme(self) -> None:
+        """Install the complete upstream ZorinBlue-Light icon theme.
+
+        The development workstation uses ZorinBlue-Light.  A partial icon
+        subset is not sufficient because GTK resolves several symbolic icons
+        through the theme inheritance chain.  Pin the upstream release so ISO
+        builds remain deterministic with respect to the selected theme version.
+        """
+        version = "4.0.8"
+        url = f"https://github.com/ZorinOS/zorin-icon-themes/archive/refs/tags/{version}.tar.gz"
+        cache_dir = self.paths.build_root / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        archive = cache_dir / f"zorin-icon-themes-{version}.tar.gz"
+        if not archive.is_file():
+            try:
+                urllib.request.urlretrieve(url, archive)
+            except Exception as exc:
+                raise ProductionBuildError(
+                    f"No s'ha pogut descarregar Zorin Icon Themes {version}: {exc}"
+                ) from exc
+        try:
+            with tempfile.TemporaryDirectory(prefix="xaac-zorin-icons-", dir=self.paths.build_root) as tmp:
+                temp = Path(tmp)
+                with tarfile.open(archive, "r:gz") as tf:
+                    tf.extractall(temp, filter="data")
+                roots = [p for p in temp.iterdir() if p.is_dir() and p.name.startswith("zorin-icon-themes-")]
+                if len(roots) != 1:
+                    raise ProductionBuildError("Arxiu de Zorin Icon Themes inesperat")
+                source_root = roots[0]
+                for theme_name in ("Zorin", "ZorinBlue-Light"):
+                    source = source_root / theme_name
+                    if not (source / "index.theme").is_file():
+                        raise ProductionBuildError(f"Falta el tema {theme_name} en l'arxiu de Zorin")
+                    destination = self._inside(f"/usr/share/icons/{theme_name}")
+                    if destination.exists():
+                        shutil.rmtree(destination)
+                    shutil.copytree(source, destination, symlinks=True)
+                license_src = source_root / "LICENSE"
+                if license_src.is_file():
+                    license_dst = self._inside("/usr/share/doc/xaac-thin-client-os/zorin-icon-themes.LICENSE")
+                    license_dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(license_src, license_dst)
+        except ProductionBuildError:
+            raise
+        except Exception as exc:
+            raise ProductionBuildError(f"No s'ha pogut instal·lar Zorin Icon Themes: {exc}") from exc
         self._chroot([
             "/bin/sh", "-c",
+            "for theme in Zorin ZorinBlue-Light; do "
             "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
-            "gtk-update-icon-cache -f /usr/share/icons/ZorinBlue-Light >/dev/null 2>&1 || true",
+            "gtk-update-icon-cache -f /usr/share/icons/$theme >/dev/null 2>&1 || true; "
+            "done",
         ], phase="configure-zorin-icon-cache")
 
     def _customize_xaac_thinclient_theme(self) -> None:
@@ -1371,7 +1410,7 @@ class ProductionIsoBuilder:
                 "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
-            self._install_zorin_icon_subset()
+            self._install_zorin_icon_theme()
             self._customize_xaac_thinclient_theme()
             thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
             if not thinclient_deb.is_file():

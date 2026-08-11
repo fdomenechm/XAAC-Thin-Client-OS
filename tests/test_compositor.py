@@ -49,7 +49,10 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert "/etc/xaac/labwc/rc.xml" in files
     rc = files["/etc/xaac/labwc/rc.xml"]
     assert "<policy>center</policy>" in rc
-    assert "<decoration>client</decoration>" in rc
+    assert "<decoration>server</decoration>" in rc
+    assert "<layout>:</layout>" in rc
+    assert "<showTitle>yes</showTitle>" in rc
+    assert 'serverDecoration="yes"' in rc
     assert "<cornerRadius>12</cornerRadius>" in rc
     assert 'name="AutoPlace" policy="center"' in rc
     assert "ToggleFullscreen" not in rc

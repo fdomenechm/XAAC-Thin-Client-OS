@@ -28,6 +28,9 @@ def test_plan_disables_compositor_defaults_and_exports_policy(tmp_path: Path, pr
     contents = {str(path): content for path, content, _ in plan.files}
     assert "<keyboard />" in contents["/etc/xaac/labwc/rc.xml"]
     assert "<default" not in contents["/etc/xaac/labwc/rc.xml"]
+    assert "<decoration>server</decoration>" in contents["/etc/xaac/labwc/rc.xml"]
+    assert "<layout>:</layout>" in contents["/etc/xaac/labwc/rc.xml"]
+    assert 'serverDecoration="yes"' in contents["/etc/xaac/labwc/rc.xml"]
     assert "<keyboard />" in contents["/etc/xaac/openbox/rc.xml"]
     policy = json.loads(contents["/etc/xaac/kiosk/shortcut-policy.json"])
     assert policy["policy"]["default_decision"] == "deny"
