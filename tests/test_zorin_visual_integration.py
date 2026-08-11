@@ -68,3 +68,11 @@ def test_exact_zorin_gtk_snapshot_is_vendored_and_installed():
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     assert 'assets/zorin-theme/ZorinBlue-Light' in source
     assert '/usr/share/themes/ZorinBlue-Light' in source
+
+def test_kiosk_gtk_settings_follow_session_xdg_config_home():
+    graphical = Path("config/graphical-stack.yaml").read_text(encoding="utf-8")
+    session = Path("src/xaac_thin_client_os/session_manager.py").read_text(encoding="utf-8")
+    assert "export XDG_CONFIG_HOME=/etc/xaac" in session
+    assert "gtk3_settings_file: /etc/xaac/gtk-3.0/settings.ini" in graphical
+    assert "gtk4_settings_file: /etc/xaac/gtk-4.0/settings.ini" in graphical
+

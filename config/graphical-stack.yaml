@@ -45,8 +45,8 @@ fonts:
   monospace_fallbacks:
     - DejaVu Sans Mono
   fontconfig_file: /etc/fonts/conf.d/60-xaac-default-fonts.conf
-  gtk3_settings_file: /etc/gtk-3.0/settings.ini
-  gtk4_settings_file: /etc/gtk-4.0/settings.ini
+  gtk3_settings_file: /etc/xaac/gtk-3.0/settings.ini
+  gtk4_settings_file: /etc/xaac/gtk-4.0/settings.ini
 validation:
   minimum_width: 1024
   minimum_height: 768

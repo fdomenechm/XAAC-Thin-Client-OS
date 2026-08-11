@@ -100,8 +100,8 @@ def test_fontconfig_and_gtk4_files_are_planned(tmp_path: Path, project_root: Pat
         "gtk-icon-theme-name=ZorinBlue-Light\n"
         "gtk-decoration-layout=:\n"
     )
-    assert files["/etc/gtk-3.0/settings.ini"] == expected_gtk
-    assert files["/etc/gtk-4.0/settings.ini"] == expected_gtk
+    assert files["/etc/xaac/gtk-3.0/settings.ini"] == expected_gtk
+    assert files["/etc/xaac/gtk-4.0/settings.ini"] == expected_gtk
 
 
 def test_font_configuration_is_written_idempotently(tmp_path: Path, project_root: Path) -> None:
@@ -110,8 +110,8 @@ def test_font_configuration_is_written_idempotently(tmp_path: Path, project_root
     first = configurator.execute(plan)
     assert len(first) == 4
     fontconfig = plan.rootfs / "etc/fonts/conf.d/60-xaac-default-fonts.conf"
-    gtk3_settings = plan.rootfs / "etc/gtk-3.0/settings.ini"
-    gtk_settings = plan.rootfs / "etc/gtk-4.0/settings.ini"
+    gtk3_settings = plan.rootfs / "etc/xaac/gtk-3.0/settings.ini"
+    gtk_settings = plan.rootfs / "etc/xaac/gtk-4.0/settings.ini"
     before = (fontconfig.read_text(encoding="utf-8"), gtk3_settings.read_text(encoding="utf-8"), gtk_settings.read_text(encoding="utf-8"))
     configurator.execute(plan)
     after = (fontconfig.read_text(encoding="utf-8"), gtk3_settings.read_text(encoding="utf-8"), gtk_settings.read_text(encoding="utf-8"))
