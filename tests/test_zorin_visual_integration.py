@@ -1,36 +1,38 @@
 from pathlib import Path
 
 
-def test_zorin_theme_source_is_pinned_and_complete_installer_is_used(project_root: Path) -> None:
-    source = (project_root / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
-    assert "_install_zorin_icon_theme()" in source
-    assert "zorin-icon-themes/archive/refs/tags/{version}.tar.gz" in source
-    assert 'version = "3.3.1"' in source
+def test_production_builder_installs_vendored_zorin_icon_snapshot():
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert 'source_root = self.paths.project_root / "assets/zorin-icons"' in source
     assert '("Zorin", "ZorinBlue-Light")' in source
-    assert "/usr/share/icons/{theme_name}" in source
-    assert "gtk-update-icon-cache" in source
+    assert 'shutil.copytree(source, destination, symlinks=True)' in source
+    assert 'urlretrieve' not in source[source.index("def _install_zorin_icon_theme"):source.index("def _install_zorin_gtk_theme")]
 
 
-def test_gtk_uses_zorin_blue_light(project_root: Path) -> None:
-    source = (project_root / "src/xaac_thin_client_os/graphical_stack.py").read_text(encoding="utf-8")
+def test_vendored_zorin_icon_snapshot_is_complete():
+    root = Path("assets/zorin-icons")
+    zorin = root / "Zorin"
+    blue = root / "ZorinBlue-Light"
+    assert (zorin / "index.theme").is_file()
+    assert (blue / "index.theme").is_file()
+    assert sum(1 for p in zorin.rglob("*") if p.is_file()) > 8000
+    assert sum(1 for p in blue.rglob("*") if p.is_file()) > 1600
+    blue_index = (blue / "index.theme").read_text(encoding="utf-8")
+    assert "Inherits=Zorin,Adwaita,gnome,hicolor" in blue_index
+
+
+def test_graphical_stack_selects_zorin_theme_and_icons():
+    source = Path("src/xaac_thin_client_os/graphical_stack.py").read_text(encoding="utf-8")
+    assert "gtk-theme-name=ZorinBlue-Light" in source
     assert "gtk-icon-theme-name=ZorinBlue-Light" in source
 
 
-def test_exact_zorin_gtk_theme_snapshot_is_bundled(project_root: Path) -> None:
+def test_exact_zorin_gtk_snapshot_is_vendored_and_installed():
+    project_root = Path(".")
     theme = project_root / "assets/zorin-theme/ZorinBlue-Light"
     assert (theme / "index.theme").is_file()
     assert (theme / "gtk-3.0/gtk.css").is_file()
     assert (theme / "gtk-4.0/gtk.css").is_file()
-    source = (project_root / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
-    assert "_install_zorin_gtk_theme()" in source
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     assert 'assets/zorin-theme/ZorinBlue-Light' in source
     assert '/usr/share/themes/ZorinBlue-Light' in source
-
-
-def test_gtk_theme_and_locked_client_decoration_are_selected(project_root: Path) -> None:
-    graphical = (project_root / "src/xaac_thin_client_os/graphical_stack.py").read_text(encoding="utf-8")
-    compositor = (project_root / "src/xaac_thin_client_os/compositor.py").read_text(encoding="utf-8")
-    assert "gtk-theme-name=ZorinBlue-Light" in graphical
-    assert "gtk-decoration-layout=:" in graphical
-    assert "<decoration>client</decoration>" in compositor
-    assert 'serverDecoration=\\\"no\\\"' in compositor

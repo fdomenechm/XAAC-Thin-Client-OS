@@ -837,51 +837,22 @@ class ProductionIsoBuilder:
         )
 
     def _install_zorin_icon_theme(self) -> None:
-        """Install the Zorin OS 17 ZorinBlue-Light icon theme used by development.
+        """Install the exact Zorin icon-theme snapshot from development.
 
-        The development workstation uses ZorinBlue-Light.  A partial icon
-        subset is not sufficient because GTK resolves several symbolic icons
-        through the theme inheritance chain.  Pin the Zorin OS 17 release (3.3.1) so the kiosk uses the same icon artwork
-        as the development workstation instead of the redesigned Zorin OS 18/4.x set.
+        Both ``ZorinBlue-Light`` and its ``Zorin`` parent are vendored in the
+        project from the development workstation.  Copying that snapshot
+        directly makes icon lookup deterministic and avoids version drift or
+        partial-theme fallbacks during ISO construction.
         """
-        version = "3.3.1"
-        url = f"https://github.com/ZorinOS/zorin-icon-themes/archive/refs/tags/{version}.tar.gz"
-        cache_dir = self.paths.build_root / "cache"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        archive = cache_dir / f"zorin-icon-themes-{version}.tar.gz"
-        if not archive.is_file():
-            try:
-                urllib.request.urlretrieve(url, archive)
-            except Exception as exc:
-                raise ProductionBuildError(
-                    f"No s'ha pogut descarregar Zorin Icon Themes {version}: {exc}"
-                ) from exc
-        try:
-            with tempfile.TemporaryDirectory(prefix="xaac-zorin-icons-", dir=self.paths.build_root) as tmp:
-                temp = Path(tmp)
-                with tarfile.open(archive, "r:gz") as tf:
-                    tf.extractall(temp, filter="data")
-                roots = [p for p in temp.iterdir() if p.is_dir() and p.name.startswith("zorin-icon-themes-")]
-                if len(roots) != 1:
-                    raise ProductionBuildError("Arxiu de Zorin Icon Themes inesperat")
-                source_root = roots[0]
-                for theme_name in ("Zorin", "ZorinBlue-Light"):
-                    source = source_root / theme_name
-                    if not (source / "index.theme").is_file():
-                        raise ProductionBuildError(f"Falta el tema {theme_name} en l'arxiu de Zorin")
-                    destination = self._inside(f"/usr/share/icons/{theme_name}")
-                    if destination.exists():
-                        shutil.rmtree(destination)
-                    shutil.copytree(source, destination, symlinks=True)
-                license_src = source_root / "LICENSE"
-                if license_src.is_file():
-                    license_dst = self._inside("/usr/share/doc/xaac-thin-client-os/zorin-icon-themes.LICENSE")
-                    license_dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(license_src, license_dst)
-        except ProductionBuildError:
-            raise
-        except Exception as exc:
-            raise ProductionBuildError(f"No s'ha pogut instal·lar Zorin Icon Themes: {exc}") from exc
+        source_root = self.paths.project_root / "assets/zorin-icons"
+        for theme_name in ("Zorin", "ZorinBlue-Light"):
+            source = source_root / theme_name
+            if not (source / "index.theme").is_file():
+                raise ProductionBuildError(f"Falta assets/zorin-icons/{theme_name}/index.theme")
+            destination = self._inside(f"/usr/share/icons/{theme_name}")
+            if destination.exists():
+                shutil.rmtree(destination)
+            shutil.copytree(source, destination, symlinks=True)
         self._chroot([
             "/bin/sh", "-c",
             "for theme in Zorin ZorinBlue-Light; do "
