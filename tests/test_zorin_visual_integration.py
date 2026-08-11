@@ -15,20 +15,20 @@ def _sha256(path: Path) -> str:
 def test_production_builder_installs_minimal_zorin_icon_subset():
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     section = source[source.index("def _install_zorin_icon_theme"):source.index("def _install_zorin_gtk_theme")]
-    assert 'assets/zorin-icons/ZorinBlue-Light' in section
-    assert '/usr/share/icons/ZorinBlue-Light' in section
+    assert 'assets/zorin-icons/XAAC-Zorin-Light' in section
+    assert '/usr/share/icons/XAAC-Zorin-Light' in section
     assert 'shutil.copytree(source, destination, symlinks=False)' in section
     assert '("Zorin", "ZorinBlue-Light")' not in section
     assert 'urlretrieve' not in section
 
 
 def test_minimal_theme_contains_only_exact_xaac_icons():
-    theme = Path("assets/zorin-icons/ZorinBlue-Light")
+    theme = Path("assets/zorin-icons/XAAC-Zorin-Light")
     index = theme / "index.theme"
     assert index.is_file()
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(index, encoding="utf-8")
-    assert parser["Icon Theme"]["Name"] == "ZorinBlue-Light"
+    assert parser["Icon Theme"]["Name"] == "XAAC-Zorin-Light"
     assert parser["Icon Theme"]["Inherits"] == "Adwaita,gnome,hicolor"
     directories = parser["Icon Theme"]["Directories"].split(",")
     assert directories == [
@@ -57,7 +57,7 @@ def test_icon_payload_is_small_and_has_no_unused_theme_tree():
 def test_graphical_stack_selects_zorin_theme_and_icons():
     source = Path("src/xaac_thin_client_os/graphical_stack.py").read_text(encoding="utf-8")
     assert "gtk-theme-name=ZorinBlue-Light" in source
-    assert "gtk-icon-theme-name=ZorinBlue-Light" in source
+    assert "gtk-icon-theme-name=XAAC-Zorin-Light" in source
 
 
 def test_exact_zorin_gtk_snapshot_is_vendored_and_installed():

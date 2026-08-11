@@ -1,3 +1,12 @@
+## 2026-08-11 — tema d'icones mínim aïllat
+
+- Creat `XAAC-Zorin-Light` com a tema d'icones propi per evitar que GTK barrege
+  el subconjunt del Thin Client OS amb el `ZorinBlue-Light` complet del host.
+- Mantingudes únicament les 12 icones simbòliques que usa XAAC Thin Client.
+- Els SVG coincideixen amb els fitxers efectius resolts en la màquina Zorin de desenvolupament.
+- La prova ràpida selecciona explícitament `XAAC-Zorin-Light` i falla si alguna
+  de les 12 icones es resol fora del sandbox.
+
 ## 2026-08-11 — Resolució exacta d'icones GTK4
 
 - Verificades les 12 icones que XAAC Thin Client resol en el Zorin de desenvolupament.

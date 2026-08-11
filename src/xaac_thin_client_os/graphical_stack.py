@@ -163,7 +163,7 @@ def create_graphical_stack_plan(rootfs: Path, profile_path: Path) -> GraphicalSt
         "[Settings]\n"
         f"gtk-font-name={default_family} {int(fonts['default_size'])}\n"
         "gtk-theme-name=ZorinBlue-Light\n"
-        "gtk-icon-theme-name=ZorinBlue-Light\n"
+        "gtk-icon-theme-name=XAAC-Zorin-Light\n"
         "gtk-decoration-layout=:\n"
     )
     files = (

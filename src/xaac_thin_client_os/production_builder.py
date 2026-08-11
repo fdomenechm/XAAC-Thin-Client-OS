@@ -846,19 +846,19 @@ class ProductionIsoBuilder:
         standard Adwaita/gnome/hicolor inheritance remains available for GTK
         internal icons.
         """
-        source = self.paths.project_root / "assets/zorin-icons/ZorinBlue-Light"
+        source = self.paths.project_root / "assets/zorin-icons/XAAC-Zorin-Light"
         if not (source / "index.theme").is_file():
             raise ProductionBuildError(
-                "Falta assets/zorin-icons/ZorinBlue-Light/index.theme"
+                "Falta assets/zorin-icons/XAAC-Zorin-Light/index.theme"
             )
-        destination = self._inside("/usr/share/icons/ZorinBlue-Light")
+        destination = self._inside("/usr/share/icons/XAAC-Zorin-Light")
         if destination.exists():
             shutil.rmtree(destination)
         shutil.copytree(source, destination, symlinks=False)
         self._chroot([
             "/bin/sh", "-c",
             "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
-            "gtk-update-icon-cache -f /usr/share/icons/ZorinBlue-Light "
+            "gtk-update-icon-cache -f /usr/share/icons/XAAC-Zorin-Light "
             ">/dev/null 2>&1 || true",
         ], phase="configure-zorin-icon-cache")
 

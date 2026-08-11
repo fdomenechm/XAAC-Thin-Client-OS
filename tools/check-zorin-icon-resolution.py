@@ -35,7 +35,7 @@ if display is None:
     sys.exit(2)
 
 settings = Gtk.Settings.get_for_display(display)
-settings.set_property("gtk-icon-theme-name", "ZorinBlue-Light")
+settings.set_property("gtk-icon-theme-name", "XAAC-Zorin-Light")
 
 theme = Gtk.IconTheme.get_for_display(display)
 

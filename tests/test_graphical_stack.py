@@ -97,7 +97,7 @@ def test_fontconfig_and_gtk4_files_are_planned(tmp_path: Path, project_root: Pat
         "[Settings]\n"
         "gtk-font-name=Roboto 10\n"
         "gtk-theme-name=ZorinBlue-Light\n"
-        "gtk-icon-theme-name=ZorinBlue-Light\n"
+        "gtk-icon-theme-name=XAAC-Zorin-Light\n"
         "gtk-decoration-layout=:\n"
     )
     assert files["/etc/xaac/gtk-3.0/settings.ini"] == expected_gtk

@@ -29,7 +29,7 @@ esac
 PYTHON="$XAAC_ROOT/.venv/bin/python"
 [[ -x "$PYTHON" ]] || { echo "ERROR: no existeix $PYTHON" >&2; exit 1; }
 
-ICON_SOURCE="$OS_ROOT/assets/zorin-icons/ZorinBlue-Light"
+ICON_SOURCE="$OS_ROOT/assets/zorin-icons/XAAC-Zorin-Light"
 THEME_SOURCE="$OS_ROOT/assets/zorin-theme/ZorinBlue-Light"
 
 [[ -d "$ICON_SOURCE" ]] || { echo "ERROR: falta $ICON_SOURCE" >&2; exit 1; }
@@ -48,13 +48,13 @@ cp -a "$THEME_SOURCE" "$SANDBOX/data/themes/"
 cat >"$SANDBOX/config/gtk-3.0/settings.ini" <<'EOF'
 [Settings]
 gtk-theme-name=ZorinBlue-Light
-gtk-icon-theme-name=ZorinBlue-Light
+gtk-icon-theme-name=XAAC-Zorin-Light
 EOF
 
 cat >"$SANDBOX/config/gtk-4.0/settings.ini" <<'EOF'
 [Settings]
 gtk-theme-name=ZorinBlue-Light
-gtk-icon-theme-name=ZorinBlue-Light
+gtk-icon-theme-name=XAAC-Zorin-Light
 EOF
 
 if command -v gtk4-update-icon-cache >/dev/null 2>&1; then
