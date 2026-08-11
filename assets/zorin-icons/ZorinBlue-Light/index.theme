@@ -1,8 +1,7 @@
 [Icon Theme]
 Name=ZorinBlue-Light
-Comment=Minimal exact XAAC Thin Client icon subset captured from the development Zorin environment.
+Comment=Minimal exact XAAC Thin Client icon subset resolved on the Zorin development workstation.
 Inherits=Adwaita,gnome,hicolor
-Example=computer
 Directories=scalable/actions,scalable/apps,scalable/devices,scalable/status
 
 [scalable/actions]

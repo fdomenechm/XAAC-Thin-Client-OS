@@ -854,7 +854,7 @@ class ProductionIsoBuilder:
         destination = self._inside("/usr/share/icons/ZorinBlue-Light")
         if destination.exists():
             shutil.rmtree(destination)
-        shutil.copytree(source, destination, symlinks=True)
+        shutil.copytree(source, destination, symlinks=False)
         self._chroot([
             "/bin/sh", "-c",
             "command -v gtk-update-icon-cache >/dev/null 2>&1 && "
@@ -873,7 +873,7 @@ class ProductionIsoBuilder:
         destination = self._inside("/usr/share/themes/ZorinBlue-Light")
         if destination.exists():
             shutil.rmtree(destination)
-        shutil.copytree(source, destination, symlinks=True)
+        shutil.copytree(source, destination, symlinks=False)
 
     def _customize_xaac_thinclient_theme(self) -> None:
         """Apply the XAAC OS visual baseline to the packaged GTK client."""

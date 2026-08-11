@@ -1,3 +1,11 @@
+## 2026-08-11 — Resolució exacta d'icones GTK4
+
+- Verificades les 12 icones que XAAC Thin Client resol en el Zorin de desenvolupament.
+- Cada icona s'emmagatzema com un SVG real, sense enllaços simbòlics, amb el mateix SHA-256 que l'original resolt per GTK4.
+- Eliminats els SVG auxiliars dels aliases i qualsevol icona no utilitzada per XAAC Thin Client.
+- Es manté `ZorinBlue-Light` com a tema actiu i `Adwaita,gnome,hicolor` com a fallback.
+- El subconjunt d'icones ocupa menys de 100 KiB.
+
 ## 2026-08-11 — Subconjunt mínim d’icones Zorin amb resolució GTK correcta
 
 - Mantingut `ZorinBlue-Light` com a tema d’icones actiu.

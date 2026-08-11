@@ -1,6 +1,9 @@
-# Minimal Zorin icon subset for XAAC Thin Client
+# Minimal exact Zorin icon subset for XAAC Thin Client
 
-This snapshot contains only the icons that XAAC Thin Client references directly.
-The SVG contents come from the exact effective icons exported from the development Zorin system.
-Aliases are preserved where the development theme uses symbolic links.
-The theme inherits Adwaita/gnome/hicolor only for GTK-internal or future icons not referenced directly by XAAC Thin Client.
+This directory contains only the 12 symbolic icons referenced directly by XAAC Thin Client.
+Each icon is stored as a real SVG file (no symbolic links) and its content matches the exact
+effective icon resolved by GTK4 on the Zorin development workstation. This avoids ZIP symlink
+loss and avoids shipping unused Zorin icon assets.
+
+The active theme remains `ZorinBlue-Light`; standard GTK fallback is retained through
+Adwaita/gnome/hicolor for icons not owned by XAAC Thin Client.
