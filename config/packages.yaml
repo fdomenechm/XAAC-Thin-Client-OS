@@ -32,6 +32,7 @@ graphical:
 - libxkbcommon0
 - libinput10
 - libgtk-4-1
+- librsvg2-common
 - mesa-utils
 - mesa-vulkan-drivers
 - fonts-dejavu-core

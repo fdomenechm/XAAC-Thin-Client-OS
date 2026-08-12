@@ -301,6 +301,15 @@ method=auto
 EOF
 chmod 0600 "$WORK/root/etc/NetworkManager/system-connections/xaac-wired.nmconnection"
 chroot "$WORK/root" systemctl enable NetworkManager.service >/dev/null
+# Generate unique OpenSSH host keys on the installed target.  Never inherit
+# host keys from the live ISO/rootfs, otherwise cloned installations would
+# share the same SSH server identity.
+rm -f "$WORK/root/etc/ssh/ssh_host_"*
+chroot "$WORK/root" ssh-keygen -A
+[ -s "$WORK/root/etc/ssh/ssh_host_ed25519_key" ] || fail "OpenSSH ED25519 host key generation failed"
+[ -s "$WORK/root/etc/ssh/ssh_host_ed25519_key.pub" ] || fail "OpenSSH ED25519 public host key generation failed"
+chroot "$WORK/root" /usr/sbin/sshd -t || fail "OpenSSH configuration validation failed"
+chroot "$WORK/root" systemctl enable ssh.service >/dev/null
 mkdir -p "$WORK/root/etc/xaac" "$WORK/root/var/lib/xaac/installation"
 cp "$WORK/root/etc/os-release" "$WORK/root/etc/xaac/os-release"
 rm -f "$WORK/root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service"

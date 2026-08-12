@@ -1,3 +1,14 @@
+## 2026-08-12 — SVG GTK4 i claus host OpenSSH
+
+- Afegit `librsvg2-common` a la pila gràfica i al conjunt real de paquets de
+  producció. GTK4 pot carregar les 12 icones SVG de `XAAC-Zorin-Light`.
+- L'instal·lador elimina qualsevol host key heretada del rootfs i executa
+  `ssh-keygen -A` dins del sistema instal·lat, generant una identitat SSH única
+  per dispositiu.
+- L'instal·lador valida `sshd -t` i habilita `ssh.service` abans de finalitzar.
+- Les host keys no es generen durant la construcció de la ISO, evitant que
+  diferents equips instal·lats compartisquen la mateixa identitat SSH.
+
 ## 2026-08-11 — tema d'icones mínim aïllat
 
 - Creat `XAAC-Zorin-Light` com a tema d'icones propi per evitar que GTK barrege
