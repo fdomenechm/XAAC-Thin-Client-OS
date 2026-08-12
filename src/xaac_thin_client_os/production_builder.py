@@ -1274,6 +1274,11 @@ class ProductionIsoBuilder:
             'printf "status=consolidated\\ninstaller_removed=yes\\nidentity=xaac-thin-client-os\\n" > "$mount_root/var/lib/xaac/installation/consolidated"\n'
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
+            'chroot "$mount_root" ssh-keygen -A\n'
+            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key" || { printf \'%s\\n\' \'No s’ha generat la host key ED25519 d’OpenSSH.\'; exit 1; }\n'
+            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key.pub" || { printf \'%s\\n\' \'No s’ha generat la host key pública ED25519 d’OpenSSH.\'; exit 1; }\n'
+            'chroot "$mount_root" /usr/sbin/sshd -t || { printf \'%s\\n\' \'La configuració OpenSSH instal·lada no és vàlida.\'; exit 1; }\n'
+            'chroot "$mount_root" systemctl enable ssh.service >/dev/null\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
             "printf '%s\\n' '[10/10] Verificant la instal·lació...'\n"
             'test -x "$mount_root/usr/bin/systemctl"\n'

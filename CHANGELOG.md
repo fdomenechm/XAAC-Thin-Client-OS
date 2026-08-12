@@ -1,3 +1,13 @@
+## 2026-08-12 — correcció definitiva de les host keys OpenSSH
+
+- Corregit l'instal·lador real generat per `production_builder.py`: el sanejament
+  d'identitat eliminava les host keys després d'haver-les generat.
+- Ara, després d'eliminar qualsevol clau heretada del rootfs, l'instal·lador
+  executa `ssh-keygen -A` dins del sistema de destinació.
+- Es comprova la clau ED25519, es valida la configuració amb `sshd -t` i
+  s'habilita `ssh.service` només després de generar correctament les claus.
+- Cada dispositiu instal·lat conserva així una identitat SSH pròpia i única.
+
 ## 2026-08-12 — SVG GTK4 i claus host OpenSSH
 
 - Afegit `librsvg2-common` a la pila gràfica i al conjunt real de paquets de
