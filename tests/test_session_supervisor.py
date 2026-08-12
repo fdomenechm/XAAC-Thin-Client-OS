@@ -125,7 +125,11 @@ def test_startup_screen_is_fullscreen_and_bounded(tmp_path: Path, project_root: 
     splash = files["/usr/local/libexec/xaac-startup-screen"]
     supervisor = files["/usr/local/libexec/xaac-session-supervisor"]
     assert "window.fullscreen()" in splash
-    assert "Iniciant l'aplicació" in splash
+    assert 'IMAGE = "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png"' in splash
+    assert "Gtk.Picture.new_for_filename(IMAGE)" in splash
+    assert "Gtk.ContentFit.CONTAIN" in splash
+    assert "background: #ffffff" in splash
+    assert "Iniciant l'aplicació" not in splash
     assert "GLib.timeout_add_seconds(timeout, self.quit)" in splash
     assert '"$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" &' in supervisor
     assert 'kill "$splash_pid"' in supervisor

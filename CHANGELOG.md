@@ -1,3 +1,10 @@
+## 2026-08-12 — continuïtat visual entre Plymouth i XAAC Thin Client
+
+- Validat en producció que mantindre Plymouth actiu fins a Labwc provoca conflicte DRM (`/dev/dri/card0` ocupat), per tant es conserva l'alliberament normal de Plymouth abans d'iniciar el compositor.
+- `xaac-startup-screen` deixa de mostrar el spinner genèric i passa a reutilitzar `/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png` a pantalla completa.
+- La imatge es mostra amb fons blanc i ajust proporcional `CONTAIN`, de manera que cobreix el període d'arrancada del client i redueix el buit negre de 6–9 segons a la breu transició necessària per al traspàs DRM de Plymouth a Labwc.
+- Es manté el timeout i el control del supervisor existents, sense introduir retards fixos addicionals ni bloquejar el compositor.
+
 ## 2026-08-12 — apagat i reinici gràfics sense exposar la TTY
 
 - Validat en l'entorn de producció que Plymouth mostra correctament el splash XAAC tant en `poweroff` com en `reboot`.

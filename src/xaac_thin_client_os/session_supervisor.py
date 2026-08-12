@@ -156,27 +156,45 @@ while :; do
 done
 '''
     startup_screen = '''#!/usr/bin/python3.13
-import gi, signal, sys
+import gi
+import signal
+import sys
+
 gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk
 
 minimum = max(1, int(sys.argv[1])) if len(sys.argv) > 1 else 2
 timeout = max(minimum, int(sys.argv[2])) if len(sys.argv) > 2 else 20
+IMAGE = "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png"
+
 
 class StartupApp(Gtk.Application):
     def do_activate(self):
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("XAAC Thin Client")
         window.fullscreen()
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        box.set_halign(Gtk.Align.CENTER); box.set_valign(Gtk.Align.CENTER)
-        title = Gtk.Label(label="XAAC Thin Client")
-        title.add_css_class("title-1")
-        message = Gtk.Label(label="Iniciant l'aplicació…")
-        spinner = Gtk.Spinner(); spinner.start()
-        box.append(title); box.append(spinner); box.append(message)
-        window.set_child(box); window.present()
+
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+            window {
+                background: #ffffff;
+            }
+        """)
+        Gtk.StyleContext.add_provider_for_display(
+            window.get_display(),
+            css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        picture = Gtk.Picture.new_for_filename(IMAGE)
+        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_hexpand(True)
+        picture.set_vexpand(True)
+
+        window.set_child(picture)
+        window.present()
         GLib.timeout_add_seconds(timeout, self.quit)
+
 
 app = StartupApp(application_id="org.xaac.StartupScreen")
 signal.signal(signal.SIGTERM, lambda *_: app.quit())
