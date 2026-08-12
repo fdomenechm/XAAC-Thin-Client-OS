@@ -971,6 +971,25 @@ class ProductionIsoBuilder:
         )
 
         self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-clear-console-before-shutdown.service"),
+            "[Unit]\n"
+            "Description=XAAC clear console before Plymouth shutdown splash\n"
+            "DefaultDependencies=no\n"
+            "Before=plymouth-poweroff.service plymouth-reboot.service plymouth-halt.service "
+            "systemd-poweroff.service systemd-reboot.service systemd-halt.service\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/bin/sh -c 'printf \"\\033[2J\\033[H\\033[3J\" > /dev/tty1'\n\n"
+            "[Install]\n"
+            "WantedBy=poweroff.target reboot.target halt.target\n",
+            0o644,
+        )
+        self._chroot(
+            ["systemctl", "enable", "xaac-clear-console-before-shutdown.service"],
+            phase="configure-shutdown-console-cleanup",
+        )
+
+        self._atomic_write(
             self._inside("/etc/default/grub.d/20-xaac-visual.cfg"),
             '# XAAC Thin Client OS - silent graphical boot\n'
             'GRUB_TIMEOUT=0\n'
@@ -979,7 +998,7 @@ class ProductionIsoBuilder:
             'GRUB_DISABLE_RECOVERY=true\n'
             'GRUB_DISABLE_OS_PROBER=true\n'
             'GRUB_GFXPAYLOAD_LINUX=keep\n'
-            'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 systemd.show_status=0 '
+            'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0 '
             'rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 '
             'plymouth.ignore-serial-consoles"\n',
         )
@@ -1291,7 +1310,7 @@ class ProductionIsoBuilder:
             '    insmod part_gpt\n'
             '    insmod ext2\n'
             '    search --no-floppy --fs-uuid --set=root $root_uuid\n'
-            '    linux /boot/vmlinuz root=UUID=$root_uuid ro quiet splash loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles\n'
+            '    linux /boot/vmlinuz root=UUID=$root_uuid ro quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles\n'
             '    initrd /boot/initrd.img\n'
             '}\n'
             'XAAC_ENTRY\n'

@@ -264,7 +264,7 @@ menuentry 'XAAC Thin Client OS' --class xaac --class gnu-linux --class gnu --cla
     insmod part_gpt
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux /boot/vmlinuz root=UUID=$ROOT_UUID ro quiet splash loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles
+    linux /boot/vmlinuz root=UUID=$ROOT_UUID ro quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles
     initrd /boot/initrd.img
 }
 XAAC_ENTRY

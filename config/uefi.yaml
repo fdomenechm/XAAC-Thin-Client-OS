@@ -8,7 +8,8 @@ removable_fallback: true
 kernel_parameters:
   - quiet
   - splash
-  - loglevel=3
+  - loglevel=0
+  - systemd.log_level=emerg
   - systemd.show_status=0
   - rd.systemd.show_status=0
   - vt.global_cursor_default=0

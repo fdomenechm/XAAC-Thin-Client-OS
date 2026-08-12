@@ -745,11 +745,18 @@ def test_production_boot_and_shutdown_use_xaac_plymouth_branding() -> None:
     assert 'plymouth-set-default-theme", "xaac"' in source
     assert "GRUB_TIMEOUT=0" in source
     assert "GRUB_TIMEOUT_STYLE=hidden" in source
-    assert "quiet splash loglevel=3 systemd.show_status=0" in source
+    assert "quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0" in source
     assert "rd.systemd.show_status=0" in source
     assert "vt.global_cursor_default=0" in source
     assert "udev.log_priority=3" in source
     assert "plymouth.ignore-serial-consoles" in source
+    assert "/etc/systemd/system/xaac-clear-console-before-shutdown.service" in source
+    assert "DefaultDependencies=no" in source
+    assert "Before=plymouth-poweroff.service plymouth-reboot.service plymouth-halt.service" in source
+    assert "systemd-poweroff.service systemd-reboot.service systemd-halt.service" in source
+    assert "WantedBy=poweroff.target reboot.target halt.target" in source
+    assert "/dev/tty1" in source
+    assert '"systemctl", "enable", "xaac-clear-console-before-shutdown.service"' in source
 
 
 def test_uefi_defaults_match_silent_graphical_boot_policy() -> None:
@@ -760,7 +767,8 @@ def test_uefi_defaults_match_silent_graphical_boot_policy() -> None:
     assert "timeout_seconds: 0" in uefi
     for parameter in (
         "splash",
-        "loglevel=3",
+        "loglevel=0",
+        "systemd.log_level=emerg",
         "systemd.show_status=0",
         "rd.systemd.show_status=0",
         "vt.global_cursor_default=0",

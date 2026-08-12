@@ -1,3 +1,10 @@
+## 2026-08-12 — apagat i reinici gràfics sense exposar la TTY
+
+- Validat en l'entorn de producció que Plymouth mostra correctament el splash XAAC tant en `poweroff` com en `reboot`.
+- Afegit `xaac-clear-console-before-shutdown.service`, amb `DefaultDependencies=no`, perquè netege `tty1` abans dels serveis Plymouth i dels serveis finals de `poweroff`, `reboot` i `halt`.
+- El servei queda habilitat per `poweroff.target`, `reboot.target` i `halt.target`, evitant que reaparega durant uns instants el contingut textual de la consola sota el splash.
+- La política d'arrancada silenciosa passa a `loglevel=0 systemd.log_level=emerg`, mantenint `quiet splash`, l'ocultació d'estat de systemd i el cursor de VT desactivat.
+
 ## 2026-08-12 — modals quiosc i apagat real del terminal
 
 - Actualitzat `xaac-thinclient_1.0.0_all.deb` amb controls de tancament propis
