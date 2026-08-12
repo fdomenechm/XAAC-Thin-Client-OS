@@ -2,6 +2,7 @@ base:
 - systemd
 - linux-image-amd64
 - initramfs-tools
+- plymouth
 - grub-efi-amd64-bin
 - grub-efi-amd64-signed
 - shim-signed

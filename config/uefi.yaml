@@ -2,9 +2,15 @@ target: x86_64-efi
 bootloader_id: XAAC
 boot_directory: /boot
 efi_directory: /boot/efi
-timeout_seconds: 1
+timeout_seconds: 0
 hidden_menu: true
 removable_fallback: true
 kernel_parameters:
   - quiet
+  - splash
   - loglevel=3
+  - systemd.show_status=0
+  - rd.systemd.show_status=0
+  - vt.global_cursor_default=0
+  - udev.log_priority=3
+  - plymouth.ignore-serial-consoles

@@ -282,6 +282,7 @@ class BuildSettings:
             "python3-venv",
             "openssl",
             "pamtester",
+            "plymouth",
             "greetd",
             "labwc",
             "openbox",
@@ -927,6 +928,63 @@ class ProductionIsoBuilder:
             0o440,
         )
 
+    def _configure_boot_splash(self) -> None:
+        """Install the XAAC Plymouth theme and silent installed-system boot policy."""
+        source = self.paths.project_root / "assets/branding/XAAC_TC_OS.png"
+        if not source.is_file():
+            raise ProductionBuildError("Falta assets/branding/XAAC_TC_OS.png")
+
+        theme_dir = self._inside("/usr/share/plymouth/themes/xaac")
+        theme_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, theme_dir / "XAAC_TC_OS.png")
+        self._atomic_write(
+            theme_dir / "xaac.plymouth",
+            "[Plymouth Theme]\n"
+            "Name=XAAC Thin Client OS\n"
+            "Description=XAAC Thin Client OS boot and shutdown splash\n"
+            "ModuleName=script\n\n"
+            "[script]\n"
+            "ImageDir=/usr/share/plymouth/themes/xaac\n"
+            "ScriptFile=/usr/share/plymouth/themes/xaac/xaac.script\n",
+        )
+        self._atomic_write(
+            theme_dir / "xaac.script",
+            "Window.SetBackgroundTopColor(1.0, 1.0, 1.0);\n"
+            "Window.SetBackgroundBottomColor(1.0, 1.0, 1.0);\n\n"
+            "screen_width = Window.GetWidth();\n"
+            "screen_height = Window.GetHeight();\n"
+            "image = Image(\"XAAC_TC_OS.png\");\n"
+            "image_width = image.GetWidth();\n"
+            "image_height = image.GetHeight();\n"
+            "scale_x = screen_width / image_width;\n"
+            "scale_y = screen_height / image_height;\n"
+            "scale = scale_x;\n"
+            "if (scale_y < scale_x)\n"
+            "  scale = scale_y;\n"
+            "scaled_width = image_width * scale;\n"
+            "scaled_height = image_height * scale;\n"
+            "image = image.Scale(scaled_width, scaled_height);\n"
+            "sprite = Sprite(image);\n"
+            "sprite.SetX((screen_width - scaled_width) / 2);\n"
+            "sprite.SetY((screen_height - scaled_height) / 2);\n"
+            "sprite.SetZ(10000);\n",
+        )
+
+        self._atomic_write(
+            self._inside("/etc/default/grub.d/20-xaac-visual.cfg"),
+            '# XAAC Thin Client OS - silent graphical boot\n'
+            'GRUB_TIMEOUT=0\n'
+            'GRUB_TIMEOUT_STYLE=hidden\n'
+            'GRUB_RECORDFAIL_TIMEOUT=0\n'
+            'GRUB_DISABLE_RECOVERY=true\n'
+            'GRUB_DISABLE_OS_PROBER=true\n'
+            'GRUB_GFXPAYLOAD_LINUX=keep\n'
+            'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 systemd.show_status=0 '
+            'rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 '
+            'plymouth.ignore-serial-consoles"\n',
+        )
+        self._chroot(["plymouth-set-default-theme", "xaac"], phase="configure-plymouth-theme")
+
     def phase_configure(self) -> None:
         self._require_root()
         if not (self.paths.rootfs / "etc/debian_version").is_file():
@@ -1219,6 +1277,12 @@ class ProductionIsoBuilder:
             "cat > \"$mount_root/etc/default/grub.d/10-xaac-identity.cfg\" <<'EOF'\n"
             'GRUB_DISTRIBUTOR="XAAC Thin Client OS"\n'
             'GRUB_DISABLE_SUBMENU=y\n'
+            'GRUB_TIMEOUT=0\n'
+            'GRUB_TIMEOUT_STYLE=hidden\n'
+            'GRUB_RECORDFAIL_TIMEOUT=0\n'
+            'GRUB_DISABLE_RECOVERY=true\n'
+            'GRUB_DISABLE_OS_PROBER=true\n'
+            'GRUB_GFXPAYLOAD_LINUX=keep\n'
             'EOF\n'
             'cat > "$mount_root/etc/grub.d/09_xaac" <<EOF\n'
             '#!/bin/sh\n'
@@ -1227,7 +1291,7 @@ class ProductionIsoBuilder:
             '    insmod part_gpt\n'
             '    insmod ext2\n'
             '    search --no-floppy --fs-uuid --set=root $root_uuid\n'
-            '    linux /boot/vmlinuz root=UUID=$root_uuid ro quiet\n'
+            '    linux /boot/vmlinuz root=UUID=$root_uuid ro quiet splash loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles\n'
             '    initrd /boot/initrd.img\n'
             '}\n'
             'XAAC_ENTRY\n'
@@ -1399,6 +1463,7 @@ class ProductionIsoBuilder:
             # This ordering prevents greetd (and similar packages) from
             # blocking dpkg with an interactive conffile prompt.
             self._apply_kiosk_stack()
+            self._configure_boot_splash()
             self._chroot(["locale-gen"], phase="configure-locales")
             self._chroot(["update-locale", f"LANG={self.settings.locale}"], phase="configure-update-locale")
             self._chroot(

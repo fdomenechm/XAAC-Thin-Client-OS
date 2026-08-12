@@ -727,3 +727,45 @@ def test_block5_thinclient_theme_forces_roboto_and_darker_background() -> None:
     assert '#dce4ed' in source
     configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert 'self._customize_xaac_thinclient_theme()' in configure
+
+
+def test_production_boot_and_shutdown_use_xaac_plymouth_branding() -> None:
+    import inspect
+
+    project = Path(__file__).resolve().parents[1]
+    source = inspect.getsource(ProductionIsoBuilder)
+    asset = project / "assets/branding/XAAC_TC_OS.png"
+
+    assert asset.is_file()
+    assert asset.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert "- plymouth" in (project / "config/packages.yaml").read_text(encoding="utf-8")
+    assert "assets/branding/XAAC_TC_OS.png" in source
+    assert "/usr/share/plymouth/themes/xaac" in source
+    assert 'ModuleName=script' in source
+    assert 'plymouth-set-default-theme", "xaac"' in source
+    assert "GRUB_TIMEOUT=0" in source
+    assert "GRUB_TIMEOUT_STYLE=hidden" in source
+    assert "quiet splash loglevel=3 systemd.show_status=0" in source
+    assert "rd.systemd.show_status=0" in source
+    assert "vt.global_cursor_default=0" in source
+    assert "udev.log_priority=3" in source
+    assert "plymouth.ignore-serial-consoles" in source
+
+
+def test_uefi_defaults_match_silent_graphical_boot_policy() -> None:
+    project = Path(__file__).resolve().parents[1]
+    uefi = (project / "config/uefi.yaml").read_text(encoding="utf-8")
+    packages = (project / "config/packages.yaml").read_text(encoding="utf-8")
+
+    assert "timeout_seconds: 0" in uefi
+    for parameter in (
+        "splash",
+        "loglevel=3",
+        "systemd.show_status=0",
+        "rd.systemd.show_status=0",
+        "vt.global_cursor_default=0",
+        "udev.log_priority=3",
+        "plymouth.ignore-serial-consoles",
+    ):
+        assert f"  - {parameter}" in uefi
+    assert "- plymouth" in packages

@@ -250,6 +250,12 @@ mkdir -p "$WORK/root/etc/default/grub.d" "$WORK/root/etc/grub.d"
 cat > "$WORK/root/etc/default/grub.d/10-xaac-identity.cfg" <<'EOF'
 GRUB_DISTRIBUTOR="XAAC Thin Client OS"
 GRUB_DISABLE_SUBMENU=y
+GRUB_TIMEOUT=0
+GRUB_TIMEOUT_STYLE=hidden
+GRUB_RECORDFAIL_TIMEOUT=0
+GRUB_DISABLE_RECOVERY=true
+GRUB_DISABLE_OS_PROBER=true
+GRUB_GFXPAYLOAD_LINUX=keep
 EOF
 cat > "$WORK/root/etc/grub.d/09_xaac" <<EOF
 #!/bin/sh
@@ -258,7 +264,7 @@ menuentry 'XAAC Thin Client OS' --class xaac --class gnu-linux --class gnu --cla
     insmod part_gpt
     insmod ext2
     search --no-floppy --fs-uuid --set=root $ROOT_UUID
-    linux /boot/vmlinuz root=UUID=$ROOT_UUID ro quiet
+    linux /boot/vmlinuz root=UUID=$ROOT_UUID ro quiet splash loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles
     initrd /boot/initrd.img
 }
 XAAC_ENTRY
