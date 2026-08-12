@@ -888,6 +888,45 @@ class ProductionIsoBuilder:
             content = '* {\n    font-family: "Roboto";\n}\n\n' + content
         self._atomic_write(css, content, 0o644)
 
+    def _configure_xaac_thinclient_production_runtime(self) -> None:
+        """Bind the generic XAAC Thin Client package to the OS kiosk runtime.
+
+        The Debian package deliberately defaults to development mode.  The OS
+        must opt in explicitly to production semantics so the footer power
+        action shuts down the terminal instead of merely quitting the client.
+        Privileged power actions are exposed through two fixed root-owned
+        helpers and an exact sudoers allow-list; xaac-kiosk receives no general
+        sudo capability.
+        """
+        config = self._inside("/etc/xaac-thinclient/config.ini")
+        if not config.is_file():
+            raise ProductionBuildError("Falta /etc/xaac-thinclient/config.ini")
+        content = config.read_text(encoding="utf-8")
+        if "mode = development" not in content:
+            if "mode = production" not in content:
+                raise ProductionBuildError("No s’ha pogut determinar application.mode de XAAC Thin Client")
+        else:
+            content = content.replace("mode = development", "mode = production", 1)
+            self._atomic_write(config, content, 0o644)
+
+        self._atomic_write(
+            self._inside("/usr/local/sbin/xaac-kiosk-poweroff"),
+            "#!/bin/sh\nset -eu\nexec /usr/bin/systemctl poweroff\n",
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/usr/local/sbin/xaac-kiosk-reboot"),
+            "#!/bin/sh\nset -eu\nexec /usr/bin/systemctl reboot\n",
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/etc/sudoers.d/xaac-kiosk-power"),
+            "Defaults:xaac-kiosk use_pty\n"
+            "xaac-kiosk ALL=(root) NOPASSWD: /usr/local/sbin/xaac-kiosk-poweroff, "
+            "/usr/local/sbin/xaac-kiosk-reboot\n",
+            0o440,
+        )
+
     def phase_configure(self) -> None:
         self._require_root()
         if not (self.paths.rootfs / "etc/debian_version").is_file():
@@ -1403,6 +1442,7 @@ class ProductionIsoBuilder:
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
             self._customize_xaac_thinclient_theme()
+            self._configure_xaac_thinclient_production_runtime()
             thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
             if not thinclient_deb.is_file():
                 raise ProductionBuildError("Falta packages/xaac-thinclient_1.0.0_all.deb")

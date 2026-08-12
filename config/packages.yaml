@@ -21,6 +21,7 @@ base:
 - console-setup-linux
 - tzdata
 - openssh-server
+- sudo
 - nftables
 - apparmor
 - apparmor-utils

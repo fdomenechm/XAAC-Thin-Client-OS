@@ -1,3 +1,13 @@
+## 2026-08-12 — modals quiosc i apagat real del terminal
+
+- Actualitzat `xaac-thinclient_1.0.0_all.deb` amb controls de tancament propis
+  per als diàlegs modals «Quant a» i «Diagnòstics».
+- XAAC Thin Client OS força `application.mode = production` sobre el paquet
+  genèric, que continua sent neutre per defecte fora del Thin Client OS.
+- Afegits helpers root fixos `xaac-kiosk-poweroff` i `xaac-kiosk-reboot`.
+- `xaac-kiosk` només pot executar eixos dos helpers amb `sudo -n`; no rep
+  privilegis generals. `sudo` queda declarat explícitament al sistema base.
+
 ## 2026-08-12 — correcció definitiva de les host keys OpenSSH
 
 - Corregit l'instal·lador real generat per `production_builder.py`: el sanejament
