@@ -1,3 +1,10 @@
+## 2026-08-12 — inicialització del magatzem de certificats FreeRDP
+
+- Validat en producció que FreeRDP falla amb `BIO_new failed for certificate`, `REMOTE HOST IDENTIFICATION HAS CHANGED` i codi de sessió 143 quan no existeix el certificate store configurat a `/etc/xaac/freerdp/server`.
+- Afegida la creació persistent de `/etc/xaac/freerdp` i `/etc/xaac/freerdp/server` mitjançant `systemd-tmpfiles`.
+- Els dos directoris queden propietat de `xaac-kiosk:xaac-kiosk` i amb mode `0700`, de manera que FreeRDP pot registrar i actualitzar de forma segura els certificats/host keys dels servidors RDP.
+- La correcció reprodueix exactament la configuració validada sobre el sistema instal·lat, on la connexió RDP ha funcionat immediatament sense reiniciar després de crear el magatzem.
+
 ## 2026-08-12 — continuïtat visual entre Plymouth i XAAC Thin Client
 
 - Validat en producció que mantindre Plymouth actiu fins a Labwc provoca conflicte DRM (`/dev/dri/card0` ocupat), per tant es conserva l'alliberament normal de Plymouth abans d'iniciar el compositor.

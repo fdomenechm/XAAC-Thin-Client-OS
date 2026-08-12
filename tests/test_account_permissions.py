@@ -61,6 +61,15 @@ def test_install_is_idempotent(project_root: Path, tmp_path: Path) -> None:
     assert before == {key: plan.destination(key).read_bytes() for key in plan.profile["outputs"]}
 
 
+def test_freerdp_certificate_store_is_created_for_kiosk(project_root: Path, tmp_path: Path) -> None:
+    plan = create_account_permissions_plan(tmp_path / "rootfs", project_root / "config/account-permissions.yaml")
+    AccountPermissionsInstaller().install(plan)
+    tmpfiles = plan.destination("tmpfiles").read_text(encoding="utf-8")
+    assert "d /etc/xaac/freerdp 700 xaac-kiosk xaac-kiosk -" in tmpfiles
+    assert "d /etc/xaac/freerdp/server 700 xaac-kiosk xaac-kiosk -" in tmpfiles
+    assert "Z /etc/xaac/freerdp/server 700 xaac-kiosk xaac-kiosk -" in tmpfiles
+
+
 def test_installed_permissions_are_restrictive(project_root: Path, tmp_path: Path) -> None:
     plan = create_account_permissions_plan(tmp_path / "rootfs", project_root / "config/account-permissions.yaml")
     AccountPermissionsInstaller().install(plan)

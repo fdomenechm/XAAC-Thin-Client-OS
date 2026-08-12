@@ -67,6 +67,8 @@ separation_rules:
 sensitive_paths:
   - {path: /etc/xaac, owner: root, group: xaac-agent, mode: '0750', recursive: false}
   - {path: /etc/xaac/agent, owner: root, group: xaac-agent, mode: '0750', recursive: true}
+  - {path: /etc/xaac/freerdp, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: false}
+  - {path: /etc/xaac/freerdp/server, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: true}
   - {path: /var/lib/xaac-agent, owner: xaac-agent, group: xaac-agent, mode: '0750', recursive: true}
   - {path: /var/lib/xaac-rustdesk, owner: xaac-rustdesk, group: xaac-rustdesk, mode: '0750', recursive: true}
   - {path: /var/lib/xaac-kiosk, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: true}
