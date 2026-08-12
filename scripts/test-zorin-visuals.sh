@@ -58,9 +58,9 @@ gtk-icon-theme-name=XAAC-Zorin-Light
 EOF
 
 if command -v gtk4-update-icon-cache >/dev/null 2>&1; then
-  gtk4-update-icon-cache -f "$SANDBOX/data/icons/ZorinBlue-Light" >/dev/null || true
+  gtk4-update-icon-cache -f "$SANDBOX/data/icons/XAAC-Zorin-Light" >/dev/null || true
 elif command -v gtk-update-icon-cache >/dev/null 2>&1; then
-  gtk-update-icon-cache -f "$SANDBOX/data/icons/ZorinBlue-Light" >/dev/null || true
+  gtk-update-icon-cache -f "$SANDBOX/data/icons/XAAC-Zorin-Light" >/dev/null || true
 fi
 
 export XAAC_VISUAL_SANDBOX="$SANDBOX"
