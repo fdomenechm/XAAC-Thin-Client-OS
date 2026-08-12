@@ -777,3 +777,24 @@ def test_uefi_defaults_match_silent_graphical_boot_policy() -> None:
     ):
         assert f"  - {parameter}" in uefi
     assert "- plymouth" in packages
+
+
+def test_production_builder_installs_persistent_freerdp_certificate_store() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder._configure_freerdp_certificate_store)
+    assert "/usr/lib/tmpfiles.d/xaac-freerdp.conf" in source
+    assert "d /etc/xaac/freerdp 0700 xaac-kiosk xaac-kiosk -" in source
+    assert "d /etc/xaac/freerdp/server 0700 xaac-kiosk xaac-kiosk -" in source
+    assert '"/usr/bin/install", "-d", "-m", "0700"' in source
+    assert '"-o", "xaac-kiosk", "-g", "xaac-kiosk"' in source
+
+
+def test_production_configure_calls_freerdp_store_after_kiosk_account_creation() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    user_pos = source.index("configure-user-kiosk")
+    store_pos = source.index("self._configure_freerdp_certificate_store()")
+    package_pos = source.index("if debs:")
+    assert user_pos < store_pos < package_pos

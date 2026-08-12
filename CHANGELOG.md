@@ -1,3 +1,10 @@
+## 2026-08-12 — persistència validada del magatzem FreeRDP en la ISO
+
+- Validat sobre TC-059 que crear `/etc/xaac/freerdp` i `/etc/xaac/freerdp/server` amb `systemd-tmpfiles`, propietari `xaac-kiosk:xaac-kiosk` i mode `0700` permet connectar i reconnectar a RDP després d'un reinici complet.
+- El constructor de producció crea ara explícitament `/usr/lib/tmpfiles.d/xaac-freerdp.conf`; la correcció ja no depén de fases auxiliars del projecte que no formen part del flux real de `build-production-iso.sh`.
+- Els directoris també es creen immediatament dins del rootfs durant la fase `configure`, una vegada existeix `xaac-kiosk`, garantint que el primer inici i la primera connexió RDP disposen del certificate store.
+- Es conserven els certificats/host keys entre reinicis, mantenint la verificació estricta de FreeRDP sense recórrer a `/cert:ignore`.
+
 ## 2026-08-12 — inicialització del magatzem de certificats FreeRDP
 
 - Validat en producció que FreeRDP falla amb `BIO_new failed for certificate`, `REMOTE HOST IDENTIFICATION HAS CHANGED` i codi de sessió 143 quan no existeix el certificate store configurat a `/etc/xaac/freerdp/server`.

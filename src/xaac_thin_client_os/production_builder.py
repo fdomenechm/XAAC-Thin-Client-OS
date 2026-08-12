@@ -928,6 +928,31 @@ class ProductionIsoBuilder:
             0o440,
         )
 
+    def _configure_freerdp_certificate_store(self) -> None:
+        """Create the persistent FreeRDP certificate store for xaac-kiosk.
+
+        FreeRDP strict certificate checking expects per-server PEM files under
+        /etc/xaac/freerdp/server.  The directory must exist before the first RDP
+        connection and must survive reboot, otherwise FreeRDP reports BIO_new
+        failures and rejects the server with ERRCONNECT_TLS_CONNECT_FAILED.
+        """
+        tmpfiles = self._inside("/usr/lib/tmpfiles.d/xaac-freerdp.conf")
+        self._atomic_write(
+            tmpfiles,
+            "# XAAC Thin Client OS - persistent FreeRDP certificate store\n"
+            "d /etc/xaac/freerdp 0700 xaac-kiosk xaac-kiosk -\n"
+            "d /etc/xaac/freerdp/server 0700 xaac-kiosk xaac-kiosk -\n",
+            0o644,
+        )
+        self._chroot(
+            [
+                "/usr/bin/install", "-d", "-m", "0700",
+                "-o", "xaac-kiosk", "-g", "xaac-kiosk",
+                "/etc/xaac/freerdp", "/etc/xaac/freerdp/server",
+            ],
+            phase="configure-freerdp-certificate-store",
+        )
+
     def _configure_boot_splash(self) -> None:
         """Install the XAAC Plymouth theme and silent installed-system boot policy."""
         source = self.paths.project_root / "assets/branding/XAAC_TC_OS.png"
@@ -1506,6 +1531,7 @@ class ProductionIsoBuilder:
             self._chroot(["usermod", "--shell", "/usr/sbin/nologin", "xaac-kiosk"], phase="configure-shell-kiosk")
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
+            self._configure_freerdp_certificate_store()
             if debs:
                 self._chroot([
                     "apt-get", "install", "--yes", "--no-install-recommends",
