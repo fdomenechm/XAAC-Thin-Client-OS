@@ -1549,6 +1549,21 @@ class ProductionIsoBuilder:
                 "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
+            # XAAC Thin Client VPN is installed exclusively from its .deb.
+            self._chroot([
+                "/bin/sh", "-ec",
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-vpn)\" = 'install ok installed'; "
+                "command -v xaac-thin-client-vpn >/dev/null; "
+                "test -f /lib/systemd/system/xaac-vpn-manager.service; "
+                "getent group xaac-vpn >/dev/null || addgroup --system xaac-vpn; "
+                "usermod --append --groups xaac-vpn xaac-kiosk",
+            ], phase="configure-verify-xaac-vpn")
+            vpn_gate_source = self.paths.project_root / "assets/runtime/xaac-vpn-session-gate"
+            vpn_gate_target = self._inside("/usr/local/libexec/xaac-vpn-session-gate")
+            vpn_gate_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(vpn_gate_source, vpn_gate_target)
+            vpn_gate_target.chmod(0o755)
+            self._chroot(["systemctl", "enable", "xaac-vpn-manager.service"], phase="configure-enable-xaac-vpn")
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
             self._customize_xaac_thinclient_theme()

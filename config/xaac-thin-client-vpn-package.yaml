@@ -1,0 +1,22 @@
+schema_version: 1
+package:
+  name: xaac-thin-client-vpn
+  architecture: all
+  version: "0.5.1~dev0-1"
+  artifact: packages/xaac-thin-client-vpn_0.5.1~dev0-1_all.deb
+  sha256: "c7288100e5e4b193716aebcf0defd12c3dbc03efdc0f7cee2bc5b9aa15c3ab82"
+  dependencies:
+    - python3
+    - python3-gi
+    - gir1.2-gtk-4.0
+    - openvpn3-client
+    - dbus
+    - fonts-roboto
+runtime:
+  kiosk_user: xaac-kiosk
+  access_group: xaac-vpn
+  manager_service: xaac-vpn-manager.service
+  gui_command: /usr/bin/xaac-thin-client-vpn
+  session_gate: /usr/local/libexec/xaac-vpn-session-gate
+  thin_client_command: /usr/local/libexec/xaac-thin-client-launch
+  configuration_path: /etc/xaac/vpn-manager.toml

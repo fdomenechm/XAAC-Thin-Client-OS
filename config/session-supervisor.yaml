@@ -2,7 +2,7 @@ schema_version: 1
 profile: xaac-session-supervisor
 supervision:
   user: xaac-kiosk
-  client_command: /usr/local/libexec/xaac-thin-client-launch
+  client_command: /usr/local/libexec/xaac-vpn-session-gate
   supervisor_command: /usr/local/libexec/xaac-session-supervisor
   error_screen_command: /usr/local/libexec/xaac-session-error
   startup_screen_command: /usr/local/libexec/xaac-startup-screen
