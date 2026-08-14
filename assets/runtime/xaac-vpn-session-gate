@@ -4,6 +4,7 @@ CONFIG=/etc/xaac/vpn-manager.toml
 VPN_APP=/usr/bin/xaac-thin-client-vpn
 THIN_CLIENT=/usr/local/libexec/xaac-thin-client-launch
 POLICY=optional
+# Administrative source of truth; future Agent updates this same root-owned file.
 if [ -r "$CONFIG" ]; then
     configured=$(awk -F '"' '/^[ 	]*policy[ 	]*=/ { print $2; exit }' "$CONFIG" 2>/dev/null || true)
     [ -n "$configured" ] && POLICY=$configured

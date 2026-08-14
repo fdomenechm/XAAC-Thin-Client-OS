@@ -837,6 +837,27 @@ class ProductionIsoBuilder:
             "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
         )
 
+    def _configure_openvpn3_network(self) -> None:
+        """Persist the OpenVPN 3 DNS backend used by the minimal XAAC OS.
+
+        XAAC Thin Client OS uses NetworkManager with a normal /etc/resolv.conf
+        and does not enable systemd-resolved.  OpenVPN 3 must therefore use its
+        ResolvConfFile backend, matching the configuration validated on the
+        target terminal.
+        """
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "openvpn3-admin init-config --write-configs --force; "
+                "openvpn3-admin netcfg-service --config-unset systemd-resolved "
+                ">/dev/null 2>&1 || true; "
+                "openvpn3-admin netcfg-service --config-set resolv-conf /etc/resolv.conf; "
+                "openvpn3-admin netcfg-service --config-show | "
+                "grep -F 'resolv-conf file: /etc/resolv.conf' >/dev/null",
+            ],
+            phase="configure-openvpn3-netcfg",
+        )
+
     def _install_zorin_icon_theme(self) -> None:
         """Install the minimal exact ZorinBlue-Light icon subset used by XAAC.
 
@@ -951,6 +972,38 @@ class ProductionIsoBuilder:
                 "/etc/xaac/freerdp", "/etc/xaac/freerdp/server",
             ],
             phase="configure-freerdp-certificate-store",
+        )
+
+    def _configure_tty_cursor_visibility(self) -> None:
+        """Restore a visible text cursor whenever an authenticated getty starts.
+
+        The kernel keeps ``vt.global_cursor_default=0`` so tty1 remains visually
+        clean during Plymouth/greetd startup.  A getty-specific drop-in then
+        re-enables DECTCEM on text consoles, so tty2..tty6 and the administrative
+        TTY have a normal cursor for editing commands.
+        """
+        self._atomic_write(
+            self._inside("/usr/local/libexec/xaac/show-tty-cursor"),
+            "#!/bin/sh\n"
+            "set -eu\n"
+            "tty_name=${1:-}\n"
+            "case $tty_name in tty[0-9]|tty1[0-2]) ;; *) exit 2 ;; esac\n"
+            "printf '\\033[?25h' > \"/dev/$tty_name\"\n",
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/getty@.service.d/20-xaac-visible-cursor.conf"),
+            "[Service]\n"
+            "ExecStartPre=/usr/local/libexec/xaac/show-tty-cursor %I\n",
+            0o644,
+        )
+        self._atomic_write(
+            self._inside("/etc/profile.d/20-xaac-visible-tty-cursor.sh"),
+            "# XAAC Thin Client OS - keep text-console cursor visible\n"
+            "case $(/usr/bin/tty 2>/dev/null || true) in\n"
+            "    /dev/tty[2-9]|/dev/tty1[0-2]) printf '\\033[?25h' ;;\n"
+            "esac\n",
+            0o644,
         )
 
     def _configure_boot_splash(self) -> None:
@@ -1110,6 +1163,7 @@ class ProductionIsoBuilder:
         ):
             with contextlib.suppress(FileNotFoundError):
                 self._inside(stale).unlink()
+        self._configure_tty_cursor_visibility()
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"
@@ -1564,6 +1618,15 @@ class ProductionIsoBuilder:
             shutil.copy2(vpn_gate_source, vpn_gate_target)
             vpn_gate_target.chmod(0o755)
             self._chroot(["systemctl", "enable", "xaac-vpn-manager.service"], phase="configure-enable-xaac-vpn")
+            self._chroot(
+                [
+                    "/bin/sh", "-ec",
+                    "chown root:root /etc/xaac/vpn-manager.toml; "
+                    "chmod 0644 /etc/xaac/vpn-manager.toml",
+                ],
+                phase="configure-vpn-config-permissions",
+            )
+            self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
             self._customize_xaac_thinclient_theme()
