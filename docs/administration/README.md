@@ -2,6 +2,8 @@
 
 ## Manuals
 
+- [Administració de XAAC Thin Client VPN](../architecture/vpn-administration.md)
+
 - [Administració](../manual/administration.md)
 - [Xarxa](../manual/network.md)
 - [Seguretat](../manual/security.md)

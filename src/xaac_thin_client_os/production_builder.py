@@ -1619,12 +1619,23 @@ class ProductionIsoBuilder:
             vpn_gate_target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(vpn_gate_source, vpn_gate_target)
             vpn_gate_target.chmod(0o755)
+
+            vpn_admin_source = self.paths.project_root / "assets/runtime/xaac-vpn-admin"
+            if not vpn_admin_source.is_file():
+                raise ProductionBuildError("Falta assets/runtime/xaac-vpn-admin")
+            vpn_admin_target = self._inside("/usr/local/sbin/xaac-vpn-admin")
+            vpn_admin_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(vpn_admin_source, vpn_admin_target)
+            vpn_admin_target.chmod(0o755)
+
             self._chroot(["systemctl", "enable", "xaac-vpn-manager.service"], phase="configure-enable-xaac-vpn")
             self._chroot(
                 [
                     "/bin/sh", "-ec",
                     "chown root:root /etc/xaac/vpn-manager.toml; "
-                    "chmod 0644 /etc/xaac/vpn-manager.toml",
+                    "chmod 0644 /etc/xaac/vpn-manager.toml; "
+                    "test -x /usr/local/sbin/xaac-vpn-admin; "
+                    "/usr/local/sbin/xaac-vpn-admin --help >/dev/null",
                 ],
                 phase="configure-vpn-config-permissions",
             )

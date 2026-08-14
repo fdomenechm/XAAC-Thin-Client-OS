@@ -1,0 +1,547 @@
+#!/usr/bin/python3
+"""Administrative helper for provisioning and controlling XAAC Thin Client VPN.
+
+This tool deliberately keeps VPN user credentials out of persistent storage.
+It only provisions the administrator-supplied OpenVPN profile and client
+certificate material, and manages the administrative policy in
+/etc/xaac/vpn-manager.toml.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import getpass
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+CONFIG_PATH = Path("/etc/xaac/vpn-manager.toml")
+PROFILE_NAME = "XAAC VPN"
+OPENVPN3 = "/usr/bin/openvpn3"
+OPENSSL = "/usr/bin/openssl"
+SYSTEMCTL = "/usr/bin/systemctl"
+VALID_POLICIES = ("disabled", "optional", "required")
+
+
+class VpnAdminError(RuntimeError):
+    """Expected administrative error."""
+
+
+def _run(
+    command: list[str],
+    *,
+    input_text: str | None = None,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        command,
+        input=input_text,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if check and result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        if not detail:
+            detail = f"ordre fallida amb codi {result.returncode}"
+        raise VpnAdminError(f"{' '.join(command[:2])}: {detail}")
+    return result
+
+
+def _require_root() -> None:
+    if os.geteuid() != 0:
+        raise VpnAdminError("aquesta ordre s'ha d'executar com a root (useu sudo)")
+
+
+def _require_command(path: str) -> None:
+    if not Path(path).is_file() or not os.access(path, os.X_OK):
+        raise VpnAdminError(f"no s'ha trobat l'executable requerit: {path}")
+
+
+def _read_policy(path: Path = CONFIG_PATH) -> str:
+    if not path.is_file():
+        raise VpnAdminError(f"no existeix el fitxer de configuració: {path}")
+    section = ""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+            continue
+        if section == "manager":
+            match = re.match(r'policy\s*=\s*"([^"]+)"', line)
+            if match:
+                value = match.group(1)
+                if value not in VALID_POLICIES:
+                    raise VpnAdminError(f"política VPN no reconeguda al fitxer: {value}")
+                return value
+    raise VpnAdminError("no s'ha trobat manager.policy a vpn-manager.toml")
+
+
+def _write_policy(policy: str, path: Path = CONFIG_PATH) -> None:
+    if policy not in VALID_POLICIES:
+        raise VpnAdminError(f"política no vàlida: {policy}")
+    if not path.is_file():
+        raise VpnAdminError(f"no existeix el fitxer de configuració: {path}")
+
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    section = ""
+    replaced = False
+    manager_index: int | None = None
+
+    for index, raw in enumerate(lines):
+        stripped = raw.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+            if section == "manager":
+                manager_index = index
+            continue
+        if section == "manager" and re.match(r"\s*policy\s*=", raw):
+            ending = "\n" if raw.endswith("\n") else ""
+            lines[index] = f'policy = "{policy}"{ending}'
+            replaced = True
+            break
+
+    if not replaced:
+        if manager_index is None:
+            raise VpnAdminError("no s'ha trobat la secció [manager] a vpn-manager.toml")
+        lines.insert(manager_index + 1, f'policy = "{policy}"\n')
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.writelines(lines)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chown(temporary, 0, 0)
+        os.chmod(temporary, 0o644)
+        os.replace(temporary, path)
+        directory_fd = os.open(path.parent, os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _profile_paths(name: str) -> list[str]:
+    result = _run(
+        [OPENVPN3, "configs-list", "-v", "--filter-config", name],
+        check=False,
+    )
+    output = f"{result.stdout}\n{result.stderr}"
+    return [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith("/net/openvpn/v3/configuration/")
+    ]
+
+
+def _profile_details(name: str) -> str:
+    result = _run(
+        [OPENVPN3, "configs-list", "-v", "--filter-config", name],
+        check=False,
+    )
+    return f"{result.stdout}{result.stderr}"
+
+
+def _remove_profile_paths(paths: list[str]) -> None:
+    for path in paths:
+        _run([OPENVPN3, "config-remove", "--path", path, "--force"])
+
+
+def _remove_profiles_named(name: str) -> int:
+    paths = _profile_paths(name)
+    _remove_profile_paths(paths)
+    return len(paths)
+
+
+def _extract_common_name(subject: str) -> str | None:
+    match = re.search(r"(?:^|,\s*)CN=([^,]+)", subject)
+    return match.group(1).strip() if match else None
+
+
+def _quote_openvpn_value(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def _adapt_profile(source: Path, destination: Path, ca: Path, cert: Path, key: Path) -> str | None:
+    try:
+        content = source.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise VpnAdminError("el fitxer .ovpn no és text UTF-8 vàlid") from exc
+
+    if not re.search(r"(?m)^\s*auth-user-pass(?:\s|$)", content):
+        raise VpnAdminError("el perfil .ovpn no conté auth-user-pass")
+    if not re.search(r"(?m)^\s*static-challenge(?:\s|$)", content):
+        raise VpnAdminError(
+            "el perfil .ovpn no conté static-challenge; XAAC requereix autenticació OTP separada"
+        )
+
+    # OPNsense may export a .p12 reference.  OpenVPN 3 Linux validation is more
+    # reliable when the PKCS#12 material is expanded explicitly as CA, cert and key.
+    # Remove both file directives and inline blocks so the adapted profile has
+    # exactly one deterministic certificate source.
+    content = re.sub(
+        r"(?ims)^\s*<(ca|cert|key|pkcs12)>\s*$.*?^\s*</\1>\s*(?:\n|$)",
+        "",
+        content,
+    )
+    content = re.sub(r"(?m)^\s*(?:pkcs12|ca|cert|key)\s+.*(?:\n|$)", "", content)
+
+    lines = content.splitlines()
+    output: list[str] = []
+    inserted = False
+    rewritten_cn: str | None = None
+
+    subject_pattern = re.compile(
+        r'^\s*verify-x509-name\s+(?:"([^"]+)"|(\S+))\s+subject\s*$'
+    )
+
+    for line in lines:
+        match = subject_pattern.match(line)
+        if match:
+            subject = match.group(1) or match.group(2)
+            common_name = _extract_common_name(subject)
+            if common_name:
+                output.append(
+                    f"verify-x509-name {_quote_openvpn_value(common_name)} name"
+                )
+                rewritten_cn = common_name
+                continue
+
+        output.append(line)
+        if not inserted and re.match(r"^\s*auth-user-pass(?:\s|$)", line):
+            output.extend(
+                [
+                    f"ca {ca}",
+                    f"cert {cert}",
+                    f"key {key}",
+                ]
+            )
+            inserted = True
+
+    if not inserted:
+        raise VpnAdminError("no s'ha pogut inserir el material criptogràfic al perfil")
+
+    destination.write_text("\n".join(output) + "\n", encoding="utf-8")
+    os.chmod(destination, 0o600)
+    return rewritten_cn
+
+
+def _openssl_pkcs12(
+    p12: Path,
+    output: Path | None,
+    password: str,
+    *options: str,
+) -> None:
+    command = [OPENSSL, "pkcs12", "-in", str(p12), "-passin", "stdin", *options]
+    if output is not None:
+        command.extend(["-out", str(output)])
+    _run(command, input_text=f"{password}\n")
+    if output is not None:
+        os.chmod(output, 0o600)
+
+
+def _validate_and_extract_p12(
+    p12: Path,
+    workdir: Path,
+    password: str,
+) -> tuple[Path, Path, Path]:
+    _openssl_pkcs12(p12, None, password, "-info", "-noout")
+
+    ca = workdir / "ca.pem"
+    cert = workdir / "client.crt"
+    key = workdir / "client.key"
+
+    _openssl_pkcs12(p12, ca, password, "-cacerts", "-nokeys")
+    _openssl_pkcs12(p12, cert, password, "-clcerts", "-nokeys")
+    _openssl_pkcs12(p12, key, password, "-nocerts", "-nodes")
+
+    for path in (ca, cert, key):
+        if not path.is_file() or path.stat().st_size == 0:
+            raise VpnAdminError(f"el PKCS#12 no ha generat correctament {path.name}")
+    return ca, cert, key
+
+
+def _validate_imported_profile(name: str) -> None:
+    details = _profile_details(name)
+    paths = _profile_paths(name)
+    if len(paths) != 1:
+        raise VpnAdminError(
+            f"s'esperava un únic perfil temporal però se n'han trobat {len(paths)}"
+        )
+    if "Invalid:" in details or "Configuration profile is missing required options" in details:
+        raise VpnAdminError("OpenVPN 3 ha marcat el perfil importat com a invàlid")
+
+
+def _validate_profile_self_contained(name: str, temporary_root: Path) -> None:
+    result = _run([OPENVPN3, "config-dump", "--config", name])
+    if str(temporary_root) in result.stdout:
+        raise VpnAdminError(
+            "OpenVPN 3 ha conservat referències als fitxers temporals; "
+            "el perfil no és autocontingut"
+        )
+
+
+def _swap_candidate_profile(candidate: str) -> None:
+    old_paths = _profile_paths(PROFILE_NAME)
+    backup = f"XAAC VPN BACKUP {os.getpid()}"
+    backup_created = False
+
+    # A healthy installation has at most one final profile.  Preserve it until
+    # the candidate has taken its final name, so a failed rename can roll back.
+    if len(old_paths) == 1:
+        _run(
+            [
+                OPENVPN3,
+                "config-manage",
+                "--path",
+                old_paths[0],
+                "--rename",
+                backup,
+            ]
+        )
+        backup_created = True
+    elif len(old_paths) > 1:
+        # Multiple profiles with the same final name are already ambiguous to
+        # OpenVPN 3.  The validated candidate is the recovery source of truth.
+        _remove_profile_paths(old_paths)
+
+    try:
+        _run(
+            [
+                OPENVPN3,
+                "config-manage",
+                "--config",
+                candidate,
+                "--rename",
+                PROFILE_NAME,
+            ]
+        )
+        _validate_imported_profile(PROFILE_NAME)
+    except Exception:
+        # Best-effort rollback: remove the partial final candidate and restore
+        # the previously working profile if one was preserved.
+        with contextlib.suppress(Exception):
+            _remove_profiles_named(PROFILE_NAME)
+        if backup_created:
+            backup_paths = _profile_paths(backup)
+            if len(backup_paths) == 1:
+                with contextlib.suppress(Exception):
+                    _run(
+                        [
+                            OPENVPN3,
+                            "config-manage",
+                            "--path",
+                            backup_paths[0],
+                            "--rename",
+                            PROFILE_NAME,
+                        ]
+                    )
+        raise
+    else:
+        if backup_created:
+            _remove_profiles_named(backup)
+
+
+def _restart_manager() -> None:
+    result = _run([SYSTEMCTL, "restart", "xaac-vpn-manager.service"], check=False)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise VpnAdminError(
+            "la configuració s'ha actualitzat, però no s'ha pogut reiniciar "
+            f"xaac-vpn-manager.service: {detail}"
+        )
+
+
+def command_provision(ovpn: Path, p12: Path) -> None:
+    _require_root()
+    _require_command(OPENVPN3)
+    _require_command(OPENSSL)
+    _require_command(SYSTEMCTL)
+
+    ovpn = ovpn.resolve()
+    p12 = p12.resolve()
+    if not ovpn.is_file():
+        raise VpnAdminError(f"no existeix el fitxer .ovpn: {ovpn}")
+    if not p12.is_file():
+        raise VpnAdminError(f"no existeix el fitxer .p12: {p12}")
+
+    password = getpass.getpass("Contrasenya del certificat PKCS#12 (Enter si no en té): ")
+
+    candidate = f"XAAC VPN CANDIDATE {os.getpid()}"
+    print("Validant certificat PKCS#12...", flush=True)
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="xaac-vpn-admin-", dir="/run") as temp_name:
+            workdir = Path(temp_name)
+            os.chmod(workdir, 0o700)
+
+            local_ovpn = workdir / "client.ovpn"
+            local_p12 = workdir / "client.p12"
+            shutil.copyfile(ovpn, local_ovpn)
+            shutil.copyfile(p12, local_p12)
+            os.chmod(local_ovpn, 0o600)
+            os.chmod(local_p12, 0o600)
+
+            ca, cert, key = _validate_and_extract_p12(local_p12, workdir, password)
+            print("Validant certificat PKCS#12... OK")
+
+            adapted = workdir / "client-openvpn3.ovpn"
+            rewritten_cn = _adapt_profile(local_ovpn, adapted, ca, cert, key)
+            print("Preparant perfil OpenVPN 3... OK")
+            if rewritten_cn:
+                print(
+                    "Verificació X.509 adaptada al nom del servidor: "
+                    f"{rewritten_cn}"
+                )
+
+            # Remove only a stale candidate from an interrupted run using the
+            # same PID/name (normally none), then import and validate without
+            # touching the currently working XAAC VPN profile.
+            _remove_profiles_named(candidate)
+            _run(
+                [
+                    OPENVPN3,
+                    "config-import",
+                    "--config",
+                    str(adapted),
+                    "--name",
+                    candidate,
+                    "--persistent",
+                ]
+            )
+            try:
+                _validate_imported_profile(candidate)
+                _validate_profile_self_contained(candidate, workdir)
+                print("Validant perfil importat... OK")
+
+                _swap_candidate_profile(candidate)
+            except Exception:
+                _remove_profiles_named(candidate)
+                raise
+    finally:
+        password = ""
+
+    _restart_manager()
+    print(f'Perfil "{PROFILE_NAME}" provisionat correctament.')
+    print("Els fitxers temporals i la clau privada extreta s'han eliminat.")
+    print("Política actual:", _read_policy())
+
+
+def command_policy(policy: str) -> None:
+    _require_root()
+    _require_command(SYSTEMCTL)
+    _write_policy(policy)
+    _restart_manager()
+    print(f'Política VPN establida a "{policy}".')
+    print("La nova política s'aplicarà en iniciar la pròxima sessió de quiosc.")
+
+
+def command_status() -> None:
+    _require_root()
+    _require_command(OPENVPN3)
+    _require_command(SYSTEMCTL)
+    policy = _read_policy()
+    profile_details = _profile_details(PROFILE_NAME)
+    profile_paths = _profile_paths(PROFILE_NAME)
+    profile_valid = (
+        len(profile_paths) == 1
+        and "Invalid:" not in profile_details
+        and "Configuration profile is missing required options" not in profile_details
+    )
+
+    manager = _run(
+        [SYSTEMCTL, "is-active", "xaac-vpn-manager.service"],
+        check=False,
+    ).stdout.strip() or "desconegut"
+
+    sessions = _run([OPENVPN3, "sessions-list"], check=False)
+    session_text = f"{sessions.stdout}\n{sessions.stderr}"
+    connected = "Client connected" in session_text or "Connected" in session_text
+
+    print("XAAC Thin Client VPN")
+    print("====================")
+    print(f"Política:            {policy}")
+    print(f"Perfil:              {PROFILE_NAME}")
+    print(f"Perfil provisionat:  {'sí' if profile_paths else 'no'}")
+    print(f"Perfil vàlid:        {'sí' if profile_valid else 'no'}")
+    print(f"Manager:             {manager}")
+    print(f"Sessió VPN:          {'connectada' if connected else 'desconnectada'}")
+
+
+def command_remove() -> None:
+    _require_root()
+    _require_command(OPENVPN3)
+    _require_command(SYSTEMCTL)
+    removed = _remove_profiles_named(PROFILE_NAME)
+    _write_policy("disabled")
+    _restart_manager()
+    if removed:
+        print(f'Perfil "{PROFILE_NAME}" eliminat.')
+    else:
+        print(f'No hi havia cap perfil "{PROFILE_NAME}" provisionat.')
+    print('La política VPN s\'ha establit a "disabled" per evitar bloquejos.')
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="xaac-vpn-admin",
+        description="Administració simplificada de XAAC Thin Client VPN.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    provision = subparsers.add_parser(
+        "provision",
+        help="Provisiona/reemplaça XAAC VPN a partir d'un .ovpn i un .p12.",
+    )
+    provision.add_argument("ovpn", type=Path, help="Fitxer OpenVPN exportat (.ovpn)")
+    provision.add_argument("p12", type=Path, help="Certificat PKCS#12 exportat (.p12)")
+
+    policy = subparsers.add_parser(
+        "policy",
+        help="Estableix la política disabled, optional o required.",
+    )
+    policy.add_argument("value", choices=VALID_POLICIES)
+
+    subparsers.add_parser("status", help="Mostra l'estat administratiu de la VPN.")
+    subparsers.add_parser(
+        "remove",
+        help="Elimina el perfil XAAC VPN i desactiva la política VPN.",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "provision":
+            command_provision(args.ovpn, args.p12)
+        elif args.command == "policy":
+            command_policy(args.value)
+        elif args.command == "status":
+            command_status()
+        elif args.command == "remove":
+            command_remove()
+        else:
+            parser.error("ordre no implementada")
+    except KeyboardInterrupt:
+        print("\nOperació cancel·lada.", file=sys.stderr)
+        return 130
+    except VpnAdminError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

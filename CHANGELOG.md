@@ -1,3 +1,19 @@
+## 2026-08-14 — administració simplificada de XAAC Thin Client VPN
+
+- Afegida la utilitat root `xaac-vpn-admin` a XAAC Thin Client OS.
+- `provision <ovpn> <p12>` valida i adapta automàticament l'export d'OPNsense,
+  importa de manera persistent el perfil `XAAC VPN` i elimina tot el material temporal.
+- El provisionament exigeix `auth-user-pass` i `static-challenge`, expandeix el
+  PKCS#12 temporalment i normalitza `verify-x509-name ... subject` al CN del servidor.
+- La substitució del perfil usa un candidat validat abans de tocar el perfil actiu
+  i conserva un backup temporal per a rollback quan és possible.
+- `policy disabled|optional|required` actualitza atòmicament
+  `/etc/xaac/vpn-manager.toml` i reinicia `xaac-vpn-manager`.
+- `status` resumeix política, perfil, validesa, manager i sessió; `remove`
+  desprovisiona el perfil i força `disabled` per evitar bloquejos.
+- La contrasenya PKCS#12 viatja a OpenSSL per `stdin`, mai com a argument, i les
+  claus extretes només existeixen sota `/run` amb permisos restrictius.
+
 ## 2026-08-12 — persistència validada del magatzem FreeRDP en la ISO
 
 - Validat sobre TC-059 que crear `/etc/xaac/freerdp` i `/etc/xaac/freerdp/server` amb `systemd-tmpfiles`, propietari `xaac-kiosk:xaac-kiosk` i mode `0700` permet connectar i reconnectar a RDP després d'un reinici complet.

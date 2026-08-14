@@ -23,6 +23,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
+- XAAC Thin Client VPN amb provisionament administratiu simplificat mitjançant `xaac-vpn-admin`.
 - Configuració declarativa YAML i aplicació transaccional amb rollback.
 - Hardening amb systemd, AppArmor, nftables, sysctl i control de dispositius.
 - Actualitzacions signades, desplegament per anells i recuperació en diversos nivells.
