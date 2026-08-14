@@ -848,12 +848,14 @@ class ProductionIsoBuilder:
         self._chroot(
             [
                 "/bin/sh", "-ec",
+                # init-config works offline in the build chroot and writes the
+                # netcfg configuration directly.  Do not call
+                # `openvpn3-admin netcfg-service` here: that management
+                # command requires the net.openvpn.v3.netcfg D-Bus service,
+                # which intentionally is not running inside the ISO chroot.
                 "openvpn3-admin init-config --write-configs --force; "
-                "openvpn3-admin netcfg-service --config-unset systemd-resolved "
-                ">/dev/null 2>&1 || true; "
-                "openvpn3-admin netcfg-service --config-set resolv-conf /etc/resolv.conf; "
-                "openvpn3-admin netcfg-service --config-show | "
-                "grep -F 'resolv-conf file: /etc/resolv.conf' >/dev/null",
+                "test -s /var/lib/openvpn3/netcfg.json; "
+                "grep -F '/etc/resolv.conf' /var/lib/openvpn3/netcfg.json >/dev/null",
             ],
             phase="configure-openvpn3-netcfg",
         )
