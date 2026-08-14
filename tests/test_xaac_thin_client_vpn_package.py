@@ -10,7 +10,7 @@ def test_vpn_deb_profile_matches_artifact(project_root: Path) -> None:
     assert hashlib.sha256(artifact.read_bytes()).hexdigest()==profile["package"]["sha256"]
     out=subprocess.run(["dpkg-deb","-f",str(artifact),"Package","Version","Architecture"],check=True,capture_output=True,text=True).stdout
     assert "xaac-thin-client-vpn" in out
-    assert "0.5.2~dev0-1" in out
+    assert "0.5.2~dev1-1" in out
     assert "all" in out
 
 def test_os_does_not_vendor_vpn_python_sources(project_root: Path) -> None:
