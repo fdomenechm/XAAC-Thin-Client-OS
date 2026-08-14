@@ -2,7 +2,7 @@
 
 - Integrada la revisió Debian `xaac-agent 1.0.0-7`.
 - Afegida provenança `xaac-block7-release-provenance/v1` i gate que rebutja artefactes no construïts amb `dpkg-buildpackage`.
-- Afegit `scripts/finalize-block7-release.sh` per construir l'Agent, sincronitzar `.deb`/SHA-256, executar tests/gates i llançar una única ISO amb `--clean`.
+- Substituït el finalitzador acoblat al codi font de l'Agent per `scripts/import-xaac-agent-package.sh`: l'OS importa un `.deb` canònic ja construït, actualitza versió/SHA-256 de forma transaccional i conserva `build-production-iso.sh --clean` com a entrada normal de construcció.
 - `production_builder` valida també la provenança canònica, de manera que invocar el mòdul Python directament no permet eludir el gate.
 - La verificació de versió de l'Agent dins del rootfs deriva ara del perfil del paquet i ja no està codificada literalment al constructor.
 

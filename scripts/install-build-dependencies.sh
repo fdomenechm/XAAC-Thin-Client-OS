@@ -31,11 +31,6 @@ fi
     xorriso \
     squashfs-tools \
     util-linux \
-    coreutils \
-    debhelper \
-    python3.13 \
-    python3-pytest \
-    python3-cryptography \
-    python3-cffi-backend
+    coreutils
 
 printf 'Dependències del constructor instal·lades correctament.\n'

@@ -403,10 +403,29 @@ Els fitxers efímers de la sessió (`flock`, estat del supervisor i socket Wayla
 
 ## Tancament del Bloc 7
 
-La ISO final del Bloc 7 només es pot construir amb un XAAC Agent generat per la ruta canònica `dpkg-buildpackage`. El flux recomanat és:
+XAAC Thin Client OS i XAAC Agent mantenen un cicle de construcció separat. L'OS **no necessita el directori de codi font de l'Agent** per generar una ISO.
+
+Primer es genera, des del projecte XAAC Agent, el paquet Debian canònic i la seua provenança:
 
 ```sh
-./scripts/finalize-block7-release.sh /ruta/al/xaac-agent
+cd /ruta/al/xaac-agent
+./scripts/install-build-dependencies.sh
+./scripts/build-debian-release.sh ../artifacts
 ```
 
-L'script construeix l'Agent en una còpia de font neta, actualitza el `.deb` i el SHA-256 de l'OS, valida la provenança `xaac-block7-release-provenance/v1`, executa els gates i les suites completes i, només aleshores, llança una única construcció `build-production-iso.sh --clean`. Un `.deb` generat amb `dpkg-deb` per a proves locals queda marcat com a no canònic i el constructor de producció el rebutja.
+Després, des del projecte XAAC Thin Client OS, s'incorpora eixe `.deb` ja construït:
+
+```sh
+cd /ruta/al/xaac-thin-client-os
+./scripts/create-venv.sh
+./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-7_amd64.deb
+```
+
+L'importador exigeix el fitxer adjacent `.deb.provenance.json`, valida que el paquet siga canònic, actualitza automàticament versió, ruta i SHA-256 en `config/xaac-agent-package.yaml` i executa els gates del Bloc 7. A partir d'eixe moment la construcció habitual de l'OS torna a ser simplement:
+
+```sh
+sudo ./scripts/install-build-dependencies.sh   # només quan calga preparar el host
+./scripts/build-production-iso.sh --clean
+```
+
+Un `.deb` generat amb `dpkg-deb` per a proves locals continua marcat com a no canònic i `build-production-iso.sh` el rebutja.

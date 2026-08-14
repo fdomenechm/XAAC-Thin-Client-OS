@@ -1,7 +1,6 @@
 """Canonical release provenance gate for the final Block 7 ISO build."""
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -75,6 +74,79 @@ def _load_payload(path: Path) -> dict[str, Any]:
     return raw
 
 
+def load_release_provenance(path: Path) -> Block7ReleaseProvenance:
+    """Load and structurally validate one Agent provenance document."""
+    payload = _load_payload(path)
+    try:
+        epoch = int(payload["source_date_epoch"])
+    except (TypeError, ValueError) as exc:
+        raise Block7ReleaseError("agent_release_source_date_epoch_invalid") from exc
+    provenance = Block7ReleaseProvenance(
+        canonical=payload["canonical"] is True,
+        package=str(payload["package"]),
+        application_version=str(payload["application_version"]),
+        debian_version=str(payload["debian_version"]),
+        architecture=str(payload["architecture"]),
+        artifact=str(payload["artifact"]),
+        sha256=str(payload["sha256"]),
+        build_method=str(payload["build_method"]),
+        build_command=str(payload["build_command"]),
+        source_date_epoch=epoch,
+        release_manifest_sha256=str(payload["release_manifest_sha256"]),
+    )
+    if provenance.source_date_epoch <= 0:
+        raise Block7ReleaseError("agent_release_source_date_epoch_invalid")
+    if not _SHA256.fullmatch(provenance.sha256):
+        raise Block7ReleaseError("agent_release_sha256_invalid")
+    if not _SHA256.fullmatch(provenance.release_manifest_sha256):
+        raise Block7ReleaseError("agent_release_manifest_sha256_invalid")
+    return provenance
+
+
+def validate_canonical_release_artifact(
+    artifact: Path,
+    *,
+    provenance_path: Path | None = None,
+    expected_application_version: str | None = None,
+    expected_architecture: str | None = None,
+) -> Block7ReleaseProvenance:
+    """Validate a standalone canonical Agent .deb before importing it into the OS tree."""
+    try:
+        metadata = inspect_agent_package(artifact)
+    except XaacAgentPackageError as exc:
+        raise Block7ReleaseError("agent_release_artifact_invalid") from exc
+    provenance = load_release_provenance(provenance_path or provenance_path_for_artifact(artifact))
+    actual_identity = (
+        metadata.package,
+        metadata.version,
+        metadata.architecture,
+        artifact.name,
+        metadata.sha256,
+    )
+    provenance_identity = (
+        provenance.package,
+        provenance.debian_version,
+        provenance.architecture,
+        provenance.artifact,
+        provenance.sha256,
+    )
+    if actual_identity != provenance_identity:
+        raise Block7ReleaseError("agent_release_provenance_artifact_mismatch")
+    if provenance.package != "xaac-agent":
+        raise Block7ReleaseError("agent_release_package_invalid")
+    if expected_application_version is not None and provenance.application_version != expected_application_version:
+        raise Block7ReleaseError("agent_release_application_version_mismatch")
+    if expected_architecture is not None and provenance.architecture != expected_architecture:
+        raise Block7ReleaseError("agent_release_architecture_mismatch")
+    if (
+        not provenance.canonical
+        or provenance.build_method != _CANONICAL_METHOD
+        or provenance.build_command != _CANONICAL_COMMAND
+    ):
+        raise Block7ReleaseError("agent_release_not_canonical")
+    return provenance
+
+
 def validate_block7_release_provenance(
     project_root: Path,
     *,
@@ -93,26 +165,7 @@ def validate_block7_release_provenance(
     except (ValueError, XaacAgentPackageError) as exc:
         raise Block7ReleaseError("agent_release_artifact_invalid") from exc
 
-    payload = _load_payload(provenance_path_for_artifact(artifact))
-    try:
-        epoch = int(payload["source_date_epoch"])
-    except (TypeError, ValueError) as exc:
-        raise Block7ReleaseError("agent_release_source_date_epoch_invalid") from exc
-
-    provenance = Block7ReleaseProvenance(
-        canonical=payload["canonical"] is True,
-        package=str(payload["package"]),
-        application_version=str(payload["application_version"]),
-        debian_version=str(payload["debian_version"]),
-        architecture=str(payload["architecture"]),
-        artifact=str(payload["artifact"]),
-        sha256=str(payload["sha256"]),
-        build_method=str(payload["build_method"]),
-        build_command=str(payload["build_command"]),
-        source_date_epoch=epoch,
-        release_manifest_sha256=str(payload["release_manifest_sha256"]),
-    )
-
+    provenance = load_release_provenance(provenance_path_for_artifact(artifact))
     package = profile["package"]
     expected_identity = (
         package["name"], package["application_version"], package["version"],
@@ -128,10 +181,6 @@ def validate_block7_release_provenance(
         provenance.package, provenance.debian_version, provenance.architecture, provenance.sha256,
     ):
         raise Block7ReleaseError("agent_release_provenance_artifact_mismatch")
-    if provenance.source_date_epoch <= 0:
-        raise Block7ReleaseError("agent_release_source_date_epoch_invalid")
-    if not _SHA256.fullmatch(provenance.release_manifest_sha256):
-        raise Block7ReleaseError("agent_release_manifest_sha256_invalid")
     if require_canonical and (
         not provenance.canonical
         or provenance.build_method != _CANONICAL_METHOD
