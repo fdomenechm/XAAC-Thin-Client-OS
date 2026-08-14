@@ -75,9 +75,29 @@ L'actualització del fitxer és atòmica, manté `root:root 0644` i reinicia
 `xaac-vpn-manager`. La política nova s'aplica completament en iniciar la pròxima
 sessió de quiosc.
 
-Aquesta mateixa frontera és la prevista per a XAAC Thin Client Agent: l'Agent
-podrà reutilitzar la mateixa lògica administrativa o actualitzar de manera
-controlada la mateixa configuració, sense persistir contrasenyes ni OTP.
+### Política remota via XMS
+
+XAAC Thin Client Agent reutilitza aquesta frontera, però de manera estrictament
+limitada. XMS envia una política `system` signada amb `content_schema_revision = 2`
+i una única secció VPN:
+
+```json
+{
+  "vpn": {
+    "mode": "required"
+  }
+}
+```
+
+El flux és `XMS → XAAC Agent → xaac-privileged-helper → xaac-vpn-admin policy`.
+L'Agent i el helper només accepten `disabled`, `optional` o `required`. Una revisió
+igual o anterior a la política activa es rebutja sense tornar a aplicar-la. Si el
+mode arriba a canviar però falla la persistència de la nova política, l'Agent intenta
+restaurar el mode anterior.
+
+Aquesta interfície remota **no** admet `provision`, `remove`, `.ovpn`, `.p12`,
+contrasenyes, OTP ni shell genèrica. El provisionament del perfil continua sent una
+operació local de l'administrador.
 
 ## Estat
 
@@ -92,6 +112,16 @@ Mostra:
 - validesa del perfil;
 - estat de `xaac-vpn-manager`;
 - estat de la sessió VPN.
+
+Per a consum de màquina, especialment per XAAC Agent:
+
+```sh
+sudo xaac-vpn-admin status --json
+```
+
+La resposta usa el contracte `xaac-vpn-status/v1` i conté únicament estat
+administratiu. No inclou usuari VPN, contrasenya, OTP, claus, PKCS#12 ni contingut
+del perfil OpenVPN.
 
 ## Desprovisionament
 
@@ -120,6 +150,8 @@ L'administrador no ha de modificar manualment `/var/lib/openvpn3/netcfg.json` ni
   restrictius, durant el provisionament.
 - El perfil definitiu és gestionat pel Configuration Manager d'OpenVPN 3.
 - `/etc/xaac/vpn-manager.toml` no conté credencials d'usuari.
+- El helper de XAAC Agent conserva `ProtectSystem=strict`; l’única excepció de configuració writable per a la política VPN és `/etc/xaac`.
+- La interfície remota de l’Agent només permet consultar estat i canviar entre els tres modes de política; no permet provisionar ni eliminar perfils.
 
 ## Consoles TTY
 

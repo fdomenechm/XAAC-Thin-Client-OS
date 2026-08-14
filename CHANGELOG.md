@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.4: política VPN remota XMS → Agent
+
+- XAAC Agent passa a la revisió Debian `1.0.0-4`, mantenint la versió d'aplicació `1.0.0`.
+- `xaac-vpn-admin status --json` publica el contracte estable `xaac-vpn-status/v1` sense credencials.
+- XMS pot establir únicament `vpn.mode = disabled|optional|required` mitjançant una política `system` signada amb schema de contingut v2.
+- L'Agent passa pel helper privilegiat amb les operacions tipades `vpn-status` i `vpn-policy`; no existeix cap operació remota per a `provision`, `remove`, `.ovpn`, `.p12`, contrasenyes o OTP.
+- El helper manté `ProtectSystem=strict` i només rep l'excepció d'escriptura `ReadWritePaths=/etc/xaac` necessària per a `/etc/xaac/vpn-manager.toml`.
+- Les revisions de política repetides o antigues no es reapliquen i, si falla la persistència després d'un canvi, l'Agent intenta restaurar el mode VPN anterior.
+
 ## 2026-08-14 — Bloc 7.3: contracte local OS ↔ Agent
 
 - Substituïda la integració antiga basada en `agent.sock`/`session-events.sock` per `xaac-local-integration/v1`.

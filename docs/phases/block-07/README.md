@@ -9,3 +9,13 @@ Documents històrics del desenvolupament:
 - [Fase 7.5 — IEEE 802.1X](phase-07-05.md)
 - [Fase 7.6 — Perfil administrador local](phase-07-06.md)
 - [Fase 7.7 — OpenSSH](phase-07-07.md)
+
+## Integració actual XAAC Agent
+
+La numeració històrica anterior correspon al calendari original de l'OS. La integració
+posterior de XAAC Thin Client Agent es documenta separadament en:
+
+- [Bloc 7.1 — Integració Debian de l'Agent](phase-07-01-agent-integration.md)
+- [Bloc 7.2 — systemd, identitats i permisos](phase-07-02-systemd-permissions.md)
+- [Bloc 7.3 — contracte local OS ↔ Agent](phase-07-03-local-contract.md)
+- [Bloc 7.4 — política VPN remota](phase-07-04-vpn-policy.md)

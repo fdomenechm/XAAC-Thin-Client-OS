@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import getpass
+import json
 import os
 import re
 import shutil
@@ -446,10 +447,7 @@ def command_policy(policy: str) -> None:
     print("La nova política s'aplicarà en iniciar la pròxima sessió de quiosc.")
 
 
-def command_status() -> None:
-    _require_root()
-    _require_command(OPENVPN3)
-    _require_command(SYSTEMCTL)
+def _status_payload() -> dict[str, object]:
     policy = _read_policy()
     profile_details = _profile_details(PROFILE_NAME)
     profile_paths = _profile_paths(PROFILE_NAME)
@@ -462,20 +460,45 @@ def command_status() -> None:
     manager = _run(
         [SYSTEMCTL, "is-active", "xaac-vpn-manager.service"],
         check=False,
-    ).stdout.strip() or "desconegut"
+    ).stdout.strip() or "unknown"
 
     sessions = _run([OPENVPN3, "sessions-list"], check=False)
     session_text = f"{sessions.stdout}\n{sessions.stderr}"
     connected = "Client connected" in session_text or "Connected" in session_text
+    return {
+        "schema": "xaac-vpn-status/v1",
+        "policy": policy,
+        "profile": {
+            "name": PROFILE_NAME,
+            "provisioned": bool(profile_paths),
+            "valid": profile_valid,
+        },
+        "manager": {"state": manager},
+        "session": {"connected": connected},
+    }
 
+
+def command_status(*, json_output: bool = False) -> None:
+    _require_root()
+    _require_command(OPENVPN3)
+    _require_command(SYSTEMCTL)
+    status = _status_payload()
+    if json_output:
+        print(json.dumps(status, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+        return
+
+    profile = status["profile"]
+    manager = status["manager"]
+    session = status["session"]
+    assert isinstance(profile, dict) and isinstance(manager, dict) and isinstance(session, dict)
     print("XAAC Thin Client VPN")
     print("====================")
-    print(f"Política:            {policy}")
-    print(f"Perfil:              {PROFILE_NAME}")
-    print(f"Perfil provisionat:  {'sí' if profile_paths else 'no'}")
-    print(f"Perfil vàlid:        {'sí' if profile_valid else 'no'}")
-    print(f"Manager:             {manager}")
-    print(f"Sessió VPN:          {'connectada' if connected else 'desconnectada'}")
+    print(f"Política:            {status['policy']}")
+    print(f"Perfil:              {profile['name']}")
+    print(f"Perfil provisionat:  {'sí' if profile['provisioned'] else 'no'}")
+    print(f"Perfil vàlid:        {'sí' if profile['valid'] else 'no'}")
+    print(f"Manager:             {manager['state']}")
+    print(f"Sessió VPN:          {'connectada' if session['connected'] else 'desconnectada'}")
 
 
 def command_remove() -> None:
@@ -512,7 +535,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     policy.add_argument("value", choices=VALID_POLICIES)
 
-    subparsers.add_parser("status", help="Mostra l'estat administratiu de la VPN.")
+    status = subparsers.add_parser("status", help="Mostra l'estat administratiu de la VPN.")
+    status.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Emet un document xaac-vpn-status/v1 per a integracions locals.",
+    )
     subparsers.add_parser(
         "remove",
         help="Elimina el perfil XAAC VPN i desactiva la política VPN.",
@@ -529,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "policy":
             command_policy(args.value)
         elif args.command == "status":
-            command_status()
+            command_status(json_output=args.json_output)
         elif args.command == "remove":
             command_remove()
         else:

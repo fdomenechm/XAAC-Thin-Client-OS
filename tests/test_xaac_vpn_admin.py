@@ -203,3 +203,34 @@ def test_cli_parser_accepts_documented_admin_workflow() -> None:
     policy = parser.parse_args(["policy", "required"])
     assert policy.command == "policy"
     assert policy.value == "required"
+
+
+def test_status_json_exposes_stable_machine_contract(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    import json
+
+    module = load_runtime()
+    monkeypatch.setattr(module, "_require_root", lambda: None)
+    monkeypatch.setattr(module, "_require_command", lambda _path: None)
+    monkeypatch.setattr(module, "_status_payload", lambda: {
+        "schema": "xaac-vpn-status/v1",
+        "policy": "required",
+        "profile": {"name": "XAAC VPN", "provisioned": True, "valid": True},
+        "manager": {"state": "active"},
+        "session": {"connected": False},
+    })
+
+    module.command_status(json_output=True)
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema"] == "xaac-vpn-status/v1"
+    assert payload["policy"] == "required"
+    assert payload["profile"] == {"name": "XAAC VPN", "provisioned": True, "valid": True}
+    assert payload["manager"]["state"] == "active"
+    assert payload["session"]["connected"] is False
+
+
+def test_status_parser_accepts_json_flag() -> None:
+    module = load_runtime()
+    args = module.build_parser().parse_args(["status", "--json"])
+    assert args.command == "status"
+    assert args.json_output is True

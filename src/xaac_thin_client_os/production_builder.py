@@ -1611,7 +1611,7 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-3'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-4'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
                 "test -f /etc/xaac-agent/agent.ini; "
@@ -1625,6 +1625,7 @@ class ProductionIsoBuilder:
                 "grep -F 'd /run/xaac-agent 0750 root xaac-command -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
                 "grep -F 'd /run/xaac-agent/runtime 0700 xaac-agent xaac-agent -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
                 "grep -F 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "grep -Fx 'ReadWritePaths=/etc/xaac' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
                 "! grep -F 'CAP_SYS_ADMIN' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
                 "systemctl is-enabled xaac-agent.service >/dev/null; "
                 "systemctl is-enabled xaac-privileged-helper.socket >/dev/null",

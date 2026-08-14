@@ -803,16 +803,17 @@ def test_production_configure_calls_freerdp_store_after_kiosk_account_creation()
 def test_production_builder_requires_real_xaac_agent_package(project_root: Path) -> None:
     import inspect
 
-    package = project_root / "packages/xaac-agent_1.0.0-3_amd64.deb"
+    package = project_root / "packages/xaac-agent_1.0.0-4_amd64.deb"
     assert package.is_file()
     assert package.stat().st_size > 1024
     assert package.read_bytes()[:8] == b"!<arch>\n"
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert "self._validate_xaac_agent_artifact()" in source
     assert "configure-verify-xaac-agent" in source
-    assert "1.0.0-3" in source
+    assert "1.0.0-4" in source
     assert "/opt/xaac-agent/runtime/bin/python3.13" in source
     assert "configure-xaac-ipc-membership" in source
+    assert "grep -Fx 'ReadWritePaths=/etc/xaac'" in source
     assert "! grep -F 'CAP_SYS_ADMIN'" in source
 
 
