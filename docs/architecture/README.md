@@ -37,4 +37,5 @@ Firmware UEFI
 
 ## Integracions
 
+- [Administració i enrolament de XAAC Agent](agent-enrollment.md)
 La documentació específica de XAAC Remote Support es troba a [`integrations/`](integrations/).

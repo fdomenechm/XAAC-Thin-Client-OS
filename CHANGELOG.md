@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.5: administració i enrolament segur de XAAC Agent
+
+- XAAC Agent passa a la revisió Debian `1.0.0-5`, mantenint la versió d'aplicació `1.0.0`.
+- Afegit i validat `/usr/sbin/xaac-agent-admin` amb `provision`, `enable`, `disable`, `status` i `unenroll`.
+- El token XMS és bootstrap d'un sol ús, mai un argument CLI, i no forma part de la imatge mestra.
+- L'OS substitueix el model històric de certificats propi per `xaac-agent-admin/v1`; identitat, claus i credencials persistents pertanyen exclusivament a l'Agent.
+- El constructor de producció crea `/etc/xaac/xms-enrollment-manifest.json` només després de verificar el paquet i comprova que el manifest no continga secrets.
+- El reenrolament després de `revoked`/`unenrolled` requereix `--reenroll` explícit; un desenrolament remot fallit no deixa un Agent prèviament actiu parat.
+
 ## 2026-08-14 — Bloc 7.4: política VPN remota XMS → Agent
 
 - XAAC Agent passa a la revisió Debian `1.0.0-4`, mantenint la versió d'aplicació `1.0.0`.

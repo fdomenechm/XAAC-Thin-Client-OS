@@ -19,3 +19,4 @@ posterior de XAAC Thin Client Agent es documenta separadament en:
 - [Bloc 7.2 — systemd, identitats i permisos](phase-07-02-systemd-permissions.md)
 - [Bloc 7.3 — contracte local OS ↔ Agent](phase-07-03-local-contract.md)
 - [Bloc 7.4 — política VPN remota](phase-07-04-vpn-policy.md)
+- [Bloc 7.5 — administració i enrolament segur de l'Agent](phase-07-05-agent-enrollment.md)

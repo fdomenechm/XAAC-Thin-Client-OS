@@ -3,9 +3,9 @@ package:
   name: xaac-agent
   architecture: amd64
   application_version: 1.0.0
-  version: 1.0.0-4
-  artifact: packages/xaac-agent_1.0.0-4_amd64.deb
-  sha256: 994ecdbfec8ab9dae699f43e3500b1e845c9a0aecbb00dce74ec429094b63ec5
+  version: 1.0.0-5
+  artifact: packages/xaac-agent_1.0.0-5_amd64.deb
+  sha256: fedfd71bbf2812ad0e95c8185c7bbb9fe2eed3c1f4c1128756eadc330ae6fc70
   dependencies:
   - ca-certificates
   - systemd
@@ -17,6 +17,8 @@ installation:
   required_paths:
   - /opt/xaac-agent/runtime/bin/python3.13
   - /opt/xaac-agent/runtime/bin/xaac-agent
+  - /opt/xaac-agent/runtime/bin/xaac-agent-admin
+  - /usr/sbin/xaac-agent-admin
   - /etc/xaac-agent/agent.ini
   - /usr/lib/systemd/system/xaac-agent.service
   - /usr/lib/systemd/system/xaac-privileged-helper.socket

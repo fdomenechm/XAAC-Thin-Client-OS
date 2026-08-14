@@ -197,6 +197,7 @@ from xaac_thin_client_os.graphical_stack import GraphicalStackConfigurator, crea
 from xaac_thin_client_os.session_manager import SessionManagerConfigurator, create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import SessionSupervisorConfigurator, create_session_supervisor_plan
 from xaac_thin_client_os.local_integration import LocalIntegrationConfigurator, LocalIntegrationError
+from xaac_thin_client_os.xms_enrollment import XmsEnrollmentError, XmsEnrollmentManager
 from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
 from xaac_thin_client_os.xaac_agent_package import create_xaac_agent_plan, XaacAgentPackageError
 
@@ -1611,9 +1612,12 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-4'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-5'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
+                "test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin; "
+                "test -x /usr/sbin/xaac-agent-admin; "
+                "test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/xaac-agent-admin'; "
                 "test -f /etc/xaac-agent/agent.ini; "
                 "test -f /usr/lib/systemd/system/xaac-agent.service; "
                 "test -f /usr/lib/systemd/system/xaac-privileged-helper.socket; "
@@ -1626,10 +1630,27 @@ class ProductionIsoBuilder:
                 "grep -F 'd /run/xaac-agent/runtime 0700 xaac-agent xaac-agent -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
                 "grep -F 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
                 "grep -Fx 'ReadWritePaths=/etc/xaac' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "grep -Fx 'LoadCredential=xaac-enrollment-token:-/etc/xaac-agent/enrollment.token' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "! test -e /etc/xaac-agent/enrollment.token; "
                 "! grep -F 'CAP_SYS_ADMIN' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
                 "systemctl is-enabled xaac-agent.service >/dev/null; "
                 "systemctl is-enabled xaac-privileged-helper.socket >/dev/null",
             ], phase="configure-verify-xaac-agent")
+            try:
+                XmsEnrollmentManager(
+                    self.paths.rootfs,
+                    self.paths.project_root / "config/xms-enrollment.yaml",
+                ).install()
+            except XmsEnrollmentError as exc:
+                raise ProductionBuildError(f"Contracte d'enrolament XMS invàlid: {exc}") from exc
+            self._chroot([
+                "/bin/sh", "-ec",
+                "test -f /etc/xaac/xms-enrollment-manifest.json; "
+                "grep -F 'xaac-agent-admin/v1' /etc/xaac/xms-enrollment-manifest.json >/dev/null; "
+                "grep -F 'accepted_cli_secret_argument' /etc/xaac/xms-enrollment-manifest.json | grep -F 'false' >/dev/null; "
+                "! grep -Ei 'credential[^s]|password|otp|private.key' /etc/xaac/xms-enrollment-manifest.json >/dev/null",
+            ], phase="configure-xaac-xms-enrollment")
+
             self._chroot([
                 "/bin/sh", "-ec",
                 "usermod --append --groups xaac-ipc xaac-kiosk; "

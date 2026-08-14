@@ -91,7 +91,7 @@ per a les opcions exactes de cada ordre.
 - `configure-local-integration` — Configura el contracte local direccional OS-Agent (`xaac-local-integration/v1`).
 - `configure-policy-application` — Configura l'aplicació transaccional de polítiques.
 - `collect-device-inventory` — Recull l'inventari complet del dispositiu.
-- `configure-xms-enrollment` — Configura l'enrolament segur del dispositiu en XMS.
+- `configure-xms-enrollment` — Instal·la/valida el contracte local `xaac-agent-admin/v1`; el provisionament real es fa amb `sudo xaac-agent-admin provision`.
 - `configure-network-manager` — Configura el gestor de xarxa definitiu i la integració amb l'Agent.
 - `configure-ip-addressing` — Configura DHCP o IPv4 estàtica de manera transaccional.
 - `configure-network-services` — Configura DNS, NTP i proxy de manera transaccional.

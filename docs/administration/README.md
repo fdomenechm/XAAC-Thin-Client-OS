@@ -2,6 +2,7 @@
 
 ## Manuals
 
+- [Administració i enrolament de XAAC Agent](../architecture/agent-enrollment.md)
 - [Administració de XAAC Thin Client VPN](../architecture/vpn-administration.md)
 
 - [Administració](../manual/administration.md)
