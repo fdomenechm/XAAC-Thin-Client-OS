@@ -3,9 +3,9 @@ package:
   name: xaac-agent
   architecture: amd64
   application_version: 1.0.0
-  version: 1.0.0-5
-  artifact: packages/xaac-agent_1.0.0-5_amd64.deb
-  sha256: fedfd71bbf2812ad0e95c8185c7bbb9fe2eed3c1f4c1128756eadc330ae6fc70
+  version: 1.0.0-6
+  artifact: packages/xaac-agent_1.0.0-6_amd64.deb
+  sha256: 148cf4e5e4bc45ae970bf61a583bc44b1974f2cc76ed56a0be671b004bb7ecd3
   dependencies:
   - ca-certificates
   - systemd

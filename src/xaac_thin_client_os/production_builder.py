@@ -200,6 +200,11 @@ from xaac_thin_client_os.local_integration import LocalIntegrationConfigurator, 
 from xaac_thin_client_os.xms_enrollment import XmsEnrollmentError, XmsEnrollmentManager
 from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
 from xaac_thin_client_os.xaac_agent_package import create_xaac_agent_plan, XaacAgentPackageError
+from xaac_thin_client_os.block7_integration import (
+    Block7IntegrationError,
+    rootfs_verification_script,
+    validate_packaged_block7_integration,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -776,8 +781,21 @@ class ProductionIsoBuilder:
                 self.paths.project_root,
                 self.paths.project_root / "config/xaac-agent-package.yaml",
             )
-        except XaacAgentPackageError as exc:
-            raise ProductionBuildError(f"Paquet XAAC Agent invàlid: {exc}") from exc
+            validate_packaged_block7_integration(self.paths.project_root)
+        except (XaacAgentPackageError, Block7IntegrationError) as exc:
+            raise ProductionBuildError(f"Integració XAAC Agent invàlida: {exc}") from exc
+
+    def _verify_block7_rootfs(self, *, context: str) -> None:
+        profile = load_project_configuration(self.paths.project_root)
+        del profile  # force normal project configuration validation as part of the gate
+        package = yaml.safe_load(
+            (self.paths.project_root / "config/xaac-agent-package.yaml").read_text(encoding="utf-8")
+        )
+        version = str(package["package"]["version"])
+        self._chroot(
+            ["/bin/sh", "-ec", rootfs_verification_script(version)],
+            phase=f"{context}-verify-block7-integration",
+        )
 
     def _copy_valid_debs(self) -> list[str]:
         source_dir = self.paths.project_root / "packages"
@@ -1612,7 +1630,7 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-5'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-6'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin; "
@@ -1633,8 +1651,8 @@ class ProductionIsoBuilder:
                 "grep -Fx 'LoadCredential=xaac-enrollment-token:-/etc/xaac-agent/enrollment.token' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
                 "! test -e /etc/xaac-agent/enrollment.token; "
                 "! grep -F 'CAP_SYS_ADMIN' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
-                "systemctl is-enabled xaac-agent.service >/dev/null; "
-                "systemctl is-enabled xaac-privileged-helper.socket >/dev/null",
+                "! systemctl is-enabled --quiet xaac-agent.service; "
+                "systemctl is-enabled --quiet xaac-privileged-helper.socket",
             ], phase="configure-verify-xaac-agent")
             try:
                 XmsEnrollmentManager(
@@ -1746,6 +1764,7 @@ class ProductionIsoBuilder:
             self._chroot(["systemctl", "enable", "greetd.service"], phase="configure-greetd")
             self._chroot(["systemctl", "set-default", "graphical.target"], phase="configure-graphical-target")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
+            self._verify_block7_rootfs(context="configure")
         with contextlib.suppress(FileNotFoundError):
             self._inside("/usr/sbin/policy-rc.d").unlink()
         self._save_state("configure")
@@ -1773,6 +1792,7 @@ class ProductionIsoBuilder:
         self.cleanup_chroot_mounts()
         self._assert_chroot_unmounted("generació del squashfs")
         self._verify_thinclient_rootfs(context="pre-squashfs")
+        self._verify_block7_rootfs(context="pre-squashfs")
         output = self.paths.build_root / "rootfs.squashfs"
         output.unlink(missing_ok=True)
         self.runner.run([

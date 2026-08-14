@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.6: validació integrada del rootfs
+
+- Afegit un gate creuat que inspecciona el `.deb` real de XAAC Agent i el compara amb els contractes de l’OS abans de construir.
+- Corregida la frontera `ProtectSystem=strict`: l’Agent pot escriure només `/var/lib/xaac/thin-client/config` i `/run/xaac/commands`; estat i events continuen de només lectura.
+- Corregit el cicle inicial de systemd: `xaac-agent.service` queda deshabilitat fins a l’enrolament, mentre `xaac-privileged-helper.socket` queda habilitat.
+- Corregides les proves d’imatge que encara referenciaven `xaac-thin-client` i `xaac-thin-client.service`.
+- Nova revisió Debian integrada: `xaac-agent 1.0.0-6`.
+- Afegit `scripts/validate-block7-integration.sh`, compatible amb `/bin/sh`, per validar la frontera sense generar ISO.
+
 ## 2026-08-14 — Bloc 7.5: administració i enrolament segur de XAAC Agent
 
 - XAAC Agent passa a la revisió Debian `1.0.0-5`, mantenint la versió d'aplicació `1.0.0`.

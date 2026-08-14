@@ -185,8 +185,8 @@ class XaacAgentPlan:
             "test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/xaac-agent-admin'; "
             "grep -Fx 'LoadCredential=xaac-enrollment-token:-/etc/xaac-agent/enrollment.token' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
             f"{required} "
-            f"systemctl is-enabled {ownership['service_unit']} >/dev/null; "
-            f"systemctl is-enabled {ownership['helper_socket']} >/dev/null"
+            f"! systemctl is-enabled --quiet {ownership['service_unit']}; "
+            f"systemctl is-enabled --quiet {ownership['helper_socket']}"
         )
         return ("chroot", str(self.rootfs), "/bin/sh", "-ec", command)
 

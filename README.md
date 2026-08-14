@@ -23,7 +23,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
-- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-5`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
+- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-6`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
 - Administració i enrolament XMS de l'Agent mitjançant `xaac-agent-admin`, amb token bootstrap d'un sol ús i sense secrets en arguments de procés.
 - Contracte local OS ↔ Agent `xaac-local-integration/v1`, amb estat `xaac-state/v2`, events del supervisor i permisos direccionals via `xaac-ipc`.
 - XAAC Thin Client VPN amb provisionament administratiu simplificat mitjançant `xaac-vpn-admin`.
