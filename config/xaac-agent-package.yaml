@@ -1,27 +1,31 @@
-schema_version: 1
+schema_version: 2
 package:
   name: xaac-agent
   architecture: amd64
-  version: "1.0.0"
-  artifact: packages/xaac-agent_1.0.0_amd64.deb
-  sha256: null
+  application_version: "1.0.0"
+  version: "1.0.0-1"
+  artifact: packages/xaac-agent_1.0.0-1_amd64.deb
+  sha256: cfb8008b956adc61d62b877dcffa8465b435e5fbeaf41d86b44cb86ca1b09b62
   dependencies:
-    - python3
+    - ca-certificates
+    - systemd
+    - openssl
 installation:
   cache_path: /var/cache/xaac/packages/xaac-agent.deb
-  configuration_path: /etc/xaac/agent/agent.yaml
-  state_directory: /var/lib/xaac-agent
-  log_directory: /var/log/xaac-agent
-service:
+  manifest_path: /etc/xaac/packages/xaac-agent.json
+  install_recommends: false
+  required_paths:
+    - /opt/xaac-agent/runtime/bin/python3.13
+    - /opt/xaac-agent/runtime/bin/xaac-agent
+    - /etc/xaac-agent/agent.ini
+    - /usr/lib/systemd/system/xaac-agent.service
+    - /usr/lib/systemd/system/xaac-privileged-helper.socket
+    - /usr/lib/sysusers.d/xaac-agent.conf
+ownership:
   user: xaac-agent
   group: xaac-agent
-  unit: xaac-agent.service
-  executable: /usr/bin/xaac-agent
-  restart: on-failure
-  restart_sec: 5
-  enabled: true
-security:
-  shell: /usr/sbin/nologin
-  home: /var/lib/xaac-agent
-  configuration_mode: "0640"
-  directory_mode: "0750"
+  configuration_root: /etc/xaac-agent
+  runtime_root: /opt/xaac-agent/runtime
+  state_root: /var/lib/xaac-agent
+  service_unit: xaac-agent.service
+  helper_socket: xaac-privileged-helper.socket

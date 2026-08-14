@@ -798,3 +798,23 @@ def test_production_configure_calls_freerdp_store_after_kiosk_account_creation()
     store_pos = source.index("self._configure_freerdp_certificate_store()")
     package_pos = source.index("if debs:")
     assert user_pos < store_pos < package_pos
+
+
+def test_production_builder_requires_real_xaac_agent_package(project_root: Path) -> None:
+    import inspect
+
+    package = project_root / "packages/xaac-agent_1.0.0-1_amd64.deb"
+    assert package.is_file()
+    assert package.stat().st_size > 1024
+    assert package.read_bytes()[:8] == b"!<arch>\n"
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "self._validate_xaac_agent_artifact()" in source
+    assert "configure-verify-xaac-agent" in source
+    assert "1.0.0-1" in source
+    assert "/opt/xaac-agent/runtime/bin/python3.13" in source
+
+
+def test_agent_preflight_uses_version_hash_and_dependency_profile(project_root: Path) -> None:
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(project_root)  # type: ignore[misc]
+    builder._validate_xaac_agent_artifact()

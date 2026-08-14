@@ -197,6 +197,7 @@ from xaac_thin_client_os.graphical_stack import GraphicalStackConfigurator, crea
 from xaac_thin_client_os.session_manager import SessionManagerConfigurator, create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import SessionSupervisorConfigurator, create_session_supervisor_plan
 from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
+from xaac_thin_client_os.xaac_agent_package import create_xaac_agent_plan, XaacAgentPackageError
 
 
 class ProductionBuildError(RuntimeError):
@@ -765,6 +766,16 @@ class ProductionIsoBuilder:
         env = os.environ.copy()
         env.update({"DEBIAN_FRONTEND": "noninteractive", "LC_ALL": "C.UTF-8"})
         self.runner.run(["chroot", str(self.paths.rootfs), *command], phase=phase, env=env)
+
+    def _validate_xaac_agent_artifact(self) -> None:
+        try:
+            create_xaac_agent_plan(
+                self.paths.rootfs,
+                self.paths.project_root,
+                self.paths.project_root / "config/xaac-agent-package.yaml",
+            )
+        except XaacAgentPackageError as exc:
+            raise ProductionBuildError(f"Paquet XAAC Agent invàlid: {exc}") from exc
 
     def _copy_valid_debs(self) -> list[str]:
         source_dir = self.paths.project_root / "packages"
@@ -1556,6 +1567,7 @@ class ProductionIsoBuilder:
             "ExecStart=/bin/systemctl start getty@tty1.service\n",
         )
 
+        self._validate_xaac_agent_artifact()
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
             self._install_runtime_packages()
@@ -1595,6 +1607,19 @@ class ProductionIsoBuilder:
                     "-o", "Dpkg::Options::=--force-confold",
                     *debs,
                 ], phase="configure-xaac-packages")
+            self._chroot([
+                "/bin/sh", "-ec",
+                "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-1'; "
+                "test -x /opt/xaac-agent/runtime/bin/python3.13; "
+                "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
+                "test -f /etc/xaac-agent/agent.ini; "
+                "test -f /usr/lib/systemd/system/xaac-agent.service; "
+                "test -f /usr/lib/systemd/system/xaac-privileged-helper.socket; "
+                "getent passwd xaac-agent >/dev/null; "
+                "systemctl is-enabled xaac-agent.service >/dev/null; "
+                "systemctl is-enabled xaac-privileged-helper.socket >/dev/null",
+            ], phase="configure-verify-xaac-agent")
             # Block 5 invariant: the application package must be present in the
             # final rootfs.  Never produce a kiosk ISO that can only start the
             # compositor and then show a black screen.

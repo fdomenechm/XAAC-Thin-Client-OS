@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.1: consolidació de XAAC Thin Client Agent
+
+- Substituït el placeholder de 9 bytes per `xaac-agent_1.0.0-1_amd64.deb` real.
+- El paquet Debian és ara l'únic propietari de runtime, configuració, compte i unitats systemd de l'Agent.
+- Eliminada de `xaac_agent_package.py` la creació duplicada d'usuari, `agent.yaml` i servei systemd.
+- El perfil de l'OS diferencia versió d'aplicació `1.0.0` i versió Debian `1.0.0-1` i fixa el SHA-256 de l'artefacte.
+- El constructor de producció valida el paquet abans de copiar-lo i verifica la instal·lació dins del rootfs.
+- Afegida protecció explícita contra `.deb` placeholders o corruptes.
+
 ## 2026-08-14 — administració simplificada de XAAC Thin Client VPN
 
 - Afegida la utilitat root `xaac-vpn-admin` a XAAC Thin Client OS.
