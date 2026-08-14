@@ -23,7 +23,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
-- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-6`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
+- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-7`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
 - Administració i enrolament XMS de l'Agent mitjançant `xaac-agent-admin`, amb token bootstrap d'un sol ús i sense secrets en arguments de procés.
 - Contracte local OS ↔ Agent `xaac-local-integration/v1`, amb estat `xaac-state/v2`, events del supervisor i permisos direccionals via `xaac-ipc`.
 - XAAC Thin Client VPN amb provisionament administratiu simplificat mitjançant `xaac-vpn-admin`.
@@ -399,3 +399,14 @@ El sistema instal·lat reserva `tty1` per a `greetd`, inicia la sessió `xaac-ki
 
 #### Runtime de la sessió de quiosc
 Els fitxers efímers de la sessió (`flock`, estat del supervisor i socket Wayland) es resolen a partir de `XDG_RUNTIME_DIR`, que en systemd/logind és `/run/user/<UID>`. No s'utilitzen rutes basades en el nom `xaac-kiosk` sota `/run/user`.
+
+
+## Tancament del Bloc 7
+
+La ISO final del Bloc 7 només es pot construir amb un XAAC Agent generat per la ruta canònica `dpkg-buildpackage`. El flux recomanat és:
+
+```sh
+./scripts/finalize-block7-release.sh /ruta/al/xaac-agent
+```
+
+L'script construeix l'Agent en una còpia de font neta, actualitza el `.deb` i el SHA-256 de l'OS, valida la provenança `xaac-block7-release-provenance/v1`, executa els gates i les suites completes i, només aleshores, llança una única construcció `build-production-iso.sh --clean`. Un `.deb` generat amb `dpkg-deb` per a proves locals queda marcat com a no canònic i el constructor de producció el rebutja.

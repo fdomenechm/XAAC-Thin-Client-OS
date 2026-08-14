@@ -28,6 +28,8 @@ if [[ "$BUILDER_MODULE_PATH" != "$EXPECTED_BUILDER_MODULE" ]]; then
 fi
 printf '[XAAC] Constructor: %s\n' "$BUILDER_MODULE_PATH"
 
+"$PROJECT_ROOT/scripts/validate-block7-release.sh"
+
 for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync unshare; do
     command -v "$command" >/dev/null 2>&1 || {
         printf 'Error: falta la dependència del sistema: %s\n' "$command" >&2

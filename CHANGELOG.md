@@ -1,3 +1,11 @@
+## 2026-08-14 — Bloc 7.7: release canònica i ISO consolidada
+
+- Integrada la revisió Debian `xaac-agent 1.0.0-7`.
+- Afegida provenança `xaac-block7-release-provenance/v1` i gate que rebutja artefactes no construïts amb `dpkg-buildpackage`.
+- Afegit `scripts/finalize-block7-release.sh` per construir l'Agent, sincronitzar `.deb`/SHA-256, executar tests/gates i llançar una única ISO amb `--clean`.
+- `production_builder` valida també la provenança canònica, de manera que invocar el mòdul Python directament no permet eludir el gate.
+- La verificació de versió de l'Agent dins del rootfs deriva ara del perfil del paquet i ja no està codificada literalment al constructor.
+
 ## 2026-08-14 — Bloc 7.6: validació integrada del rootfs
 
 - Afegit un gate creuat que inspecciona el `.deb` real de XAAC Agent i el compara amb els contractes de l’OS abans de construir.

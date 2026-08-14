@@ -205,6 +205,10 @@ from xaac_thin_client_os.block7_integration import (
     rootfs_verification_script,
     validate_packaged_block7_integration,
 )
+from xaac_thin_client_os.block7_release import (
+    Block7ReleaseError,
+    validate_block7_release_provenance,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -774,16 +778,18 @@ class ProductionIsoBuilder:
         env.update({"DEBIAN_FRONTEND": "noninteractive", "LC_ALL": "C.UTF-8"})
         self.runner.run(["chroot", str(self.paths.rootfs), *command], phase=phase, env=env)
 
-    def _validate_xaac_agent_artifact(self) -> None:
+    def _validate_xaac_agent_artifact(self) -> str:
         try:
-            create_xaac_agent_plan(
+            plan = create_xaac_agent_plan(
                 self.paths.rootfs,
                 self.paths.project_root,
                 self.paths.project_root / "config/xaac-agent-package.yaml",
             )
             validate_packaged_block7_integration(self.paths.project_root)
-        except (XaacAgentPackageError, Block7IntegrationError) as exc:
+            validate_block7_release_provenance(self.paths.project_root, require_canonical=True)
+        except (XaacAgentPackageError, Block7IntegrationError, Block7ReleaseError) as exc:
             raise ProductionBuildError(f"Integració XAAC Agent invàlida: {exc}") from exc
+        return plan.metadata.version
 
     def _verify_block7_rootfs(self, *, context: str) -> None:
         profile = load_project_configuration(self.paths.project_root)
@@ -1587,7 +1593,7 @@ class ProductionIsoBuilder:
             "ExecStart=/bin/systemctl start getty@tty1.service\n",
         )
 
-        self._validate_xaac_agent_artifact()
+        agent_debian_version = self._validate_xaac_agent_artifact()
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
             self._install_runtime_packages()
@@ -1630,7 +1636,7 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-6'; "
+                f"test \"$(dpkg-query -W -f='${{Version}}' xaac-agent)\" = '{agent_debian_version}'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin; "

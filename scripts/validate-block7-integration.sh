@@ -5,8 +5,12 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONPATH
+PYTHON=${PYTHON:-"$PROJECT_ROOT/.venv/bin/python"}
+if [ ! -x "$PYTHON" ]; then
+    PYTHON=python3
+fi
 
-exec python3 - "$PROJECT_ROOT" <<'PY'
+exec "$PYTHON" - "$PROJECT_ROOT" <<'PY'
 from __future__ import annotations
 
 import json

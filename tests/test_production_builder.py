@@ -803,14 +803,14 @@ def test_production_configure_calls_freerdp_store_after_kiosk_account_creation()
 def test_production_builder_requires_real_xaac_agent_package(project_root: Path) -> None:
     import inspect
 
-    package = project_root / "packages/xaac-agent_1.0.0-6_amd64.deb"
+    package = project_root / "packages/xaac-agent_1.0.0-7_amd64.deb"
     assert package.is_file()
     assert package.stat().st_size > 1024
     assert package.read_bytes()[:8] == b"!<arch>\n"
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
-    assert "self._validate_xaac_agent_artifact()" in source
+    assert "agent_debian_version = self._validate_xaac_agent_artifact()" in source
     assert "configure-verify-xaac-agent" in source
-    assert "1.0.0-6" in source
+    assert "agent_debian_version" in source
     assert "/opt/xaac-agent/runtime/bin/python3.13" in source
     assert "/usr/sbin/xaac-agent-admin" in source
     assert "xaac-enrollment-token:-/etc/xaac-agent/enrollment.token" in source
@@ -820,7 +820,8 @@ def test_production_builder_requires_real_xaac_agent_package(project_root: Path)
     assert "! grep -F 'CAP_SYS_ADMIN'" in source
 
 
-def test_agent_preflight_uses_version_hash_and_dependency_profile(project_root: Path) -> None:
+def test_agent_preflight_requires_canonical_release_provenance(project_root: Path) -> None:
     builder = object.__new__(ProductionIsoBuilder)
     builder.paths = BuildPaths.create(project_root)  # type: ignore[misc]
-    builder._validate_xaac_agent_artifact()
+    with pytest.raises(ProductionBuildError, match="agent_release_not_canonical"):
+        builder._validate_xaac_agent_artifact()
