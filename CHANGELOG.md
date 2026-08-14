@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.3: contracte local OS ↔ Agent
+
+- Substituïda la integració antiga basada en `agent.sock`/`session-events.sock` per `xaac-local-integration/v1`.
+- Afegits directoris direccionals amb `xaac-ipc` i setgid: estat/events propietat de `xaac-kiosk`, configuració/ordres propietat de `xaac-agent`.
+- El supervisor publica `xaac-state/v2` de manera atòmica i events `xaac-local-event/v1`, amb heartbeat cada 30 segons i retenció màxima de 128 events.
+- L'estat descriu el supervisor de sessió real i deixa RDP com `unknown` fins que el Thin Client publique eixa informació directament.
+- Eliminada la dependència de `socat` i dels sockets locals antics.
+- L'inventari detecta ara la configuració real `/etc/xaac-agent/agent.ini` i el paquet `xaac-thinclient`.
+
 ## 2026-08-14 — Bloc 7.2: systemd, permisos i helper privilegiat
 
 - Integrat `xaac-agent` revisió Debian `1.0.0-2` mantenint l'aplicació `1.0.0`.

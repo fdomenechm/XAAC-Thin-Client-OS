@@ -2,28 +2,28 @@ schema_version: 3
 package:
   name: xaac-agent
   architecture: amd64
-  application_version: "1.0.0"
-  version: "1.0.0-2"
-  artifact: packages/xaac-agent_1.0.0-2_amd64.deb
-  sha256: 16d872507d63a0275fb5f64349cfa34a5ac0970b4ebc6edbab4c5969223ab7ed
+  application_version: 1.0.0
+  version: 1.0.0-3
+  artifact: packages/xaac-agent_1.0.0-3_amd64.deb
+  sha256: da277845268ed63768f21084ee0c90e49ca31980a1708c331317cc57ed5bb766
   dependencies:
-    - ca-certificates
-    - systemd
-    - openssl
+  - ca-certificates
+  - systemd
+  - openssl
 installation:
   cache_path: /var/cache/xaac/packages/xaac-agent.deb
   manifest_path: /etc/xaac/packages/xaac-agent.json
   install_recommends: false
   required_paths:
-    - /opt/xaac-agent/runtime/bin/python3.13
-    - /opt/xaac-agent/runtime/bin/xaac-agent
-    - /etc/xaac-agent/agent.ini
-    - /usr/lib/systemd/system/xaac-agent.service
-    - /usr/lib/systemd/system/xaac-privileged-helper.socket
-    - /usr/lib/systemd/system/xaac-privileged-helper.service
-    - /usr/lib/systemd/system/xaac-agent.service.d/20-wyse-3040-resources.conf
-    - /usr/lib/tmpfiles.d/xaac-agent.conf
-    - /usr/lib/sysusers.d/xaac-agent.conf
+  - /opt/xaac-agent/runtime/bin/python3.13
+  - /opt/xaac-agent/runtime/bin/xaac-agent
+  - /etc/xaac-agent/agent.ini
+  - /usr/lib/systemd/system/xaac-agent.service
+  - /usr/lib/systemd/system/xaac-privileged-helper.socket
+  - /usr/lib/systemd/system/xaac-privileged-helper.service
+  - /usr/lib/systemd/system/xaac-agent.service.d/20-wyse-3040-resources.conf
+  - /usr/lib/tmpfiles.d/xaac-agent.conf
+  - /usr/lib/sysusers.d/xaac-agent.conf
 ownership:
   user: xaac-agent
   group: xaac-agent

@@ -196,6 +196,7 @@ from xaac_thin_client_os.compositor import CompositorConfigurator, create_compos
 from xaac_thin_client_os.graphical_stack import GraphicalStackConfigurator, create_graphical_stack_plan
 from xaac_thin_client_os.session_manager import SessionManagerConfigurator, create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import SessionSupervisorConfigurator, create_session_supervisor_plan
+from xaac_thin_client_os.local_integration import LocalIntegrationConfigurator, LocalIntegrationError
 from xaac_thin_client_os.thin_client_launcher import ThinClientLauncherConfigurator, create_thin_client_launcher_plan
 from xaac_thin_client_os.xaac_agent_package import create_xaac_agent_plan, XaacAgentPackageError
 
@@ -1610,7 +1611,7 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-2'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-3'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
                 "test -f /etc/xaac-agent/agent.ini; "
@@ -1633,6 +1634,26 @@ class ProductionIsoBuilder:
                 "usermod --append --groups xaac-ipc xaac-kiosk; "
                 "id -nG xaac-kiosk | tr ' ' '\\n' | grep -Fx xaac-ipc >/dev/null",
             ], phase="configure-xaac-ipc-membership")
+            try:
+                LocalIntegrationConfigurator().install(
+                    self.paths.rootfs,
+                    self.paths.project_root / "config/local-integration.yaml",
+                )
+            except LocalIntegrationError as exc:
+                raise ProductionBuildError(f"Contracte local OS-Agent invàlid: {exc}") from exc
+            self._chroot([
+                "/bin/sh", "-ec",
+                "systemd-tmpfiles --create /usr/lib/tmpfiles.d/xaac-local-integration.conf; "
+                "test -d /var/lib/xaac/thin-client/state; "
+                "test -d /var/lib/xaac/thin-client/config; "
+                "test -d /run/xaac/thin-client/events; "
+                "test -d /run/xaac/commands; "
+                "test \"$(stat -c '%U:%G:%a' /var/lib/xaac/thin-client/state)\" = 'xaac-kiosk:xaac-ipc:2750'; "
+                "test \"$(stat -c '%U:%G:%a' /var/lib/xaac/thin-client/config)\" = 'xaac-agent:xaac-ipc:2750'; "
+                "test \"$(stat -c '%U:%G:%a' /run/xaac/thin-client/events)\" = 'xaac-kiosk:xaac-ipc:2750'; "
+                "test \"$(stat -c '%U:%G:%a' /run/xaac/commands)\" = 'xaac-agent:xaac-ipc:2750'; "
+                "test -f /etc/xaac/local-integration-manifest.json",
+            ], phase="configure-xaac-local-integration")
             # Block 5 invariant: the application package must be present in the
             # final rootfs.  Never produce a kiosk ISO that can only start the
             # compositor and then show a black screen.

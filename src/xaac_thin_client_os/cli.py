@@ -217,7 +217,7 @@ from xaac_thin_client_os.device_identity import (
     DeviceIdentityError, DeviceIdentityManager,
 )
 from xaac_thin_client_os.first_boot import FirstBootError, FirstBootInstaller
-from xaac_thin_client_os.ipc_configuration import IpcConfigurationError, IpcConfigurator
+from xaac_thin_client_os.local_integration import LocalIntegrationError, LocalIntegrationConfigurator
 from xaac_thin_client_os.policy_application import PolicyApplicationError, PolicyApplicationManager
 from xaac_thin_client_os.device_inventory import DeviceInventoryCollector, DeviceInventoryError
 from xaac_thin_client_os.xms_enrollment import XmsEnrollmentError, XmsEnrollmentManager
@@ -502,8 +502,8 @@ def build_parser() -> argparse.ArgumentParser:
     device_identity = subparsers.add_parser("configure-device-identity", help="Genera o valida la identitat persistent del dispositiu")
     device_identity.add_argument("--dry-run", action="store_true", help="Planifica la identitat sense escriure-la")
     first_boot = subparsers.add_parser("configure-first-boot", help="Configura el servei idempotent de primer inici")
-    ipc = subparsers.add_parser("configure-ipc", help="Configura el canal IPC local Client-Agent")
-    ipc.add_argument("--dry-run", action="store_true", help="Planifica el canal IPC sense modificar el rootfs")
+    local_integration = subparsers.add_parser("configure-local-integration", help="Configura el contracte local OS-Agent")
+    local_integration.add_argument("--dry-run", action="store_true", help="Planifica el contracte local sense modificar el rootfs")
     policies = subparsers.add_parser("configure-policy-application", help="Configura l'aplicació transaccional de polítiques")
     policies.add_argument("--dry-run", action="store_true", help="Planifica la configuració sense modificar el rootfs")
     inventory = subparsers.add_parser("collect-device-inventory", help="Recull l'inventari complet del dispositiu")
@@ -2242,13 +2242,15 @@ def _configure_first_boot(root: Path, *, dry_run: bool, as_json: bool) -> int:
     _emit(payload, as_json=as_json)
     return 0
 
-def _configure_ipc(root: Path, *, dry_run: bool, as_json: bool) -> int:
-    paths = IpcConfigurator().install(root / ".build/rootfs", root / "config/ipc.yaml", dry_run=dry_run)
+def _configure_local_integration(root: Path, *, dry_run: bool, as_json: bool) -> int:
+    plan = LocalIntegrationConfigurator().install(
+        root / ".build/rootfs", root / "config/local-integration.yaml", dry_run=dry_run
+    )
     payload = {
         "status": "planned" if dry_run else "ok",
-        "message": "Canal IPC planificat" if dry_run else "Canal IPC Client-Agent configurat",
+        "message": "Contracte local planificat" if dry_run else "Contracte local OS-Agent configurat",
         "executed": not dry_run,
-        "files": [str(path) for path in paths],
+        "files": [str(path) for path in plan.files],
     }
     _emit(payload, as_json=as_json)
     return 0
@@ -2679,8 +2681,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_device_identity(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-first-boot":
             return _configure_first_boot(root, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-ipc":
-            return _configure_ipc(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "configure-local-integration":
+            return _configure_local_integration(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-policy-application":
             return _configure_policy_application(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "collect-device-inventory":
@@ -2764,7 +2766,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, IpcConfigurationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, LocalIntegrationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

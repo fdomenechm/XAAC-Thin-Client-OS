@@ -134,7 +134,7 @@ class DeviceInventoryCollector:
             "peripherals": self._peripherals(),
             "xaac_versions": versions,
             "status": {
-                "agent_configured": (self.root / "etc/xaac/agent/agent.yaml").is_file(),
+                "agent_configured": (self.root / "etc/xaac-agent/agent.ini").is_file(),
                 "identity_present": (self.root / "var/lib/xaac-agent/identity/device.json").is_file(),
                 "policy_present": (self.root / "var/lib/xaac-agent/policies/active/policy.json").is_file(),
             },

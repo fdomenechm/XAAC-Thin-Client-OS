@@ -88,7 +88,7 @@ per a les opcions exactes de cada ordre.
 - `configure-update-sources` — Configura les fonts d’actualització XMS i USB.
 - `configure-device-identity` — Genera o valida la identitat persistent del dispositiu.
 - `configure-first-boot` — Configura el servei idempotent de primer inici.
-- `configure-ipc` — Configura el canal IPC local Client-Agent.
+- `configure-local-integration` — Configura el contracte local direccional OS-Agent (`xaac-local-integration/v1`).
 - `configure-policy-application` — Configura l'aplicació transaccional de polítiques.
 - `collect-device-inventory` — Recull l'inventari complet del dispositiu.
 - `configure-xms-enrollment` — Configura l'enrolament segur del dispositiu en XMS.

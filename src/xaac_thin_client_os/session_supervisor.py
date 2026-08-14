@@ -25,23 +25,45 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         raise SessionSupervisorError(f"No s'ha pogut carregar el perfil: {exc}") from exc
-    if not isinstance(raw, dict) or raw.get("schema_version") != 1:
+    if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise SessionSupervisorError("Perfil de supervisió invàlid o esquema no suportat")
     for section in ("supervision", "packages", "files"):
         if not isinstance(raw.get(section), dict):
             raise SessionSupervisorError(f"Secció obligatòria absent: {section}")
     cfg = raw["supervision"]
-    if cfg.get("user") != "xaac-kiosk" or cfg.get("notify_agent") is not True:
-        raise SessionSupervisorError("La supervisió ha d'usar xaac-kiosk i notificar l'Agent")
-    for key in ("client_command", "supervisor_command", "error_screen_command", "startup_screen_command", "status_file", "agent_socket"):
+    expected_keys = {
+        "user", "client_command", "supervisor_command", "error_screen_command", "startup_screen_command",
+        "startup_screen_minimum_seconds", "startup_screen_timeout_seconds", "max_restarts",
+        "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds",
+        "status_file", "shared_state_file", "event_directory", "thin_client_package",
+        "state_heartbeat_seconds", "max_events", "voluntary_exit_codes",
+    }
+    if set(cfg) != expected_keys:
+        raise SessionSupervisorError("Configuració del supervisor incompleta")
+    if cfg.get("user") != "xaac-kiosk" or cfg.get("thin_client_package") != "xaac-thinclient":
+        raise SessionSupervisorError("La supervisió ha d'usar xaac-kiosk i xaac-thinclient")
+    for key in (
+        "client_command", "supervisor_command", "error_screen_command", "startup_screen_command",
+        "status_file", "shared_state_file", "event_directory",
+    ):
         _safe_absolute(cfg.get(key), key)
-    for key in ("max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds", "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds"):
+    if cfg["shared_state_file"] != "/var/lib/xaac/thin-client/state/state.json":
+        raise SessionSupervisorError("Ruta d'estat compartit incompatible")
+    if cfg["event_directory"] != "/run/xaac/thin-client/events":
+        raise SessionSupervisorError("Ruta d'events compartits incompatible")
+    for key in (
+        "max_restarts", "restart_window_seconds", "initial_backoff_seconds", "maximum_backoff_seconds",
+        "reset_after_seconds", "startup_screen_minimum_seconds", "startup_screen_timeout_seconds",
+        "state_heartbeat_seconds", "max_events",
+    ):
         if not isinstance(cfg.get(key), int) or cfg[key] <= 0:
             raise SessionSupervisorError(f"Valor de supervisió invàlid: {key}")
     if cfg["initial_backoff_seconds"] > cfg["maximum_backoff_seconds"] or cfg["max_restarts"] > 20:
         raise SessionSupervisorError("Política de reinici insegura")
     if cfg["startup_screen_minimum_seconds"] > cfg["startup_screen_timeout_seconds"]:
         raise SessionSupervisorError("Temporització de pantalla d'espera invàlida")
+    if not 5 <= cfg["state_heartbeat_seconds"] <= 300 or not 1 <= cfg["max_events"] <= 4096:
+        raise SessionSupervisorError("Límits del contracte local invàlids")
     codes = cfg.get("voluntary_exit_codes")
     if not isinstance(codes, list) or not codes or any(not isinstance(code, int) or code < 0 or code > 255 for code in codes):
         raise SessionSupervisorError("Codis d'eixida voluntària invàlids")
@@ -81,13 +103,26 @@ STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
 STATUS_NAME={status_name}
 RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
 STATUS="$RUNTIME_DIR/$STATUS_NAME"
-AGENT_SOCKET={cfg["agent_socket"]}
+SHARED_STATE={cfg["shared_state_file"]}
+EVENT_DIR={cfg["event_directory"]}
+THIN_CLIENT_PACKAGE={cfg["thin_client_package"]}
+HEARTBEAT_SECONDS={cfg["state_heartbeat_seconds"]}
+MAX_EVENTS={cfg["max_events"]}
 MAX_RESTARTS={cfg["max_restarts"]}
 WINDOW={cfg["restart_window_seconds"]}
 BACKOFF={cfg["initial_backoff_seconds"]}
 MAX_BACKOFF={cfg["maximum_backoff_seconds"]}
 RESET_AFTER={cfg["reset_after_seconds"]}
 VOLUNTARY=" {voluntary} "
+EVENT_SEQUENCE=0
+
+iso_now() {{
+  date -u '+%Y-%m-%dT%H:%M:%SZ'
+}}
+
+thin_client_version() {{
+  /usr/bin/dpkg-query -W -f='${{Version}}' "$THIN_CLIENT_PACKAGE" 2>/dev/null || printf '1.0.0'
+}}
 
 write_status() {{
   state=$1; code=${{2:-0}}; attempts=${{3:-0}}
@@ -96,15 +131,88 @@ write_status() {{
   printf '{{"state":"%s","exit_code":%s,"restart_attempts":%s,"timestamp":%s}}\n' "$state" "$code" "$attempts" "$(date +%s)" > "$STATUS.tmp"
   mv "$STATUS.tmp" "$STATUS"
 }}
-notify_agent() {{
-  event=$1; code=${{2:-0}}
-  [ -S "$AGENT_SOCKET" ] || return 0
-  printf '{{"event":"%s","exit_code":%s,"component":"xaac-thin-client"}}\n' "$event" "$code" | /usr/bin/socat - "UNIX-CONNECT:$AGENT_SOCKET" >/dev/null 2>&1 || true
+
+write_shared_state() {{
+  state=$1; code=${{2:-0}}; attempts=${{3:-0}}
+  now=$(iso_now)
+  version=$(thin_client_version)
+  supervisor_state=active
+  graphical_state=active
+  health=healthy
+  reasons='[]'
+  last_error='null'
+  case "$state" in
+    starting)
+      graphical_state=connecting
+      ;;
+    running)
+      ;;
+    stopped)
+      supervisor_state=inactive
+      graphical_state=inactive
+      ;;
+    failed)
+      supervisor_state=failed
+      graphical_state=error
+      health=degraded
+      reasons='["session-restart"]'
+      last_error="{{\"code\":\"thin-client-exit\",\"message\":\"XAAC Thin Client ha finalitzat inesperadament\",\"occurred_at\":\"$now\",\"recoverable\":true}}"
+      ;;
+    degraded)
+      supervisor_state=failed
+      graphical_state=error
+      health=unhealthy
+      reasons='["restart-limit-exceeded"]'
+      last_error="{{\"code\":\"session-degraded\",\"message\":\"El supervisor ha superat el límit de reinicis\",\"occurred_at\":\"$now\",\"recoverable\":false}}"
+      ;;
+    *) return 1 ;;
+  esac
+  umask 027
+  tmp="$SHARED_STATE.tmp.$$"
+  printf '{{"format":"xaac-state/v2","published_at":"%s","heartbeat_at":"%s","thin_client":{{"installed":true,"version":"%s"}},"supervisor":{{"state":"%s"}},"sessions":{{"graphical":{{"state":"%s"}},"rdp":{{"state":"unknown"}}}},"last_error":%s,"health":{{"status":"%s","reasons":%s}}}}\n' \
+    "$now" "$now" "$version" "$supervisor_state" "$graphical_state" "$last_error" "$health" "$reasons" > "$tmp" || return 0
+  chmod 0640 "$tmp" 2>/dev/null || true
+  mv -f "$tmp" "$SHARED_STATE" 2>/dev/null || rm -f "$tmp"
+}}
+
+prune_events() {{
+  set -- "$EVENT_DIR"/*.json
+  [ -e "$1" ] || return 0
+  count=$#
+  while [ "$count" -gt "$MAX_EVENTS" ]; do
+    rm -f -- "$1" 2>/dev/null || true
+    shift
+    count=$((count - 1))
+  done
+}}
+
+publish_event() {{
+  event=$1; code=${{2:-0}}; attempts=${{3:-0}}; severity=${{4:-info}}
+  [ -d "$EVENT_DIR" ] || return 0
+  EVENT_SEQUENCE=$((EVENT_SEQUENCE + 1))
+  now=$(iso_now)
+  stamp=$(date -u '+%Y%m%dT%H%M%S')
+  event_id="evt-$(date +%s)-$$-$EVENT_SEQUENCE"
+  target="$EVENT_DIR/$stamp-$$-$EVENT_SEQUENCE.json"
+  tmp="$target.tmp"
+  umask 027
+  printf '{{"format":"xaac-local-event/v1","event_id":"%s","source":"session-supervisor","event_type":"%s","timestamp":"%s","severity":"%s","data":{{"exit_code":%s,"restart_attempts":%s}}}}\n' \
+    "$event_id" "$event" "$now" "$severity" "$code" "$attempts" > "$tmp" || return 0
+  chmod 0640 "$tmp" 2>/dev/null || true
+  mv -f "$tmp" "$target" 2>/dev/null || rm -f "$tmp"
+  prune_events
+}}
+
+heartbeat_loop() {{
+  pid=$1; attempts=$2
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "$HEARTBEAT_SECONDS"
+    kill -0 "$pid" 2>/dev/null || break
+    write_shared_state running 0 "$attempts" || true
+  done
 }}
 
 wait_for_graphics() {{
-  # labwc exports WAYLAND_DISPLAY to autostart children, but the socket can
-  # appear a fraction later.  Wait for the real socket instead of racing it.
   if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
     socket="$RUNTIME_DIR/$WAYLAND_DISPLAY"
     waited=0
@@ -122,12 +230,15 @@ attempts=0
 window_start=$(date +%s)
 if ! wait_for_graphics; then
   write_status degraded 75 0
-  notify_agent session-degraded 75
+  write_shared_state degraded 75 0 || true
+  publish_event session-degraded 75 0 error
   exec "$ERROR_SCREEN" 75 0
 fi
 while :; do
   started=$(date +%s)
   write_status starting 0 "$attempts"
+  write_shared_state starting 0 "$attempts" || true
+  publish_event session-starting 0 "$attempts" info
   "$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" &
   splash_pid=$!
   "$CLIENT" &
@@ -136,19 +247,34 @@ while :; do
   kill "$splash_pid" 2>/dev/null || true
   wait "$splash_pid" 2>/dev/null || true
   write_status running 0 "$attempts"
+  write_shared_state running 0 "$attempts" || true
+  publish_event session-running 0 "$attempts" info
+  heartbeat_loop "$client_pid" "$attempts" &
+  heartbeat_pid=$!
   wait "$client_pid"
   code=$?
+  kill "$heartbeat_pid" 2>/dev/null || true
+  wait "$heartbeat_pid" 2>/dev/null || true
   ended=$(date +%s)
   runtime=$((ended - started))
-  case "$VOLUNTARY" in *" $code "*) write_status stopped "$code" "$attempts"; notify_agent session-stopped "$code"; exit 0;; esac
+  case "$VOLUNTARY" in
+    *" $code "*)
+      write_status stopped "$code" "$attempts"
+      write_shared_state stopped "$code" "$attempts" || true
+      publish_event session-stopped "$code" "$attempts" info
+      exit 0
+      ;;
+  esac
   [ "$runtime" -ge "$RESET_AFTER" ] && attempts=0 && window_start=$ended
   [ $((ended - window_start)) -gt "$WINDOW" ] && attempts=0 && window_start=$ended
   attempts=$((attempts + 1))
   write_status failed "$code" "$attempts"
-  notify_agent session-failed "$code"
+  write_shared_state failed "$code" "$attempts" || true
+  publish_event session-failed "$code" "$attempts" warning
   if [ "$attempts" -gt "$MAX_RESTARTS" ]; then
     write_status degraded "$code" "$attempts"
-    notify_agent session-degraded "$code"
+    write_shared_state degraded "$code" "$attempts" || true
+    publish_event session-degraded "$code" "$attempts" error
     exec "$ERROR_SCREEN" "$code" "$attempts"
   fi
   sleep "$BACKOFF"
@@ -223,7 +349,7 @@ raise SystemExit(app.run(sys.argv[:1]))
 '''
     policy = json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
-# Managed by XAAC Thin Client OS — Block 5 — definitive integration
+# Managed by XAAC Thin Client OS — Block 7.3 — local Agent integration
 {cfg["supervisor_command"]} &
 '''
     planned = (
@@ -233,7 +359,7 @@ raise SystemExit(app.run(sys.argv[:1]))
         (_safe_absolute(files["policy"], "policy"), policy, 0o644),
         (_safe_absolute(files["labwc_autostart"], "labwc_autostart"), autostart, 0o755),
     )
-    packages = tuple(dict.fromkeys([*profile["packages"]["required"], "socat"]))
+    packages = tuple(dict.fromkeys(profile["packages"]["required"]))
     return SessionSupervisorPlan(root, packages, planned)
 
 

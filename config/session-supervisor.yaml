@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 profile: xaac-session-supervisor
 supervision:
   user: xaac-kiosk
@@ -14,8 +14,11 @@ supervision:
   maximum_backoff_seconds: 30
   reset_after_seconds: 300
   status_file: /run/user/xaac-kiosk/xaac-session-supervisor.json
-  agent_socket: /run/xaac-agent/session-events.sock
-  notify_agent: true
+  shared_state_file: /var/lib/xaac/thin-client/state/state.json
+  event_directory: /run/xaac/thin-client/events
+  thin_client_package: xaac-thinclient
+  state_heartbeat_seconds: 30
+  max_events: 128
   voluntary_exit_codes: [0]
 packages:
   required:

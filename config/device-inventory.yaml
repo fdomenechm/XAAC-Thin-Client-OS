@@ -6,7 +6,7 @@ inventory:
   include_peripherals: true
   maximum_packages: 4096
 xaac_packages:
-  - xaac-thin-client
+  - xaac-thinclient
   - xaac-agent
   - xaac-rustdesk
 paths:

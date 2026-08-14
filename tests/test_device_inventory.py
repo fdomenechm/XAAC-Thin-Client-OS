@@ -51,8 +51,8 @@ def test_profile_rejects_relative_output(tmp_path: Path) -> None:
 
 def test_collects_system_hardware_and_status(tmp_path: Path) -> None:
     root = _root(tmp_path)
-    (root / "etc/xaac/agent").mkdir(parents=True)
-    (root / "etc/xaac/agent/agent.yaml").write_text("enabled: true\n")
+    (root / "etc/xaac-agent").mkdir(parents=True)
+    (root / "etc/xaac-agent/agent.ini").write_text("[agent]\nenabled = false\n")
     collector = DeviceInventoryCollector(root, _profile(tmp_path), now=lambda: datetime(2026, 7, 28, tzinfo=timezone.utc))
     inventory = collector.collect()
     assert inventory["hardware"]["product_name"] == "Wyse 3040"
@@ -69,7 +69,7 @@ def test_collects_sorted_installed_packages_and_xaac_versions(tmp_path: Path) ->
     inventory = DeviceInventoryCollector(root, _profile(tmp_path)).collect()
     assert [item["name"] for item in inventory["packages"]] == ["xaac-agent", "zlib1g"]
     assert inventory["xaac_versions"]["xaac-agent"] == "1.0.0"
-    assert inventory["xaac_versions"]["xaac-thin-client"] is None
+    assert inventory["xaac_versions"]["xaac-thinclient"] is None
 
 
 def test_collects_usb_peripherals(tmp_path: Path) -> None:
