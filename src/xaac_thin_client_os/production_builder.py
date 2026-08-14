@@ -1610,16 +1610,29 @@ class ProductionIsoBuilder:
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-1'; "
+                "test \"$(dpkg-query -W -f='${Version}' xaac-agent)\" = '1.0.0-2'; "
                 "test -x /opt/xaac-agent/runtime/bin/python3.13; "
                 "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
                 "test -f /etc/xaac-agent/agent.ini; "
                 "test -f /usr/lib/systemd/system/xaac-agent.service; "
                 "test -f /usr/lib/systemd/system/xaac-privileged-helper.socket; "
                 "getent passwd xaac-agent >/dev/null; "
+                "getent group xaac-command >/dev/null; "
+                "getent group xaac-ipc >/dev/null; "
+                "id -nG xaac-agent | tr ' ' '\\n' | grep -Fx xaac-command >/dev/null; "
+                "id -nG xaac-agent | tr ' ' '\\n' | grep -Fx xaac-ipc >/dev/null; "
+                "grep -F 'd /run/xaac-agent 0750 root xaac-command -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
+                "grep -F 'd /run/xaac-agent/runtime 0700 xaac-agent xaac-agent -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
+                "grep -F 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "! grep -F 'CAP_SYS_ADMIN' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
                 "systemctl is-enabled xaac-agent.service >/dev/null; "
                 "systemctl is-enabled xaac-privileged-helper.socket >/dev/null",
             ], phase="configure-verify-xaac-agent")
+            self._chroot([
+                "/bin/sh", "-ec",
+                "usermod --append --groups xaac-ipc xaac-kiosk; "
+                "id -nG xaac-kiosk | tr ' ' '\\n' | grep -Fx xaac-ipc >/dev/null",
+            ], phase="configure-xaac-ipc-membership")
             # Block 5 invariant: the application package must be present in the
             # final rootfs.  Never produce a kiosk ISO that can only start the
             # compositor and then show a black screen.

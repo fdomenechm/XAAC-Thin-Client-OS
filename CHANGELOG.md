@@ -1,3 +1,12 @@
+## 2026-08-14 — Bloc 7.2: systemd, permisos i helper privilegiat
+
+- Integrat `xaac-agent` revisió Debian `1.0.0-2` mantenint l'aplicació `1.0.0`.
+- Afegit el grup compartit `xaac-ipc`; `xaac-agent` i `xaac-kiosk` en són membres, però només `xaac-agent` pertany a `xaac-command`.
+- Separat `/run/xaac-agent` (protegit, `root:xaac-command`) de `/run/xaac-agent/runtime` (mutable només per l'Agent).
+- L'Agent ja no controla el cicle de vida del directori que conté el socket privilegiat.
+- El helper exigeix `SO_PEERCRED` per a l'UID real de `xaac-agent` i elimina `CAP_SYS_ADMIN`.
+- Consolidat i validat el drop-in `20-wyse-3040-resources.conf`.
+
 ## 2026-08-14 — Bloc 7.1: consolidació de XAAC Thin Client Agent
 
 - Substituït el placeholder de 9 bytes per `xaac-agent_1.0.0-1_amd64.deb` real.

@@ -15,25 +15,28 @@ from xaac_thin_client_os.xaac_agent_package import (
 
 
 def _artifact(project_root: Path) -> Path:
-    return project_root / "packages/xaac-agent_1.0.0-1_amd64.deb"
+    return project_root / "packages/xaac-agent_1.0.0-2_amd64.deb"
 
 
 def _metadata_runner(command, **kwargs):  # type: ignore[no-untyped-def]
     return subprocess.CompletedProcess(
         command,
         0,
-        "xaac-agent\n1.0.0-1\namd64\nlibc6, ca-certificates, systemd, openssl\n",
+        "xaac-agent\n1.0.0-2\namd64\nlibc6, ca-certificates, systemd, openssl\n",
         "",
     )
 
 
 def test_load_agent_profile_declares_debian_owned_resources(project_root: Path) -> None:
     profile = load_xaac_agent_profile(project_root / "config/xaac-agent-package.yaml")
-    assert profile["schema_version"] == 2
+    assert profile["schema_version"] == 3
     assert profile["package"]["application_version"] == "1.0.0"
-    assert profile["package"]["version"] == "1.0.0-1"
+    assert profile["package"]["version"] == "1.0.0-2"
     assert profile["ownership"]["configuration_root"] == "/etc/xaac-agent"
     assert profile["ownership"]["runtime_root"] == "/opt/xaac-agent/runtime"
+    assert profile["ownership"]["command_group"] == "xaac-command"
+    assert profile["ownership"]["ipc_group"] == "xaac-ipc"
+    assert profile["ownership"]["runtime_directory"] == "/run/xaac-agent/runtime"
 
 
 def test_real_agent_artifact_matches_profile(project_root: Path, tmp_path: Path) -> None:
@@ -43,7 +46,7 @@ def test_real_agent_artifact_matches_profile(project_root: Path, tmp_path: Path)
         project_root / "config/xaac-agent-package.yaml",
     )
     assert plan.metadata.package == "xaac-agent"
-    assert plan.metadata.version == "1.0.0-1"
+    assert plan.metadata.version == "1.0.0-2"
     assert plan.metadata.size > 1024
     assert plan.manifest()["managed_by"] == "xaac-agent.deb"
 
@@ -57,7 +60,7 @@ def test_inspection_rejects_placeholder(tmp_path: Path) -> None:
 
 def test_plan_rejects_wrong_metadata(project_root: Path, tmp_path: Path) -> None:
     def wrong(command, **kwargs):  # type: ignore[no-untyped-def]
-        return subprocess.CompletedProcess(command, 0, "wrong\n1.0.0-1\namd64\nca-certificates, systemd, openssl\n", "")
+        return subprocess.CompletedProcess(command, 0, "wrong\n1.0.0-2\namd64\nca-certificates, systemd, openssl\n", "")
 
     with pytest.raises(XaacAgentPackageError, match="metadades"):
         create_xaac_agent_plan(
@@ -94,7 +97,7 @@ def test_installer_delegates_installation_to_deb(project_root: Path, tmp_path: P
     assert not (plan.rootfs / "etc/xaac/agent/agent.yaml").exists()
     manifest = plan.rootfs / "etc/xaac/packages/xaac-agent.json"
     assert manifest.is_file()
-    assert "1.0.0-1" in manifest.read_text(encoding="utf-8")
+    assert "1.0.0-2" in manifest.read_text(encoding="utf-8")
 
 
 def test_installer_rejects_symlink_manifest(project_root: Path, tmp_path: Path) -> None:

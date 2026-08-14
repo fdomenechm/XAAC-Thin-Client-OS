@@ -11,7 +11,7 @@ def test_profile_defines_locked_noninteractive_kiosk(project_root: Path) -> None
     assert profile["user"]["name"] == "xaac-kiosk"
     assert profile["user"]["shell"] == "/usr/sbin/nologin"
     assert profile["user"]["locked"] is True
-    assert set(profile["user"]["supplementary_groups"]) == {"audio", "video", "input", "render"}
+    assert set(profile["user"]["supplementary_groups"]) == {"audio", "video", "input", "render", "xaac-ipc"}
 
 
 def test_plan_contains_account_commands_and_permissions(tmp_path: Path, project_root: Path) -> None:

@@ -44,7 +44,7 @@ def load_xaac_agent_profile(path: Path) -> dict[str, Any]:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         raise XaacAgentPackageError(f"No s'ha pogut carregar el perfil de l'Agent: {exc}") from exc
-    if not isinstance(raw, dict) or set(raw) != {"schema_version", "package", "installation", "ownership"} or raw.get("schema_version") != 2:
+    if not isinstance(raw, dict) or set(raw) != {"schema_version", "package", "installation", "ownership"} or raw.get("schema_version") != 3:
         raise XaacAgentPackageError("Esquema del paquet XAAC Agent invàlid")
 
     package = raw["package"]
@@ -82,12 +82,14 @@ def load_xaac_agent_profile(path: Path) -> dict[str, Any]:
         _absolute(value, f"required_paths[{index}]")
 
     ownership = raw["ownership"]
-    expected_ownership = {"user", "group", "configuration_root", "runtime_root", "state_root", "service_unit", "helper_socket"}
+    expected_ownership = {"user", "group", "configuration_root", "runtime_root", "state_root", "service_unit", "helper_socket", "command_group", "ipc_group", "runtime_directory", "helper_socket_path"}
     if not isinstance(ownership, dict) or set(ownership) != expected_ownership:
         raise XaacAgentPackageError("Contracte de propietat del paquet incomplet")
-    if any(not _SAFE_ACCOUNT.fullmatch(str(ownership[key])) for key in ("user", "group")):
+    if any(not _SAFE_ACCOUNT.fullmatch(str(ownership[key])) for key in ("user", "group", "command_group", "ipc_group")):
         raise XaacAgentPackageError("Usuari o grup de l'Agent invàlid")
-    for key in ("configuration_root", "runtime_root", "state_root"):
+    if ownership["command_group"] != "xaac-command" or ownership["ipc_group"] != "xaac-ipc":
+        raise XaacAgentPackageError("Grups d'integració de l'Agent inesperats")
+    for key in ("configuration_root", "runtime_root", "state_root", "runtime_directory", "helper_socket_path"):
         _absolute(ownership[key], key)
     if ownership["service_unit"] != "xaac-agent.service" or ownership["helper_socket"] != "xaac-privileged-helper.socket":
         raise XaacAgentPackageError("Unitats systemd de l'Agent inesperades")
@@ -174,6 +176,11 @@ class XaacAgentPlan:
             f"test \"$(dpkg-query -W -f='${{Status}}' {self.metadata.package})\" = 'install ok installed'; "
             f"test \"$(dpkg-query -W -f='${{Version}}' {self.metadata.package})\" = '{self.metadata.version}'; "
             f"getent passwd {ownership['user']} >/dev/null; getent group {ownership['group']} >/dev/null; "
+            f"getent group {ownership['command_group']} >/dev/null; getent group {ownership['ipc_group']} >/dev/null; "
+            f"id -nG {ownership['user']} | tr ' ' '\\n' | grep -Fx {ownership['command_group']} >/dev/null; "
+            f"id -nG {ownership['user']} | tr ' ' '\\n' | grep -Fx {ownership['ipc_group']} >/dev/null; "
+            f"grep -F 'd /run/xaac-agent 0750 root xaac-command -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
+            f"grep -F 'd {ownership['runtime_directory']} 0700 xaac-agent xaac-agent -' /usr/lib/tmpfiles.d/xaac-agent.conf >/dev/null; "
             f"{required} "
             f"systemctl is-enabled {ownership['service_unit']} >/dev/null; "
             f"systemctl is-enabled {ownership['helper_socket']} >/dev/null"

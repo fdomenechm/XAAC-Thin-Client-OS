@@ -37,8 +37,8 @@ def load_kiosk_user_profile(path: Path) -> dict[str, Any]:
     if home != PurePosixPath("/var/lib/xaac-kiosk"):
         raise KioskUserError("Directori personal de quiosc no suportat")
     groups = user.get("supplementary_groups")
-    allowed = {"audio", "video", "input", "render"}
-    if not isinstance(groups, list) or not groups or set(groups) - allowed:
+    expected_groups = {"audio", "video", "input", "render", "xaac-ipc"}
+    if not isinstance(groups, list) or set(groups) != expected_groups:
         raise KioskUserError("Grups suplementaris de quiosc no permesos")
     if str(raw["permissions"].get("home_mode")) != "0750":
         raise KioskUserError("El home del quiosc ha de tindre mode 0750")
