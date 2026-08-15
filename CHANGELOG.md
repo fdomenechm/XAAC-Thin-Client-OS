@@ -1,6 +1,8 @@
 ## 2026-08-14 — Bloc 7.7: release canònica i ISO consolidada
 
-- Integrada la revisió Debian `xaac-agent 1.0.0-7`.
+- Correcció Bloc 7.7: el gate de paquet valida ara que el runtime privat existisca exactament a `/opt/xaac-agent/runtime/bin` i rebutja el layout erroni `runtime/runtime` abans d'iniciar `debootstrap`.
+
+- Integrada la revisió Debian `xaac-agent 1.0.0-8`.
 - Afegida provenança `xaac-block7-release-provenance/v1` i gate que rebutja artefactes no construïts amb `dpkg-buildpackage`.
 - Substituït el finalitzador acoblat al codi font de l'Agent per `scripts/import-xaac-agent-package.sh`: l'OS importa un `.deb` canònic ja construït, actualitza versió/SHA-256 de forma transaccional i conserva `build-production-iso.sh --clean` com a entrada normal de construcció.
 - `production_builder` valida també la provenança canònica, de manera que invocar el mòdul Python directament no permet eludir el gate.

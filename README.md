@@ -23,7 +23,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
-- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-7`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
+- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-8`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
 - Administració i enrolament XMS de l'Agent mitjançant `xaac-agent-admin`, amb token bootstrap d'un sol ús i sense secrets en arguments de procés.
 - Contracte local OS ↔ Agent `xaac-local-integration/v1`, amb estat `xaac-state/v2`, events del supervisor i permisos direccionals via `xaac-ipc`.
 - XAAC Thin Client VPN amb provisionament administratiu simplificat mitjançant `xaac-vpn-admin`.
@@ -418,7 +418,7 @@ Després, des del projecte XAAC Thin Client OS, s'incorpora eixe `.deb` ja const
 ```sh
 cd /ruta/al/xaac-thin-client-os
 ./scripts/create-venv.sh
-./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-7_amd64.deb
+./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-8_amd64.deb
 ```
 
 L'importador exigeix el fitxer adjacent `.deb.provenance.json`, valida que el paquet siga canònic, actualitza automàticament versió, ruta i SHA-256 en `config/xaac-agent-package.yaml` i executa els gates del Bloc 7. A partir d'eixe moment la construcció habitual de l'OS torna a ser simplement:

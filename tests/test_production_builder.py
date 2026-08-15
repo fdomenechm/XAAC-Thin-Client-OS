@@ -803,7 +803,7 @@ def test_production_configure_calls_freerdp_store_after_kiosk_account_creation()
 def test_production_builder_requires_real_xaac_agent_package(project_root: Path) -> None:
     import inspect
 
-    package = project_root / "packages/xaac-agent_1.0.0-7_amd64.deb"
+    package = project_root / "packages/xaac-agent_1.0.0-8_amd64.deb"
     assert package.is_file()
     assert package.stat().st_size > 1024
     assert package.read_bytes()[:8] == b"!<arch>\n"

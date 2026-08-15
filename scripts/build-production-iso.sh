@@ -29,6 +29,7 @@ fi
 printf '[XAAC] Constructor: %s\n' "$BUILDER_MODULE_PATH"
 
 "$PROJECT_ROOT/scripts/validate-block7-release.sh"
+"$PROJECT_ROOT/scripts/validate-block7-integration.sh"
 
 for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync unshare; do
     command -v "$command" >/dev/null 2>&1 || {

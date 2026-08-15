@@ -1,6 +1,6 @@
 # XAAC Agent dins de XAAC Thin Client OS
 
-XAAC Thin Client OS integra XAAC Agent **exclusivament** mitjançant el paquet Debian declarat en `config/xaac-agent-package.yaml`. En el tancament del Bloc 7 la revisió esperada és `xaac-agent 1.0.0-7` per a `amd64`.
+XAAC Thin Client OS integra XAAC Agent **exclusivament** mitjançant el paquet Debian declarat en `config/xaac-agent-package.yaml`. En el tancament del Bloc 7 la revisió esperada és `xaac-agent 1.0.0-8` per a `amd64`.
 
 Abans de construir la ISO, el sistema valida:
 
@@ -21,10 +21,10 @@ XAAC Agent i XAAC Thin Client OS es construeixen de manera independent. El proje
 Una vegada construït canònicament l'Agent, s'incorpora el paquet amb:
 
 ```sh
-./scripts/import-xaac-agent-package.sh /ruta/al/xaac-agent_1.0.0-7_amd64.deb
+./scripts/import-xaac-agent-package.sh /ruta/al/xaac-agent_1.0.0-8_amd64.deb
 ```
 
-El fitxer `xaac-agent_1.0.0-7_amd64.deb.provenance.json` ha d'estar al costat del `.deb`. L'importador valida ambdós artefactes, actualitza automàticament el perfil i executa els gates de Bloc 7.
+El fitxer `xaac-agent_1.0.0-8_amd64.deb.provenance.json` ha d'estar al costat del `.deb`. L'importador valida ambdós artefactes, actualitza automàticament el perfil i executa els gates de Bloc 7.
 
 Després, el flux habitual de l'OS és:
 

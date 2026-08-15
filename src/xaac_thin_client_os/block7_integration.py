@@ -156,6 +156,20 @@ def validate_packaged_block7_integration(project_root: Path) -> Block7Integratio
             _fail("agent_enabled_unconditionally")
         checks.append("enrollment-lifecycle")
 
+        runtime_root = data_root / "opt/xaac-agent/runtime"
+        runtime_python = runtime_root / "bin/python3.13"
+        runtime_agent = runtime_root / "bin/xaac-agent"
+        runtime_admin = runtime_root / "bin/xaac-agent-admin"
+        for runtime_path in (runtime_python, runtime_agent, runtime_admin):
+            try:
+                mode = runtime_path.stat().st_mode
+            except OSError:
+                _fail("agent_private_runtime_missing")
+            if not runtime_path.is_file() or mode & 0o111 == 0:
+                _fail("agent_private_runtime_missing")
+        if (runtime_root / "runtime").exists():
+            _fail("agent_private_runtime_nested")
+
         admin_link = data_root / "usr/sbin/xaac-agent-admin"
         if not admin_link.is_symlink() or admin_link.readlink().as_posix() != "/opt/xaac-agent/runtime/bin/xaac-agent-admin":
             _fail("agent_admin_link_invalid")
@@ -253,6 +267,10 @@ grep -Fx 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privi
 
 systemctl is-enabled --quiet xaac-privileged-helper.socket
 ! systemctl is-enabled --quiet xaac-agent.service
+test -x /opt/xaac-agent/runtime/bin/python3.13
+test -x /opt/xaac-agent/runtime/bin/xaac-agent
+test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin
+! test -e /opt/xaac-agent/runtime/runtime
 test -x /usr/sbin/xaac-agent-admin
 test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/xaac-agent-admin'
 grep -Eq '^[[:space:]]*enabled[[:space:]]*=[[:space:]]*false[[:space:]]*$' /etc/xaac-agent/agent.ini

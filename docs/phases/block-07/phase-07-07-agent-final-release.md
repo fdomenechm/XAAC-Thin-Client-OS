@@ -4,7 +4,7 @@ La fase 7.7 tanca la integració de XAAC Thin Client Agent sense acoblar els dos
 
 ## Paquet Agent canònic
 
-XAAC Agent `1.0.0-7` ha de construir-se amb `dpkg-buildpackage -us -uc -b`. La construcció Debian usa `/usr/bin/python3.13` i `python3-pytest` de `Build-Depends`; no usa `.venv`, `pip` ni PyPI. El constructor de l'Agent emet el `.deb` i una provenança `xaac-block7-release-provenance/v1` amb versió, arquitectura, SHA-256, `SOURCE_DATE_EPOCH` i hash de `debian/release.json`.
+XAAC Agent `1.0.0-8` ha de construir-se amb `dpkg-buildpackage -us -uc -b`. La construcció Debian usa `/usr/bin/python3.13` i `python3-pytest` de `Build-Depends`; no usa `.venv`, `pip` ni PyPI. El constructor de l'Agent emet el `.deb` i una provenança `xaac-block7-release-provenance/v1` amb versió, arquitectura, SHA-256, `SOURCE_DATE_EPOCH` i hash de `debian/release.json`.
 
 En el projecte Agent:
 
@@ -19,7 +19,7 @@ L'OS no construeix XAAC Agent. Rep el `.deb` canònic com qualsevol altre artefa
 
 ```sh
 ./scripts/create-venv.sh
-./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-7_amd64.deb
+./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-8_amd64.deb
 ```
 
 `import-xaac-agent-package.sh`:
