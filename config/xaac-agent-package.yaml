@@ -5,7 +5,7 @@ package:
   application_version: 1.0.0
   version: 1.0.0-8
   artifact: packages/xaac-agent_1.0.0-8_amd64.deb
-  sha256: 7949e6f641e4f21ed996eb392649ca064a244cdf80957b265947e9ad0aed2a0c
+  sha256: 0b88794f08049d0d3f96364e427a821162b567460d090f47b08787b1eed4ee92
   dependencies:
   - ca-certificates
   - systemd
