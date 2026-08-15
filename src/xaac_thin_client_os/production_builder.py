@@ -1689,15 +1689,16 @@ class ProductionIsoBuilder:
                 raise ProductionBuildError(f"Contracte local OS-Agent invàlid: {exc}") from exc
             self._chroot([
                 "/bin/sh", "-ec",
-                "systemd-tmpfiles --create /usr/lib/tmpfiles.d/xaac-local-integration.conf; "
+                # Only materialise persistent directories here. /run is bind-mounted
+                # from the build host while configuring the chroot and is a tmpfs on
+                # the target system, so creating/checking runtime paths here would
+                # validate the host mount rather than the static image.
+                "systemd-tmpfiles --create --prefix=/var/lib/xaac/thin-client /usr/lib/tmpfiles.d/xaac-local-integration.conf; "
                 "test -d /var/lib/xaac/thin-client/state; "
                 "test -d /var/lib/xaac/thin-client/config; "
-                "test -d /run/xaac/thin-client/events; "
-                "test -d /run/xaac/commands; "
                 "test \"$(stat -c '%U:%G:%a' /var/lib/xaac/thin-client/state)\" = 'xaac-kiosk:xaac-ipc:2750'; "
                 "test \"$(stat -c '%U:%G:%a' /var/lib/xaac/thin-client/config)\" = 'xaac-agent:xaac-ipc:2750'; "
-                "test \"$(stat -c '%U:%G:%a' /run/xaac/thin-client/events)\" = 'xaac-kiosk:xaac-ipc:2750'; "
-                "test \"$(stat -c '%U:%G:%a' /run/xaac/commands)\" = 'xaac-agent:xaac-ipc:2750'; "
+                "test -f /usr/lib/tmpfiles.d/xaac-local-integration.conf; "
                 "test -f /etc/xaac/local-integration-manifest.json",
             ], phase="configure-xaac-local-integration")
             # Block 5 invariant: the application package must be present in the

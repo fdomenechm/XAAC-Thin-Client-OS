@@ -34,6 +34,10 @@ def test_rootfs_gate_checks_directionality_and_unenrolled_lifecycle() -> None:
     assert "grep -Fx xaac-command" in script
     assert "test -x /opt/xaac-agent/runtime/bin/python3.13" in script
     assert "! test -e /opt/xaac-agent/runtime/runtime" in script
+    # /run is tmpfs and must not be required to exist in the static squashfs.
+    assert "stat -c '%U:%G:%a' /run/xaac" not in script
+    assert "d /run/xaac/thin-client/events 2750 xaac-kiosk xaac-ipc -" in script
+    assert "d /run/xaac/commands 2750 xaac-agent xaac-ipc -" in script
 
 
 def test_validation_script_is_posix_sh_and_machine_readable() -> None:

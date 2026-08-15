@@ -276,16 +276,24 @@ test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/x
 grep -Eq '^[[:space:]]*enabled[[:space:]]*=[[:space:]]*false[[:space:]]*$' /etc/xaac-agent/agent.ini
 ! test -e /etc/xaac-agent/enrollment.token
 
-for spec in \\
-  '/var/lib/xaac/thin-client/state xaac-kiosk:xaac-ipc:2750' \\
-  '/var/lib/xaac/thin-client/config xaac-agent:xaac-ipc:2750' \\
-  '/run/xaac/thin-client/events xaac-kiosk:xaac-ipc:2750' \\
-  '/run/xaac/commands xaac-agent:xaac-ipc:2750'
+# Persistent state/configuration directories must already exist in the image.
+# /run is a tmpfs at boot, so runtime directories are validated through the
+# tmpfiles contract rather than by requiring them in the static squashfs.
+for spec in \
+  '/var/lib/xaac/thin-client/state xaac-kiosk:xaac-ipc:2750' \
+  '/var/lib/xaac/thin-client/config xaac-agent:xaac-ipc:2750'
 do
   path=${{spec%% *}}
   expected=${{spec#* }}
   test \"$(stat -c '%U:%G:%a' \"$path\")\" = \"$expected\"
 done
+
+tmpfiles=/usr/lib/tmpfiles.d/xaac-local-integration.conf
+test -f \"$tmpfiles\"
+grep -Fx 'd /run/xaac 0750 root xaac-ipc -' \"$tmpfiles\" >/dev/null
+grep -Fx 'd /run/xaac/thin-client 2750 xaac-kiosk xaac-ipc -' \"$tmpfiles\" >/dev/null
+grep -Fx 'd /run/xaac/thin-client/events 2750 xaac-kiosk xaac-ipc -' \"$tmpfiles\" >/dev/null
+grep -Fx 'd /run/xaac/commands 2750 xaac-agent xaac-ipc -' \"$tmpfiles\" >/dev/null
 
 test -f /etc/xaac/local-integration-manifest.json
 grep -F 'xaac-local-integration/v1' /etc/xaac/local-integration-manifest.json >/dev/null

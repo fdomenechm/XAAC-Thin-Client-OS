@@ -1,3 +1,10 @@
+## 2026-08-15 — Bloc 7.7: correcció del gate pre-squashfs
+
+- Corregida la verificació final del contracte local: `/run` és un tmpfs i els directoris `/run/xaac/...` no han d'existir dins del squashfs estàtic.
+- El gate pre-squashfs valida ara les declaracions exactes de `systemd-tmpfiles` per als directoris efímers i només exigeix físicament els directoris persistents de `/var/lib`.
+- Durant `configure`, `systemd-tmpfiles` materialitza només `/var/lib/xaac/thin-client`; ja no crea ni valida directoris sota el `/run` bind-mounted de la màquina constructora.
+- Afegida una regressió de test que impedeix tornar a exigir directoris `/run/xaac/...` en el rootfs estàtic.
+
 ## 2026-08-14 — Bloc 7.7: release canònica i ISO consolidada
 
 - Correcció Bloc 7.7: el gate de paquet valida ara que el runtime privat existisca exactament a `/opt/xaac-agent/runtime/bin` i rebutja el layout erroni `runtime/runtime` abans d'iniciar `debootstrap`.
