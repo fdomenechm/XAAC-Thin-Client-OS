@@ -6,6 +6,7 @@
 - [Entorn de desenvolupament](../getting-started/development-environment.md)
 - [Construcció](../getting-started/build.md)
 - [Referència tècnica](../reference/README.md)
+- [Bloc 8 — Acabat visual i experiència d'appliance](APPLIANCE_EXPERIENCE.md)
 - [Històric de fases](../phases/README.md)
 
 ## Convencions

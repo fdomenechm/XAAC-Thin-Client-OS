@@ -473,6 +473,22 @@ def test_production_builder_does_not_require_live_config(project_root: Path) -> 
     assert "live-config" not in settings.packages
 
 
+def test_production_builder_uses_one_appliance_kernel_policy_for_live_and_installed_boot(project_root: Path) -> None:
+    settings = BuildSettings.load(project_root)
+    params = settings.kernel_parameters
+    assert "quiet" in params
+    assert "splash" in params
+    assert "loglevel=0" in params
+    assert "loglevel=3" not in params
+    assert "systemd.log_level=emerg" in params
+    assert "systemd.show_status=0" in params
+    assert "rd.systemd.show_status=0" in params
+    assert "vt.global_cursor_default=0" in params
+    assert "udev.log_priority=3" in params
+    assert "plymouth.ignore-serial-consoles" in params
+    assert "intel_idle.max_cstate=1" in params
+
+
 def test_cleanup_stops_chroot_processes_before_unmounting() -> None:
     import inspect
 
@@ -494,7 +510,10 @@ def test_installer_script_with_signed_uefi_fallback_has_valid_shell_syntax(tmp_p
         target = ast.get_source_segment(source, node.args[0]) or ""
         if "xaac-installer-welcome" not in target or "service" in target:
             continue
-        installer = eval(compile(ast.Expression(node.args[1]), "<installer>", "eval"), {})
+        installer = eval(
+            compile(ast.Expression(node.args[1]), "<installer>", "eval"),
+            {"installed_kernel_cmdline": "quiet splash loglevel=0"},
+        )
         break
 
     assert isinstance(installer, str)
@@ -745,11 +764,11 @@ def test_production_boot_and_shutdown_use_xaac_plymouth_branding() -> None:
     assert 'plymouth-set-default-theme", "xaac"' in source
     assert "GRUB_TIMEOUT=0" in source
     assert "GRUB_TIMEOUT_STYLE=hidden" in source
-    assert "quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0" in source
-    assert "rd.systemd.show_status=0" in source
-    assert "vt.global_cursor_default=0" in source
-    assert "udev.log_priority=3" in source
-    assert "plymouth.ignore-serial-consoles" in source
+    assert 'kernel_cmdline = " ".join(self.settings.kernel_parameters)' in source
+    assert 'installed_kernel_cmdline = " ".join(self.settings.kernel_parameters)' in source
+    assert 'GRUB_CMDLINE_LINUX_DEFAULT="{kernel_cmdline}"' in source
+    assert "boot-verify-xaac-plymouth" in source
+    assert "lsinitramfs" in source
     assert "/etc/systemd/system/xaac-clear-console-before-shutdown.service" in source
     assert "DefaultDependencies=no" in source
     assert "Before=plymouth-poweroff.service plymouth-reboot.service plymouth-halt.service" in source
@@ -757,6 +776,35 @@ def test_production_boot_and_shutdown_use_xaac_plymouth_branding() -> None:
     assert "WantedBy=poweroff.target reboot.target halt.target" in source
     assert "/dev/tty1" in source
     assert '"systemctl", "enable", "xaac-clear-console-before-shutdown.service"' in source
+
+
+def test_production_iso_hides_grub_menu_and_uses_appliance_boot_parameters(tmp_path: Path) -> None:
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    from types import SimpleNamespace
+    builder.settings = SimpleNamespace(
+        output_name="xaac.iso",
+        kernel_parameters=("quiet", "splash", "loglevel=0", "systemd.show_status=0"),
+        volume_id="XAAC_TC_OS",
+    )
+    builder.dry_run = True
+    builder.runner = CommandRunner(builder.paths.logs, dry_run=True)
+    builder._save_state = lambda phase: None  # type: ignore[method-assign]
+
+    boot = builder.paths.build_root / "boot"
+    boot.mkdir(parents=True)
+    (boot / "vmlinuz").write_bytes(b"kernel")
+    (boot / "initrd.img").write_bytes(b"initrd")
+    (builder.paths.build_root / "rootfs.squashfs").write_bytes(b"squashfs")
+
+    builder.phase_iso()
+    grub = (builder.paths.staging / "boot/grub/grub.cfg").read_text(encoding="utf-8")
+    assert "set timeout_style=hidden" in grub
+    assert "set timeout=2" in grub
+    installer_line = next(line for line in grub.splitlines() if "xaac.mode=installer" in line)
+    assert "boot=live quiet splash loglevel=0 systemd.show_status=0" in installer_line
+    assert installer_line.count(" quiet") == 1
 
 
 def test_uefi_defaults_match_silent_graphical_boot_policy() -> None:
@@ -820,8 +868,7 @@ def test_production_builder_requires_real_xaac_agent_package(project_root: Path)
     assert "! grep -F 'CAP_SYS_ADMIN'" in source
 
 
-def test_agent_preflight_requires_canonical_release_provenance(project_root: Path) -> None:
+def test_agent_preflight_accepts_current_canonical_release_provenance(project_root: Path) -> None:
     builder = object.__new__(ProductionIsoBuilder)
     builder.paths = BuildPaths.create(project_root)  # type: ignore[misc]
-    with pytest.raises(ProductionBuildError, match="agent_release_not_canonical"):
-        builder._validate_xaac_agent_artifact()
+    assert builder._validate_xaac_agent_artifact() == "1.0.0-8"

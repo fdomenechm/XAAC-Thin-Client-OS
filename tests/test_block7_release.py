@@ -12,7 +12,6 @@ from xaac_thin_client_os.agent_release_import import (
     import_agent_release,
 )
 from xaac_thin_client_os.block7_release import (
-    Block7ReleaseError,
     provenance_path_for_artifact,
     validate_block7_release_provenance,
     validate_canonical_release_artifact,
@@ -48,29 +47,26 @@ def _minimal_import_project(tmp_path: Path) -> Path:
     return project
 
 
-def test_embedded_test_artifact_is_explicitly_noncanonical() -> None:
-    result = validate_block7_release_provenance(ROOT, require_canonical=False)
-    assert result.canonical is False
+def test_embedded_release_artifact_is_canonical() -> None:
+    result = validate_block7_release_provenance(ROOT, require_canonical=True)
+    assert result.canonical is True
     assert result.debian_version == "1.0.0-8"
-    assert result.build_method == "dpkg-deb-fallback"
-    with pytest.raises(Block7ReleaseError, match="agent_release_not_canonical"):
-        validate_block7_release_provenance(ROOT, require_canonical=True)
+    assert result.build_method == "dpkg-buildpackage"
 
 
-def test_release_gate_is_machine_readable_and_rejects_fallback() -> None:
+def test_release_gate_is_machine_readable_and_accepts_canonical_release() -> None:
     script = ROOT / "scripts/validate-block7-release.sh"
     text = script.read_text(encoding="utf-8")
     assert text.startswith("#!/bin/sh\n")
     assert "BASH_SOURCE" not in text
     assert "pipefail" not in text
     completed = subprocess.run([str(script)], cwd=ROOT, capture_output=True, text=True)
-    assert completed.returncode == 1
+    assert completed.returncode == 0
     payload = json.loads(completed.stdout)
-    assert payload == {
-        "schema": "xaac-block7-release-gate/v1",
-        "passed": False,
-        "error": "agent_release_not_canonical",
-    }
+    assert payload["schema"] == "xaac-block7-release-gate/v1"
+    assert payload["passed"] is True
+    assert payload["canonical"] is True
+    assert payload["debian_version"] == "1.0.0-8"
 
 
 def test_standalone_canonical_artifact_can_be_validated_before_import(tmp_path: Path) -> None:
@@ -94,6 +90,11 @@ def test_importer_rejects_noncanonical_artifact_without_modifying_project(tmp_pa
         ROOT / "packages/xaac-agent_1.0.0-8_amd64.deb.provenance.json",
         provenance_path_for_artifact(candidate),
     )
+    provenance = json.loads(provenance_path_for_artifact(candidate).read_text(encoding="utf-8"))
+    provenance["canonical"] = False
+    provenance["build_method"] = "dpkg-deb-fallback"
+    provenance["build_command"] = "dpkg-deb --build"
+    provenance_path_for_artifact(candidate).write_text(json.dumps(provenance), encoding="utf-8")
     with pytest.raises(AgentReleaseImportError, match="agent_release_not_canonical"):
         import_agent_release(project, candidate)
     assert (project / "config/xaac-agent-package.yaml").read_bytes() == profile_before

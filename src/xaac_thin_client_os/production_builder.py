@@ -277,6 +277,7 @@ class BuildSettings:
         system = yaml_mapping("config/system.yaml")
         localization = yaml_mapping("config/localization.yaml")
         iso = yaml_mapping("config/iso-builder.yaml")
+        uefi = yaml_mapping("config/uefi.yaml")
         image = iso.get("image")
         outputs = iso.get("outputs")
         if not isinstance(image, dict) or not isinstance(outputs, dict):
@@ -310,12 +311,30 @@ class BuildSettings:
             "hicolor-icon-theme",
         }
         packages = tuple(sorted(set(resolved.packages).union(mandatory)))
-        kernel_parameters: list[str] = []
+        # Kernel parameters are shared by the live ISO and the installed
+        # appliance.  Hardware profiles contribute platform-specific values,
+        # while config/uefi.yaml owns the visual/silent boot policy.  Merge by
+        # parameter name so a later policy value (for example loglevel=0)
+        # replaces an older profile default instead of emitting conflicting
+        # command-line options.
+        kernel_parameter_order: list[str] = []
+        kernel_parameter_values: dict[str, str] = {}
+
+        def merge_kernel_parameters(values: object) -> None:
+            if not isinstance(values, list):
+                return
+            for raw_value in values:
+                if not isinstance(raw_value, str) or not raw_value:
+                    continue
+                key = raw_value.split("=", 1)[0]
+                if key not in kernel_parameter_values:
+                    kernel_parameter_order.append(key)
+                kernel_parameter_values[key] = raw_value
+
         for profile_name in resolved.profile_chain:
             profile_raw = yaml_mapping(f"profiles/{profile_name}/profile.yaml")
-            values = profile_raw.get("kernel_parameters", [])
-            if isinstance(values, list):
-                kernel_parameters.extend(str(value) for value in values if value)
+            merge_kernel_parameters(profile_raw.get("kernel_parameters", []))
+        merge_kernel_parameters(uefi.get("kernel_parameters", []))
 
         fallback = localization.get("fallback_locales", [])
         return cls(
@@ -332,7 +351,7 @@ class BuildSettings:
             volume_id=str(image.get("volume_id", "XAAC_TC_OS")),
             output_name=Path(iso_path).name,
             packages=packages,
-            kernel_parameters=tuple(dict.fromkeys(kernel_parameters)),
+            kernel_parameters=tuple(kernel_parameter_values[key] for key in kernel_parameter_order),
             version=configuration.build.version,
             profile=configuration.build.profile,
             channel=configuration.build.channel.value,
@@ -1050,6 +1069,7 @@ class ProductionIsoBuilder:
         source = self.paths.project_root / "assets/branding/XAAC_TC_OS.png"
         if not source.is_file():
             raise ProductionBuildError("Falta assets/branding/XAAC_TC_OS.png")
+        kernel_cmdline = " ".join(self.settings.kernel_parameters)
 
         theme_dir = self._inside("/usr/share/plymouth/themes/xaac")
         theme_dir.mkdir(parents=True, exist_ok=True)
@@ -1115,9 +1135,7 @@ class ProductionIsoBuilder:
             'GRUB_DISABLE_RECOVERY=true\n'
             'GRUB_DISABLE_OS_PROBER=true\n'
             'GRUB_GFXPAYLOAD_LINUX=keep\n'
-            'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0 '
-            'rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 '
-            'plymouth.ignore-serial-consoles"\n',
+            f'GRUB_CMDLINE_LINUX_DEFAULT="{kernel_cmdline}"\n',
         )
         self._chroot(["plymouth-set-default-theme", "xaac"], phase="configure-plymouth-theme")
 
@@ -1203,6 +1221,7 @@ class ProductionIsoBuilder:
             with contextlib.suppress(FileNotFoundError):
                 self._inside(stale).unlink()
         self._configure_tty_cursor_visibility()
+        installed_kernel_cmdline = " ".join(self.settings.kernel_parameters)
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"
@@ -1428,7 +1447,7 @@ class ProductionIsoBuilder:
             '    insmod part_gpt\n'
             '    insmod ext2\n'
             '    search --no-floppy --fs-uuid --set=root $root_uuid\n'
-            '    linux /boot/vmlinuz root=UUID=$root_uuid ro quiet splash loglevel=0 systemd.log_level=emerg systemd.show_status=0 rd.systemd.show_status=0 vt.global_cursor_default=0 udev.log_priority=3 plymouth.ignore-serial-consoles\n'
+            f'    linux /boot/vmlinuz root=UUID=$root_uuid ro {installed_kernel_cmdline}\n'
             '    initrd /boot/initrd.img\n'
             '}\n'
             'XAAC_ENTRY\n'
@@ -1780,14 +1799,27 @@ class ProductionIsoBuilder:
         self._require_root()
         with self._chroot_mounts():
             self._chroot(["update-initramfs", "-c", "-k", "all"], phase="boot-initramfs")
-        kernels = sorted(self._inside("/boot").glob("vmlinuz-*"))
-        if not kernels:
-            raise ProductionBuildError("No s'ha trobat cap kernel dins del rootfs")
-        kernel = kernels[-1]
-        version = kernel.name.removeprefix("vmlinuz-")
-        initrd = self._inside(f"/boot/initrd.img-{version}")
-        if not initrd.is_file():
-            raise ProductionBuildError(f"No s'ha generat l'initramfs: {initrd}")
+            kernels = sorted(self._inside("/boot").glob("vmlinuz-*"))
+            if not kernels:
+                raise ProductionBuildError("No s'ha trobat cap kernel dins del rootfs")
+            kernel = kernels[-1]
+            version = kernel.name.removeprefix("vmlinuz-")
+            initrd = self._inside(f"/boot/initrd.img-{version}")
+            if not initrd.is_file():
+                raise ProductionBuildError(f"No s'ha generat l'initramfs: {initrd}")
+            # A configured theme is not enough: if the Plymouth hook does not
+            # copy the XAAC assets into initramfs, the early boot falls back to
+            # a blank/generic console.  Fail the build before producing an ISO
+            # when the appliance branding is missing from early userspace.
+            self._chroot(
+                [
+                    "/bin/sh", "-ec",
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/xaac.plymouth' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/xaac.script' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_TC_OS.png' >/dev/null",
+                ],
+                phase="boot-verify-xaac-plymouth",
+            )
         boot_dir = self.paths.build_root / "boot"
         boot_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(kernel, boot_dir / "vmlinuz")
@@ -1840,11 +1872,16 @@ class ProductionIsoBuilder:
         # User creation, autologin and installer dispatch are entirely owned by
         # the rootfs and systemd units generated by XAAC. Do not pass
         # ``components`` or any live-config identity parameters.
-        params = " ".join(("boot=live", "quiet", *self.settings.kernel_parameters))
+        params = " ".join(("boot=live", *self.settings.kernel_parameters))
         diagnostics = " ".join(("boot=live", "ro", "toram", "xaac.mode=diagnostics", *self.settings.kernel_parameters))
         self._atomic_write(
             self.paths.staging / "boot/grub/grub.cfg",
-            "set default=0\nset timeout=5\n\n"
+            "# XAAC Thin Client OS production media\n"
+            "# Normal boot is intentionally menu-less. Press Esc during this\n"
+            "# short window to expose the read-only diagnostics entry.\n"
+            "set default=0\n"
+            "set timeout_style=hidden\n"
+            "set timeout=2\n\n"
             "menuentry 'Install XAAC Thin Client OS' {\n"
             f"  linux /live/vmlinuz {params} xaac.mode=installer systemd.unit=multi-user.target\n"
             "  initrd /live/initrd.img\n}\n\n"

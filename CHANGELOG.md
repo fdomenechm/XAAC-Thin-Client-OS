@@ -1,3 +1,12 @@
+## 2026-08-15 — Bloc 8.1: cadena d'arrencada amb identitat XAAC
+
+- Unificada la política de paràmetres del kernel de la ISO Live i del sistema instal·lat: els valors visuals de `config/uefi.yaml` es fusionen amb els del perfil de maquinari sense opcions contradictòries.
+- La política efectiva passa a conservar `intel_idle.max_cstate=1` del Wyse 3040 i a aplicar `quiet`, `splash`, `loglevel=0` i la supressió de missatges de systemd tant al Live com al sistema instal·lat.
+- El menú GRUB del mitjà de producció queda ocult durant l'arrencada normal amb `timeout_style=hidden`; `Esc` continua permetent accedir al diagnòstic de només lectura.
+- L'entrada GRUB instal·lada deixa de duplicar una línia de kernel codificada a mà i reutilitza la mateixa política efectiva del constructor.
+- La fase `boot` verifica amb `lsinitramfs` que el descriptor, l'script i la imatge del tema Plymouth XAAC formen part de l'`initramfs`; una imatge sense branding primerenc ja no pot arribar a la fase ISO.
+- Actualitzades les proves del Bloc 7 perquè reflectisquen l'estat consolidat actual: el `.deb` de XAAC Agent incorporat és ja la release canònica `1.0.0-8`.
+
 ## 2026-08-15 — Bloc 7.7: correcció del gate pre-squashfs
 
 - Corregida la verificació final del contracte local: `/run` és un tmpfs i els directoris `/run/xaac/...` no han d'existir dins del squashfs estàtic.
