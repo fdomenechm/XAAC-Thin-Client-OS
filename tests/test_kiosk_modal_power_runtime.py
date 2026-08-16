@@ -12,8 +12,11 @@ def test_kiosk_power_helpers_are_fixed_and_sudo_is_exactly_scoped():
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     assert '/usr/local/sbin/xaac-kiosk-poweroff' in source
     assert '/usr/local/sbin/xaac-kiosk-reboot' in source
-    assert 'exec /usr/bin/systemctl poweroff' in source
-    assert 'exec /usr/bin/systemctl reboot' in source
+    assert '/usr/local/libexec/xaac/start-power-transition poweroff || true' in source
+    assert '/usr/local/libexec/xaac/start-power-transition reboot || true' in source
+    assert '/usr/bin/systemctl poweroff' in source
+    assert '/usr/bin/systemctl reboot' in source
+    assert '/usr/local/libexec/xaac/stop-power-transition' in source
     assert '/etc/sudoers.d/xaac-kiosk-power' in source
     assert 'xaac-kiosk ALL=(root) NOPASSWD:' in source
 

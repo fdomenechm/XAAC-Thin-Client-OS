@@ -994,14 +994,108 @@ class ProductionIsoBuilder:
             content = content.replace("mode = development", "mode = production", 1)
             self._atomic_write(config, content, 0o644)
 
+        transition_launcher = r'''#!/bin/sh
+set -eu
+action=${1:-}
+case "$action" in poweroff|reboot) ;; *) exit 64 ;; esac
+
+kiosk_user=xaac-kiosk
+kiosk_uid=$(/usr/bin/id -u "$kiosk_user")
+runtime_dir=/run/user/$kiosk_uid
+ready_file=$runtime_dir/xaac-power-transition.ready
+pid_file=/run/xaac-power-transition.pid
+screen=/usr/local/libexec/xaac-power-transition
+
+# Prepare tty1 as an XAAC-neutral white canvas in case the compositor vanishes
+# before Plymouth takes ownership of the framebuffer.
+printf '\033[?25l\033[37;47m\033[2J\033[H\033[3J' > /dev/tty1 2>/dev/null || true
+rm -f "$ready_file" "$pid_file"
+[ -x "$screen" ] || exit 0
+[ -d "$runtime_dir" ] || exit 0
+
+wayland_display=
+for socket in "$runtime_dir"/wayland-*; do
+    if [ -S "$socket" ]; then
+        wayland_display=${socket##*/}
+        break
+    fi
+done
+
+display=${DISPLAY:-}
+if [ -z "$display" ] && [ -S /tmp/.X11-unix/X0 ]; then
+    display=:0
+fi
+
+if [ -n "$wayland_display" ]; then
+    backend=wayland
+elif [ -n "$display" ]; then
+    backend=x11
+else
+    exit 0
+fi
+
+set -- /usr/bin/env \
+    "HOME=/home/$kiosk_user" \
+    "USER=$kiosk_user" \
+    "LOGNAME=$kiosk_user" \
+    "XDG_RUNTIME_DIR=$runtime_dir" \
+    "GDK_BACKEND=$backend"
+[ -n "$wayland_display" ] && set -- "$@" "WAYLAND_DISPLAY=$wayland_display"
+[ -n "$display" ] && set -- "$@" "DISPLAY=$display"
+[ -S "$runtime_dir/bus" ] && set -- "$@" "DBUS_SESSION_BUS_ADDRESS=unix:path=$runtime_dir/bus"
+
+/usr/sbin/runuser -u "$kiosk_user" -- "$@" "$screen" "$action" "$ready_file" >/dev/null 2>&1 &
+pid=$!
+printf '%s\n' "$pid" > "$pid_file"
+
+# Bound the handoff: power actions must never depend on GTK becoming ready.
+steps=0
+while [ ! -f "$ready_file" ] && kill -0 "$pid" 2>/dev/null && [ "$steps" -lt 20 ]; do
+    sleep 0.1
+    steps=$((steps + 1))
+done
+exit 0
+'''
+        transition_stop = r'''#!/bin/sh
+set -u
+pid_file=/run/xaac-power-transition.pid
+if [ -r "$pid_file" ]; then
+    pid=$(cat "$pid_file" 2>/dev/null || true)
+    case "$pid" in *[!0-9]*|'') ;; *) kill "$pid" 2>/dev/null || true ;; esac
+fi
+rm -f "$pid_file" /run/user/*/xaac-power-transition.ready 2>/dev/null || true
+exit 0
+'''
+        self._atomic_write(
+            self._inside("/usr/local/libexec/xaac/start-power-transition"),
+            transition_launcher,
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/usr/local/libexec/xaac/stop-power-transition"),
+            transition_stop,
+            0o755,
+        )
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-kiosk-poweroff"),
-            "#!/bin/sh\nset -eu\nexec /usr/bin/systemctl poweroff\n",
+            "#!/bin/sh\n"
+            "set -u\n"
+            "/usr/local/libexec/xaac/start-power-transition poweroff || true\n"
+            "/usr/bin/systemctl poweroff\n"
+            "rc=$?\n"
+            "[ \"$rc\" -eq 0 ] || /usr/local/libexec/xaac/stop-power-transition\n"
+            "exit \"$rc\"\n",
             0o755,
         )
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-kiosk-reboot"),
-            "#!/bin/sh\nset -eu\nexec /usr/bin/systemctl reboot\n",
+            "#!/bin/sh\n"
+            "set -u\n"
+            "/usr/local/libexec/xaac/start-power-transition reboot || true\n"
+            "/usr/bin/systemctl reboot\n"
+            "rc=$?\n"
+            "[ \"$rc\" -eq 0 ] || /usr/local/libexec/xaac/stop-power-transition\n"
+            "exit \"$rc\"\n",
             0o755,
         )
         self._atomic_write(
@@ -1121,7 +1215,7 @@ class ProductionIsoBuilder:
             "systemd-poweroff.service systemd-reboot.service systemd-halt.service\n\n"
             "[Service]\n"
             "Type=oneshot\n"
-            "ExecStart=/bin/sh -c 'printf \"\\033[2J\\033[H\\033[3J\" > /dev/tty1'\n\n"
+            "ExecStart=/bin/sh -c 'printf \"\\033[?25l\\033[37;47m\\033[2J\\033[H\\033[3J\" > /dev/tty1'\n\n"
             "[Install]\n"
             "WantedBy=poweroff.target reboot.target halt.target\n",
             0o644,

@@ -91,8 +91,32 @@ destructives ni modificar els contractes validats amb VPN o Agent:
   mantenint el contracte d'estat OS ↔ Agent sense alterar-ne les rutes ni els
   permisos.
 
+## Fase 8.4 — Apagada i reinici sense retorn visual a Debian
+
+La Fase 8.4 cobreix el tram entre la confirmació de l'acció d'energia i el moment
+en què Plymouth pren el control del framebuffer:
+
+- Els helpers privilegiats de producció mostren primer una superfície
+  `xaac-power-transition` i només després sol·liciten `systemctl poweroff` o
+  `systemctl reboot`. La superfície s'executa com `xaac-kiosk`, no com root.
+- El llançador descobreix el socket Wayland de la sessió a `/run/user/<uid>` i
+  conserva un fallback X11. L'espera del marcador `map` és estrictament limitada:
+  una fallada de GTK mai pot impedir una apagada o un reinici autoritzats.
+- La superfície usa el mateix `XAAC_TC_OS.png`, fons blanc i Roboto de les fases
+  anteriors, amb textos específics d'apagada o reinici i un indicador d'activitat.
+  En Wayland ocupa la capa `OVERLAY` mitjançant `gtk4-layer-shell`.
+- Si `systemctl` rebutja l'acció, el procés visual es tanca i el control torna al
+  Thin Client, que pot informar de l'error sense deixar una pantalla de tancament
+  permanent.
+- Com a segon nivell de protecció, `tty1` es prepara immediatament amb fons blanc
+  i cursor ocult; el servei `xaac-clear-console-before-shutdown.service` repeteix
+  la neteja just abans dels serveis Plymouth d'apagada/reinici.
+- No es modifica la política d'autorització: els únics executables permesos a
+  `xaac-kiosk` continuen sent els helpers fixos `xaac-kiosk-poweroff` i
+  `xaac-kiosk-reboot`, sense concedir sudo genèric.
+
 ## Àrees pendents del Bloc 8
 
-Les iteracions següents revisaran el comportament visual de reinici/apagat i
-una validació final sobre maquinari real. Es prioritzaran canvis que es puguen validar sense reconstruir la
-ISO i es reservarà la generació completa per a punts de control útils.
+Després de la Fase 8.4 queda la validació visual integrada sobre una ISO real i
+maquinari Wyse 3040: arrencada, handoff, recuperació, apagada i reinici. Aquest és
+el següent punt útil per assumir el cost d'una construcció completa de la ISO.

@@ -1,3 +1,12 @@
+## 2026-08-16 — Bloc 8.4: apagada i reinici amb transició XAAC
+
+- Afegida la superfície `xaac-power-transition` per cobrir el tram entre la confirmació d'apagada/reinici i Plymouth.
+- Els helpers `xaac-kiosk-poweroff` i `xaac-kiosk-reboot` activen primer la coberta XAAC, mantenint la llista sudo exacta i sense concedir privilegis genèrics al quiosc.
+- El llançador root descobreix la sessió Wayland/X11 de `xaac-kiosk`, executa la superfície amb els privilegis de l'usuari i limita l'espera del handoff perquè GTK no puga bloquejar una acció d'energia.
+- Si `systemctl` falla, la superfície es retira i el Thin Client recupera el control visual.
+- Reforçada la neteja de `tty1` amb fons blanc i cursor ocult tant en iniciar la transició com immediatament abans dels serveis Plymouth de poweroff/reboot/halt.
+- Afegides proves específiques de la Fase 8.4 i ampliada la validació ràpida del Bloc 8.
+
 ## 2026-08-16 — Bloc 8.3: errors i recuperació amb identitat XAAC
 
 - Les caigudes inesperades del Thin Client queden cobertes durant el `backoff` per una superfície XAAC de recuperació.

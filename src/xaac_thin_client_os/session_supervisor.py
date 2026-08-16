@@ -27,7 +27,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError(f"No s'ha pogut carregar el perfil: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise SessionSupervisorError("Perfil de supervisió invàlid o esquema no suportat")
-    for section in ("supervision", "visual_handoff", "visual_recovery", "packages", "files"):
+    for section in ("supervision", "visual_handoff", "visual_recovery", "visual_power", "packages", "files"):
         if not isinstance(raw.get(section), dict):
             raise SessionSupervisorError(f"Secció obligatòria absent: {section}")
     cfg = raw["supervision"]
@@ -92,6 +92,23 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         value = recovery.get(key)
         if not isinstance(value, str) or not value.strip() or len(value) > 160:
             raise SessionSupervisorError(f"Text de recuperació invàlid: {key}")
+    power = raw["visual_power"]
+    power_keys = {
+        "background_color", "background_image", "use_layer_shell", "ready_timeout_seconds",
+        "poweroff_title", "poweroff_message", "reboot_title", "reboot_message",
+    }
+    if set(power) != power_keys:
+        raise SessionSupervisorError("Contracte visual d'energia incomplet")
+    if power.get("background_color") != "#ffffff" or power.get("use_layer_shell") is not True:
+        raise SessionSupervisorError("La transició d'energia XAAC ha d'usar fons blanc i layer-shell")
+    _safe_absolute(power.get("background_image"), "visual_power.background_image")
+    power_ready_timeout = power.get("ready_timeout_seconds")
+    if not isinstance(power_ready_timeout, int) or not 1 <= power_ready_timeout <= 5:
+        raise SessionSupervisorError("Timeout de transició d'energia invàlid")
+    for key in ("poweroff_title", "poweroff_message", "reboot_title", "reboot_message"):
+        value = power.get(key)
+        if not isinstance(value, str) or not value.strip() or len(value) > 160:
+            raise SessionSupervisorError(f"Text de transició d'energia invàlid: {key}")
     required = raw["packages"].get("required")
     visual_packages = {"gir1.2-gtk4layershell-1.0", "libgtk4-layer-shell0", "swaybg"}
     if not isinstance(required, list) or not ({"python3.13", "python3-gi", "gir1.2-gtk-4.0"} | visual_packages) <= set(required):
@@ -116,7 +133,11 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     if root == Path("/") or root.parent == Path("/"):
         raise SessionSupervisorError(f"Rootfs insegur: {root}")
     profile = load_session_supervisor_profile(profile_path)
-    cfg, visual, recovery, files = profile["supervision"], profile["visual_handoff"], profile["visual_recovery"], profile["files"]
+    cfg = profile["supervision"]
+    visual = profile["visual_handoff"]
+    recovery = profile["visual_recovery"]
+    power = profile["visual_power"]
+    files = profile["files"]
     voluntary = " ".join(str(code) for code in cfg["voluntary_exit_codes"])
     status_name = PurePosixPath(str(cfg["status_file"])).name
     supervisor = f'''#!/bin/sh
@@ -554,9 +575,126 @@ raise SystemExit(app.run(sys.argv[:1]))
         .replace("__FAILURE_MESSAGE__", recovery["failure_message"])
         .replace("__INCIDENT_PREFIX__", recovery["incident_prefix"])
     )
+    power_transition_screen = r'''#!/usr/bin/python3.13
+import os
+import signal
+import sys
+from ctypes import CDLL, RTLD_GLOBAL
+from pathlib import Path
+
+ACTION = sys.argv[1] if len(sys.argv) > 1 else "poweroff"
+if ACTION not in {"poweroff", "reboot"}:
+    raise SystemExit(64)
+READY_FILE = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+IMAGE = "__POWER_IMAGE__"
+BACKGROUND = "__POWER_BACKGROUND__"
+POWEROFF_TITLE = "__POWEROFF_TITLE__"
+POWEROFF_MESSAGE = "__POWEROFF_MESSAGE__"
+REBOOT_TITLE = "__REBOOT_TITLE__"
+REBOOT_MESSAGE = "__REBOOT_MESSAGE__"
+
+_layer_library_loaded = False
+if os.environ.get("WAYLAND_DISPLAY"):
+    try:
+        CDLL("libgtk4-layer-shell.so.0", mode=RTLD_GLOBAL)
+        _layer_library_loaded = True
+    except OSError:
+        pass
+
+import gi
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk
+
+LayerShell = None
+if _layer_library_loaded:
+    try:
+        gi.require_version("Gtk4LayerShell", "1.0")
+        from gi.repository import Gtk4LayerShell as LayerShell
+    except (ImportError, ValueError):
+        LayerShell = None
+
+
+class PowerTransitionApp(Gtk.Application):
+    def _mapped(self, *_args):
+        if READY_FILE is not None:
+            try:
+                READY_FILE.write_text("mapped\n", encoding="utf-8")
+            except OSError:
+                pass
+
+    def do_activate(self):
+        window = Gtk.ApplicationWindow(application=self)
+        window.set_title("XAAC Thin Client")
+
+        if LayerShell is not None and LayerShell.is_supported():
+            LayerShell.init_for_window(window)
+            LayerShell.set_namespace(window, "xaac-power-transition")
+            LayerShell.set_layer(window, LayerShell.Layer.OVERLAY)
+            for edge in (LayerShell.Edge.TOP, LayerShell.Edge.BOTTOM, LayerShell.Edge.LEFT, LayerShell.Edge.RIGHT):
+                LayerShell.set_anchor(window, edge, True)
+        else:
+            window.fullscreen()
+
+        css = Gtk.CssProvider()
+        css.load_from_data((
+            "window { background: " + BACKGROUND + "; color: #202124; font-family: Roboto, sans-serif; }"
+            ".xaac-power-title { font-size: 30px; font-weight: 700; }"
+            ".xaac-power-message { font-size: 17px; }"
+        ).encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_display(
+            window.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        layout.set_halign(Gtk.Align.CENTER)
+        layout.set_valign(Gtk.Align.CENTER)
+        layout.set_margin_start(48)
+        layout.set_margin_end(48)
+
+        picture = Gtk.Picture.new_for_filename(IMAGE)
+        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_size_request(420, 180)
+
+        title_text = POWEROFF_TITLE if ACTION == "poweroff" else REBOOT_TITLE
+        message_text = POWEROFF_MESSAGE if ACTION == "poweroff" else REBOOT_MESSAGE
+        title = Gtk.Label(label=title_text)
+        title.add_css_class("xaac-power-title")
+        title.set_justify(Gtk.Justification.CENTER)
+        message = Gtk.Label(label=message_text)
+        message.add_css_class("xaac-power-message")
+        message.set_wrap(True)
+        message.set_max_width_chars(60)
+        message.set_justify(Gtk.Justification.CENTER)
+        spinner = Gtk.Spinner()
+        spinner.start()
+
+        layout.append(picture)
+        layout.append(title)
+        layout.append(message)
+        layout.append(spinner)
+        window.set_child(layout)
+        window.connect("map", self._mapped)
+        window.present()
+
+
+app = PowerTransitionApp(application_id="org.xaac.PowerTransition")
+signal.signal(signal.SIGTERM, lambda *_: app.quit())
+signal.signal(signal.SIGINT, lambda *_: app.quit())
+raise SystemExit(app.run(sys.argv[:1]))
+'''
+    power_transition_screen = (
+        power_transition_screen
+        .replace("__POWER_IMAGE__", power["background_image"])
+        .replace("__POWER_BACKGROUND__", power["background_color"])
+        .replace("__POWEROFF_TITLE__", power["poweroff_title"])
+        .replace("__POWEROFF_MESSAGE__", power["poweroff_message"])
+        .replace("__REBOOT_TITLE__", power["reboot_title"])
+        .replace("__REBOOT_MESSAGE__", power["reboot_message"])
+    )
     policy_payload = dict(cfg)
     policy_payload["visual_handoff"] = visual
     policy_payload["visual_recovery"] = recovery
+    policy_payload["visual_power"] = power
     policy = json.dumps(policy_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
 # Managed by XAAC Thin Client OS — Block 8.2 — deterministic visual handoff
@@ -567,6 +705,7 @@ raise SystemExit(app.run(sys.argv[:1]))
         (_safe_absolute(files["supervisor"], "supervisor"), supervisor, 0o755),
         (_safe_absolute(files["error_screen"], "error_screen"), error_screen, 0o755),
         (_safe_absolute(files["startup_screen"], "startup_screen"), startup_screen, 0o755),
+        (_safe_absolute(files["power_transition_screen"], "power_transition_screen"), power_transition_screen, 0o755),
         (_safe_absolute(files["policy"], "policy"), policy, 0o644),
         (_safe_absolute(files["labwc_autostart"], "labwc_autostart"), autostart, 0o755),
     )

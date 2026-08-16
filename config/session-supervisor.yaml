@@ -35,6 +35,15 @@ visual_recovery:
   failure_title: "XAAC Thin Client no està disponible"
   failure_message: "El terminal ha entrat en mode segur. Contacteu amb l'administrador."
   incident_prefix: "Codi d'incidència"
+visual_power:
+  background_color: "#ffffff"
+  background_image: /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png
+  use_layer_shell: true
+  ready_timeout_seconds: 2
+  poweroff_title: "Apagant el terminal XAAC"
+  poweroff_message: "Espereu mentre el terminal es tanca de manera segura."
+  reboot_title: "Reiniciant el terminal XAAC"
+  reboot_message: "Espereu mentre el terminal es prepara per reiniciar-se."
 packages:
   required:
     - python3.13
@@ -47,5 +56,6 @@ files:
   supervisor: /usr/local/libexec/xaac-session-supervisor
   error_screen: /usr/local/libexec/xaac-session-error
   startup_screen: /usr/local/libexec/xaac-startup-screen
+  power_transition_screen: /usr/local/libexec/xaac-power-transition
   policy: /etc/xaac/session/session-supervisor-policy.json
   labwc_autostart: /etc/xaac/labwc/autostart
