@@ -222,7 +222,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "minimum_size=7000000000" in source
     assert "INSTALL XAAC" in source
     assert "El disc seleccionat conté el sistema Live actiu" in source
-    assert "No s’ha detectat alimentació externa" in source
+    assert "No s'ha detectat alimentació externa" in source
     assert "sgdisk --zap-all" in source
     assert "-c 1:XAAC_EFI" in source
     assert "-c 2:XAAC_ROOT" in source
@@ -253,7 +253,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert 'GRUB_DISTRIBUTOR="XAAC Thin Client OS"' in source
     assert "menuentry \'XAAC Thin Client OS\'" in source
     assert 'chmod -x "$mount_root/etc/grub.d/10_linux"' in source
-    assert "grub.cfg no conté l’entrada XAAC Thin Client OS" in source
+    assert "grub.cfg no conté l'entrada XAAC Thin Client OS" in source
     assert "grub.cfg no conté cap ordre linux" in source
     assert "grub.cfg no conté cap ordre initrd" in source
     assert "etc/machine-id" in source
@@ -269,7 +269,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert '/var/lib/xaac/admin/password-changed' in source
     assert 'unset admin_password' in source
     assert '/var/lib/xaac/installation/consolidated' in source
-    assert 'L’instal·lador continua present al sistema instal·lat' in source
+    assert 'El programa instal·lador continua present al sistema instal·lat' in source
     assert 'PRETTY_NAME=\\"XAAC Thin Client OS' in source
     assert '["systemctl", "enable", "xaac-installer-welcome.service"]' in source
 
@@ -510,9 +510,15 @@ def test_installer_script_with_signed_uefi_fallback_has_valid_shell_syntax(tmp_p
         target = ast.get_source_segment(source, node.args[0]) or ""
         if "xaac-installer-welcome" not in target or "service" in target:
             continue
+        from types import SimpleNamespace
+
+        fake_self = SimpleNamespace(settings=SimpleNamespace(locale="ca_ES.UTF-8"))
         installer = eval(
             compile(ast.Expression(node.args[1]), "<installer>", "eval"),
-            {"installed_kernel_cmdline": "quiet splash loglevel=0"},
+            {
+                "installed_kernel_cmdline": "quiet splash loglevel=0",
+                "self": fake_self,
+            },
         )
         break
 

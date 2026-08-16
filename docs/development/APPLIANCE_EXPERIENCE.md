@@ -133,6 +133,24 @@ XAAC Thin Client ja està disponible per a l'usuari:
 - La sessió exporta `XCURSOR_THEME=Adwaita` i `XCURSOR_SIZE=24` abans d'iniciar
   `labwc`, garantint un cursor coherent i amb animació disponible en el tema base.
 
+### Correcció 8.5.1 — instal·lador i handoff final
+
+La validació física de la primera ISO 8.5 va revelar tres detalls que no podien
+considerar-se tancats només amb tests estàtics:
+
+- L'instal·lador reactiva explícitament el cursor de text en `tty1`, força
+  `ca_ES.UTF-8` i aplica `setupcon`; tots els missatges de l'instal·lador eviten l'apòstrof
+  tipogràfic que pot aparéixer com un glif quadrat en la consola Linux. El perfil de
+  consola passa a `Uni2-Terminus16` per ampliar la cobertura Unicode.
+- `labwc` configura `reuseOutputMode=yes`, evitant un canvi de mode de vídeo
+  innecessari en prendre el DRM. A més, `xaac-boot-handoff.service` prepara el
+  canvas blanc de `tty1` abans que Plymouth abandone la pantalla i abans de
+  `greetd`.
+- En Wayland, la coberta d'inici ja no desapareix després d'un temps fix: `wlrctl`
+  observa `wlr-foreign-toplevel-management` i la manté amb cursor `wait` fins que
+  existeix una superfície interactiva real de XAAC Thin Client o XAAC Thin Client
+  VPN. El timeout continua sent limitat per evitar bloquejos permanents.
+
 ## Àrees pendents del Bloc 8
 
 Després de la Fase 8.5 només queda la consolidació i tancament de la Fase 8.6,

@@ -81,6 +81,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     session_visual_keys = {
         "stable_background_color", "cursor_theme", "cursor_size",
         "busy_cursor_name", "normal_cursor_name",
+        "interactive_window_timeout_seconds", "thin_client_app_id", "vpn_app_id",
     }
     if set(session_visual) != session_visual_keys:
         raise SessionSupervisorError("Contracte visual de sessió incomplet")
@@ -96,6 +97,13 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError("Mida de cursor invàlida")
     if session_visual.get("busy_cursor_name") != "wait" or session_visual.get("normal_cursor_name") != "default":
         raise SessionSupervisorError("Noms de cursor de sessió invàlids")
+    interactive_timeout = session_visual.get("interactive_window_timeout_seconds")
+    if not isinstance(interactive_timeout, int) or not 2 <= interactive_timeout <= 60:
+        raise SessionSupervisorError("Timeout de finestra interactiva invàlid")
+    for key in ("thin_client_app_id", "vpn_app_id"):
+        value = session_visual.get(key)
+        if not isinstance(value, str) or not value.strip() or any(ch.isspace() for ch in value):
+            raise SessionSupervisorError(f"App-id visual invàlid: {key}")
     recovery = raw["visual_recovery"]
     recovery_keys = {
         "background_color", "background_image", "use_layer_shell",
@@ -129,7 +137,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         if not isinstance(value, str) or not value.strip() or len(value) > 160:
             raise SessionSupervisorError(f"Text de transició d'energia invàlid: {key}")
     required = raw["packages"].get("required")
-    visual_packages = {"gir1.2-gtk4layershell-1.0", "libgtk4-layer-shell0", "swaybg"}
+    visual_packages = {"gir1.2-gtk4layershell-1.0", "libgtk4-layer-shell0", "swaybg", "wlrctl"}
     if not isinstance(required, list) or not ({"python3.13", "python3-gi", "gir1.2-gtk-4.0"} | visual_packages) <= set(required):
         raise SessionSupervisorError("Dependències obligatòries incompletes")
     for name, value in raw["files"].items():
@@ -170,6 +178,9 @@ STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
 STARTUP_READY_TIMEOUT={visual["ready_timeout_seconds"]}
 BACKGROUND_COMMAND={visual["background_command"]}
 STABLE_BACKGROUND={session_visual["stable_background_color"]}
+INTERACTIVE_TIMEOUT={session_visual["interactive_window_timeout_seconds"]}
+THIN_CLIENT_APP_ID={session_visual["thin_client_app_id"]}
+VPN_APP_ID={session_visual["vpn_app_id"]}
 STATUS_NAME={status_name}
 RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
 HANDOFF_BG_PID="$RUNTIME_DIR/xaac-handoff-background.pid"
@@ -310,6 +321,25 @@ wait_for_startup_surface() {{
   [ -f "$STARTUP_READY" ]
 }}
 
+wait_for_interactive_surface() {{
+  # Under Wayland, keep the busy overlay until either the VPN UI or the actual
+  # Thin Client has a mapped toplevel. This makes the cursor reflect real work
+  # instead of an arbitrary two-second delay.
+  if [ -n "${{WAYLAND_DISPLAY:-}}" ] && command -v /usr/bin/wlrctl >/dev/null 2>&1; then
+    steps=$((INTERACTIVE_TIMEOUT * 10))
+    waited=0
+    while [ "$waited" -lt "$steps" ]; do
+      /usr/bin/wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID" >/dev/null 2>&1 && return 0
+      /usr/bin/wlrctl toplevel find "app_id:$VPN_APP_ID" >/dev/null 2>&1 && return 0
+      sleep 0.1
+      waited=$((waited + 1))
+    done
+    return 1
+  fi
+  sleep "$STARTUP_MIN"
+  return 0
+}}
+
 set_stable_background() {{
   if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
     if [ -r "$STABLE_BG_PID" ]; then
@@ -357,7 +387,9 @@ while :; do
   fi
   "$CLIENT" &
   client_pid=$!
-  sleep "$STARTUP_MIN"
+  if ! wait_for_interactive_surface; then
+    publish_event visual-interactive-timeout 0 "$attempts" warning
+  fi
   set_stable_background
   kill "$splash_pid" 2>/dev/null || true
   wait "$splash_pid" 2>/dev/null || true

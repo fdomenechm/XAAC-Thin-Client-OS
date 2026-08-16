@@ -32,6 +32,9 @@ visual_session:
   cursor_size: 24
   busy_cursor_name: wait
   normal_cursor_name: default
+  interactive_window_timeout_seconds: 20
+  thin_client_app_id: org.xaac.thinclient
+  vpn_app_id: es.canals.xaac.ThinClientVPN
 visual_recovery:
   background_color: "#ffffff"
   background_image: /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png
@@ -58,6 +61,7 @@ packages:
     - gir1.2-gtk4layershell-1.0
     - libgtk4-layer-shell0
     - swaybg
+    - wlrctl
 files:
   supervisor: /usr/local/libexec/xaac-session-supervisor
   error_screen: /usr/local/libexec/xaac-session-error

@@ -893,9 +893,30 @@ class ProductionIsoBuilder:
             create_session_supervisor_plan(self.paths.rootfs, self.paths.project_root / "config/session-supervisor.yaml")
         )
         self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-boot-handoff.service"),
+            "[Unit]\n"
+            "Description=Prepare XAAC canvas before Plymouth releases the display\n"
+            "ConditionKernelCommandLine=!xaac.mode=installer\n"
+            "After=plymouth-start.service systemd-vconsole-setup.service\n"
+            "Before=plymouth-quit.service greetd.service\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/usr/local/libexec/xaac-prepare-kiosk-vt\n"
+            "RemainAfterExit=yes\n\n"
+            "[Install]\n"
+            "WantedBy=graphical.target\n",
+        )
+        self._atomic_write(
             self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
-            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n\n"
+            "[Unit]\n"
+            "ConditionKernelCommandLine=!xaac.mode=installer\n"
+            "Wants=xaac-boot-handoff.service\n"
+            "After=xaac-boot-handoff.service\n\n"
             "[Service]\nExecStartPre=/usr/local/libexec/xaac-prepare-kiosk-vt\n",
+        )
+        self._chroot(
+            ["systemctl", "enable", "xaac-boot-handoff.service"],
+            phase="configure-boot-handoff",
         )
 
     def _configure_openvpn3_network(self) -> None:
@@ -1325,6 +1346,11 @@ exit 0
             self._inside("/usr/local/sbin/xaac-installer-welcome"),
             "#!/bin/sh\n"
             "set -eu\n"
+            f"export LANG={self.settings.locale}\n"
+            f"export LC_ALL={self.settings.locale}\n"
+            "if command -v setupcon >/dev/null 2>&1; then setupcon --force >/dev/null 2>&1 || true; fi\n"
+            "printf '\\033[?25h'\n"
+            "setterm --cursor on >/dev/null 2>&1 || true\n"
             "clear\n"
             "printf '%s\\n' 'XAAC Thin Client OS — Instal·lador (pas 5)'\n"
             "printf '%s\\n' '============================================'\n"
@@ -1343,7 +1369,7 @@ exit 0
             "    printf '%s\\t%s\\t%s\\t%s\\n' \"$NAME\" \"$SIZE\" \"${MODEL:-}\" \"${RM:-0}\"\n"
             "done > \"$disks_file\"\n"
             "if [ ! -s \"$disks_file\" ]; then\n"
-            "    printf '%s\\n' 'No s’ha detectat cap disc escrivible.'\n"
+            "    printf '%s\\n' \"No s'ha detectat cap disc escrivible.\"\n"
             "    printf '%s' 'Premeu Retorn per reiniciar el sistema: '\n"
             "    IFS= read -r _answer\n"
             "    systemctl reboot\n"
@@ -1396,24 +1422,24 @@ exit 0
             "fi\n"
             "size_human=$(numfmt --to=iec-i --suffix=B \"$selected_size\" 2>/dev/null || printf '%s bytes' \"$selected_size\")\n"
             "printf '\\n'\n"
-            "printf '%s\\n' 'RESUM DE L’OPERACIÓ DESTRUCTIVA'\n"
+            "printf '%s\\n' \"RESUM DE L'OPERACIÓ DESTRUCTIVA\"\n"
             "printf '  Dispositiu: %s\\n' \"$target\"\n"
             "printf '  Capacitat:  %s\\n' \"$size_human\"\n"
             "printf '  Model:      %s\\n' \"${selected_model:-Model no informat}\"\n"
             "printf '\\n'\n"
-            "printf '%s\\n' 'Totes les dades d’aquest disc s’eliminaran immediatament després de confirmar.'\n"
+            "printf '%s\\n' \"Totes les dades d'aquest disc s'eliminaran immediatament després de confirmar.\"\n"
             "printf '%s\\n' 'Per confirmar la selecció escriviu exactament: INSTALL XAAC'\n"
             "printf '%s' '> '\n"
             "IFS= read -r confirmation\n"
             "if [ \"$confirmation\" != 'INSTALL XAAC' ]; then\n"
-            "    printf '%s\\n' 'Confirmació incorrecta. No s’ha fet cap canvi.'\n"
+            "    printf '%s\\n' \"Confirmació incorrecta. No s'ha fet cap canvi.\"\n"
             "    printf '%s' 'Premeu Retorn per reiniciar el sistema: '\n"
             "    IFS= read -r _answer\n"
             "    systemctl reboot\n"
             "fi\n"
             "printf '\\n'\n"
             "printf '%s\\n' 'Confirmació acceptada.'\n"
-            "printf '\\n%s\\n' 'Configureu ara la contrasenya de l’administrador local xaac-admin.'\n"
+            "printf '\\n%s\\n' \"Configureu ara la contrasenya de l'administrador local xaac-admin.\"\n"
             "printf '%s\\n' 'Ha de tindre almenys 12 caràcters i no pot contindre dos punts (:).'\n"
             "trap 'stty echo 2>/dev/null || true; exit 130' HUP INT TERM\n"
             "while :; do\n"
@@ -1470,7 +1496,7 @@ exit 0
             "    case $(cat \"$supply/type\" 2>/dev/null || true) in Mains|USB|USB_C) ac_found=1 ;; *) continue ;; esac\n"
             "    [ \"$(cat \"$supply/online\" 2>/dev/null || printf 0)\" = 1 ] && ac_online=1\n"
             "done\n"
-            "if [ \"$ac_found\" = 1 ] && [ \"$ac_online\" != 1 ]; then printf '%s\\n' 'No s’ha detectat alimentació externa. Instal·lació rebutjada.'; exit 1; fi\n"
+            "if [ \"$ac_found\" = 1 ] && [ \"$ac_online\" != 1 ]; then printf '%s\\n' \"No s'ha detectat alimentació externa. Instal·lació rebutjada.\"; exit 1; fi\n"
             "case $target in *[0-9]) p1=${target}p1; p2=${target}p2; p3=${target}p3; p4=${target}p4 ;; *) p1=${target}1; p2=${target}2; p3=${target}3; p4=${target}4 ;; esac\n"
             "mount_root=/mnt/xaac-target\n"
             "cleanup_install() {\n"
@@ -1488,7 +1514,7 @@ exit 0
             "sgdisk -n 3:0:+1024M -t 3:8300 -c 3:XAAC_DATA \"$target\"\n"
             "sgdisk -n 4:0:0 -t 4:8300 -c 4:XAAC_RECOVERY \"$target\"\n"
             "partprobe \"$target\"; udevadm settle\n"
-            "for partition in \"$p1\" \"$p2\" \"$p3\" \"$p4\"; do [ -b \"$partition\" ] || { printf 'No s’ha creat %s\\n' \"$partition\"; exit 1; }; done\n"
+            "for partition in \"$p1\" \"$p2\" \"$p3\" \"$p4\"; do [ -b \"$partition\" ] || { printf \"No s'ha creat %s\\n\" \"$partition\"; exit 1; }; done\n"
             "printf '%s\\n' '[2/5] Creant els sistemes de fitxers...'\n"
             "mkfs.vfat -F 32 -n XAAC_EFI \"$p1\"\n"
             "mkfs.ext4 -F -L XAAC_ROOT \"$p2\"\n"
@@ -1500,22 +1526,22 @@ exit 0
             "mount \"$p1\" \"$mount_root/boot/efi\"; mount \"$p3\" \"$mount_root/data\"; mount \"$p4\" \"$mount_root/recovery\"\n"
             "printf '%s\\n' '[4/5] Desplegant el sistema base...'\n"
             "rootfs_image=/run/live/medium/live/filesystem.squashfs\n"
-            "[ -r \"$rootfs_image\" ] || { printf '%s\\n' 'No s’ha trobat filesystem.squashfs al mitjà Live.'; exit 1; }\n"
+            "[ -r \"$rootfs_image\" ] || { printf '%s\\n' \"No s'ha trobat filesystem.squashfs al mitjà Live.\"; exit 1; }\n"
             "unsquashfs -f -d \"$mount_root\" \"$rootfs_image\"\n"
-            "printf '%s\\n' '[5/9] Instal·lant el nucli i l’initramfs al sistema de destinació...'\n"
+            "printf '%s\\n' \"[5/9] Instal·lant el nucli i l'initramfs al sistema de destinació...\"\n"
             'kernel_version=$(find "$mount_root/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf \'%f\\n\' | sort -V | tail -n1)\n'
-            '[ -n "$kernel_version" ] || { printf \'%s\\n\' \'No s’ha pogut determinar la versió del nucli instal·lat.\'; exit 1; }\n'
-            '[ -r /run/live/medium/live/vmlinuz ] || { printf \'%s\\n\' \'No s’ha trobat el nucli del mitjà Live.\'; exit 1; }\n'
-            '[ -r /run/live/medium/live/initrd.img ] || { printf \'%s\\n\' \'No s’ha trobat l’initramfs del mitjà Live.\'; exit 1; }\n'
+            '[ -n "$kernel_version" ] || { printf \'%s\\n\' \'No ha sigut possible determinar la versió del nucli instal·lat.\'; exit 1; }\n'
+            '[ -r /run/live/medium/live/vmlinuz ] || { printf \'%s\\n\' \'No es troba el nucli del mitjà Live.\'; exit 1; }\n'
+            '[ -r /run/live/medium/live/initrd.img ] || { printf \'%s\\n\' \'No es troba initramfs del mitjà Live.\'; exit 1; }\n'
             'mkdir -p "$mount_root/boot"\n'
             'install -m 0644 /run/live/medium/live/vmlinuz "$mount_root/boot/vmlinuz-$kernel_version"\n'
             'install -m 0644 /run/live/medium/live/initrd.img "$mount_root/boot/initrd.img-$kernel_version"\n'
             'ln -sfn "vmlinuz-$kernel_version" "$mount_root/boot/vmlinuz"\n'
             'ln -sfn "initrd.img-$kernel_version" "$mount_root/boot/initrd.img"\n'
-            '[ -s "$mount_root/boot/vmlinuz-$kernel_version" ] && [ -s "$mount_root/boot/initrd.img-$kernel_version" ] || { printf \'%s\\n\' \'El nucli o l’initramfs no han quedat instal·lats a /boot.\'; exit 1; }\n'
+            '[ -s "$mount_root/boot/vmlinuz-$kernel_version" ] && [ -s "$mount_root/boot/initrd.img-$kernel_version" ] || { printf \'%s\\n\' \'El nucli o initramfs no han quedat instal·lats a /boot.\'; exit 1; }\n'
             "printf '%s\\n' '[6/9] Generant la configuració de muntatge...'\n"
             'root_uuid=$(blkid -s UUID -o value "$p2"); efi_uuid=$(blkid -s UUID -o value "$p1"); data_uuid=$(blkid -s UUID -o value "$p3"); recovery_uuid=$(blkid -s UUID -o value "$p4")\n'
-            '[ -n "$root_uuid" ] && [ -n "$efi_uuid" ] && [ -n "$data_uuid" ] && [ -n "$recovery_uuid" ] || { printf \'%s\\n\' \'No s’han pogut obtindre tots els UUID.\'; exit 1; }\n'
+            '[ -n "$root_uuid" ] && [ -n "$efi_uuid" ] && [ -n "$data_uuid" ] && [ -n "$recovery_uuid" ] || { printf \'%s\\n\' \'No ha sigut possible obtindre tots els UUID.\'; exit 1; }\n'
             'cat > "$mount_root/etc/fstab" <<EOF\n'
             'UUID=$root_uuid / ext4 defaults,noatime 0 1\n'
             'UUID=$efi_uuid /boot/efi vfat umask=0077 0 1\n'
@@ -1558,8 +1584,8 @@ exit 0
             'signed_shim="$mount_root/usr/lib/shim/shimx64.efi.signed"\n'
             'signed_grub="$mount_root/usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed"\n'
             'signed_mok="$mount_root/usr/lib/shim/mmx64.efi.signed"\n'
-            '[ -s "$signed_shim" ] || { printf \'%s\\n\' \'No s’ha trobat shimx64.efi signat.\'; exit 1; }\n'
-            '[ -s "$signed_grub" ] || { printf \'%s\\n\' \'No s’ha trobat grubx64.efi signat.\'; exit 1; }\n'
+            '[ -s "$signed_shim" ] || { printf \'%s\\n\' \'No es troba shimx64.efi signat.\'; exit 1; }\n'
+            '[ -s "$signed_grub" ] || { printf \'%s\\n\' \'No es troba grubx64.efi signat.\'; exit 1; }\n'
             'mkdir -p "$mount_root/boot/efi/EFI/BOOT" "$mount_root/boot/efi/EFI/XAAC"\n'
             'install -m 0644 "$signed_shim" "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
             'install -m 0644 "$signed_grub" "$mount_root/boot/efi/EFI/BOOT/grubx64.efi"\n'
@@ -1572,26 +1598,26 @@ exit 0
             'configfile \\$prefix/grub.cfg\n'
             'EOF\n'
             'cp "$mount_root/boot/efi/EFI/BOOT/grub.cfg" "$mount_root/boot/efi/EFI/XAAC/grub.cfg"\n'
-            '[ -s "$mount_root/boot/grub/grub.cfg" ] || { printf \'%s\\n\' \'No s’ha generat grub.cfg.\'; exit 1; }\n'
-            "grep -Fq \"menuentry 'XAAC Thin Client OS'\" \"$mount_root/boot/grub/grub.cfg\" || { printf '%s\\n' 'grub.cfg no conté l’entrada XAAC Thin Client OS.'; exit 1; }\n"
+            '[ -s "$mount_root/boot/grub/grub.cfg" ] || { printf \'%s\\n\' \'No ha sigut possible generar grub.cfg.\'; exit 1; }\n'
+            "grep -Fq \"menuentry 'XAAC Thin Client OS'\" \"$mount_root/boot/grub/grub.cfg\" || { printf '%s\\n' \"grub.cfg no conté l'entrada XAAC Thin Client OS.\"; exit 1; }\n"
             'grep -Eq "^[[:space:]]*linux[[:space:]]+.*vmlinuz" "$mount_root/boot/grub/grub.cfg" || { printf \'%s\\n\' \'grub.cfg no conté cap ordre linux per carregar el nucli.\'; exit 1; }\n'
             'grep -Eq "^[[:space:]]*initrd[[:space:]]+.*initrd" "$mount_root/boot/grub/grub.cfg" || { printf \'%s\\n\' \'grub.cfg no conté cap ordre initrd.\'; exit 1; }\n'
             'for efi_file in "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI" "$mount_root/boot/efi/EFI/BOOT/grubx64.efi"; do [ -s "$efi_file" ] || { printf \'No existeix o està buit: %s\\n\' "$efi_file"; exit 1; }; [ "$(od -An -tx1 -N2 "$efi_file" | tr -d \' \\n\')" = 4d5a ] || { printf \'No és un executable PE/COFF vàlid: %s\\n\' "$efi_file"; exit 1; }; done\n'
-            'grep -Fq "$root_uuid" "$mount_root/boot/efi/EFI/BOOT/grub.cfg" || { printf \'%s\\n\' \'El fallback GRUB no referencia l’UUID arrel.\'; exit 1; }\n'
+            'grep -Fq "$root_uuid" "$mount_root/boot/efi/EFI/BOOT/grub.cfg" || { printf \'%s\\n\' \'El fallback GRUB no referencia el UUID arrel.\'; exit 1; }\n'
             'sgdisk -i 1 "$target" | grep -Eqi \'EF00|EFI system partition\' || { printf \'%s\\n\' \'La primera partició no és una ESP GPT vàlida.\'; exit 1; }\n'
             'sync; umount "$mount_root/boot/efi"\n'
             'fsck.vfat -n "$p1" >/dev/null || { printf \'%s\\n\' \'La partició EFI FAT32 no supera la verificació.\'; exit 1; }\n'
             'mount "$p1" "$mount_root/boot/efi"\n'
-            "printf '%s\\n' '[8/10] Configurant l’administrador local...'\n"
+            "printf '%s\\n' \"[8/10] Configurant l'administrador local...\"\n"
             'admin_hash=$(printf \'%s\' "$admin_password" | openssl passwd -6 -stdin)\n'
-            'case "$admin_hash" in \'$6$\'*) ;; *) printf \'%s\\n\' \'No s’ha pogut generar el hash SHA-512 de xaac-admin.\'; exit 1 ;; esac\n'
+            'case "$admin_hash" in \'$6$\'*) ;; *) printf \'%s\\n\' \'No ha sigut possible generar el hash SHA-512 de xaac-admin.\'; exit 1 ;; esac\n'
             "printf 'xaac-admin:%s\\n' \"$admin_hash\" | chroot \"$mount_root\" chpasswd --encrypted\n"
             'chroot "$mount_root" usermod --unlock --shell /bin/bash xaac-admin\n'
             'chroot "$mount_root" chage -E -1 -I -1 -m 0 xaac-admin\n'
             'passwd_status=$(chroot "$mount_root" passwd -S xaac-admin 2>/dev/null | awk \'{print $2}\')\n'
             "shadow_password=$(awk -F: '$1 == \"xaac-admin\" {print $2}' \"$mount_root/etc/shadow\")\n"
             'admin_shell=$(chroot "$mount_root" getent passwd xaac-admin 2>/dev/null | cut -d: -f7)\n'
-            '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No s’ha pogut activar la contrasenya de xaac-admin.\'; exit 1; }\n'
+            '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No ha sigut possible activar la contrasenya de xaac-admin.\'; exit 1; }\n'
             '[ "$shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'El hash de xaac-admin no ha quedat escrit al sistema de destinació.\'; exit 1; }\n'
             '[ "$admin_shell" = /bin/bash ] || { printf \'%s\\n\' \'La shell de xaac-admin no és interactiva.\'; exit 1; }\n'
             'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
@@ -1633,8 +1659,8 @@ exit 0
             ': > "$mount_root/etc/machine-id"\n'
             'rm -f "$mount_root/var/lib/dbus/machine-id" "$mount_root"/etc/ssh/ssh_host_* "$mount_root/var/lib/systemd/random-seed"\n'
             'chroot "$mount_root" ssh-keygen -A\n'
-            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key" || { printf \'%s\\n\' \'No s’ha generat la host key ED25519 d’OpenSSH.\'; exit 1; }\n'
-            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key.pub" || { printf \'%s\\n\' \'No s’ha generat la host key pública ED25519 d’OpenSSH.\'; exit 1; }\n'
+            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key" || { printf \'%s\\n\' \'No ha sigut possible generar la host key ED25519 de OpenSSH.\'; exit 1; }\n'
+            'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key.pub" || { printf \'%s\\n\' \'No ha sigut possible generar la host key pública ED25519 de OpenSSH.\'; exit 1; }\n'
             'chroot "$mount_root" /usr/sbin/sshd -t || { printf \'%s\\n\' \'La configuració OpenSSH instal·lada no és vàlida.\'; exit 1; }\n'
             'chroot "$mount_root" systemctl enable ssh.service >/dev/null\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
@@ -1644,11 +1670,11 @@ exit 0
             'test -f "$mount_root/boot/efi/EFI/BOOT/BOOTX64.EFI"\n'
             'test -s "$mount_root/boot/grub/grub.cfg"\n'
             "test -x \"$mount_root/usr/bin/xaac-thinclient\" || { printf '%s\\n' 'XAAC Thin Client no existeix al sistema instal·lat.'; exit 1; }\n"
-            "test -f \"$mount_root/etc/xaac/block5-integration\" || { printf '%s\\n' 'Falta el marcador d’integració del Bloc 5.'; exit 1; }\n"
+            "test -f \"$mount_root/etc/xaac/block5-integration\" || { printf '%s\\n' \"Falta el marcador d'integració del Bloc 5.\"; exit 1; }\n"
             "chroot \"$mount_root\" dpkg-query -W -f='${Status} ${Version}\\n' xaac-thinclient | grep -Fq 'install ok installed 1.0.0' || { printf '%s\\n' 'xaac-thinclient 1.0.0 no consta instal·lat.'; exit 1; }\n"
             'grep -Fq "PRETTY_NAME=\\"XAAC Thin Client OS" "$mount_root/etc/os-release" || { printf \'%s\\n\' \'La identitat del sistema instal·lat no és correcta.\'; exit 1; }\n'
-            'test ! -e "$mount_root/usr/local/sbin/xaac-installer-welcome" || { printf \'%s\\n\' \'L’instal·lador continua present al sistema instal·lat.\'; exit 1; }\n'
-            'test ! -e "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service" || { printf \'%s\\n\' \'El servei de l’instal·lador continua habilitat.\'; exit 1; }\n'
+            'test ! -e "$mount_root/usr/local/sbin/xaac-installer-welcome" || { printf \'%s\\n\' \'El programa instal·lador continua present al sistema instal·lat.\'; exit 1; }\n'
+            'test ! -e "$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service" || { printf \'%s\\n\' \'El servei del programa instal·lador continua habilitat.\'; exit 1; }\n'
             'test -f "$mount_root/var/lib/xaac/installation/consolidated" || { printf \'%s\\n\' \'No existeix el marcador de consolidació.\'; exit 1; }\n'
             '[ "$(cat "$mount_root/etc/hostname")" = "$install_hostname" ] || { printf \'%s\\n\' \'El hostname no ha quedat configurat.\'; exit 1; }\n'
             'grep -Fq "127.0.1.1 $install_hostname" "$mount_root/etc/hosts" || { printf \'%s\\n\' \'/etc/hosts no conté el hostname.\'; exit 1; }\n'

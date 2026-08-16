@@ -11,4 +11,4 @@ keyboard:
   options: []
 console:
   charmap: UTF-8
-  font: Lat15-Terminus16
+  font: Uni2-Terminus16

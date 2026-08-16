@@ -21,7 +21,8 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     tests/test_block8_visual_recovery.py \
     tests/test_block8_visual_power.py \
     tests/test_block8_visual_feedback.py \
+    tests/test_block8_visual_polish_851.py \
     tests/test_kiosk_modal_power_runtime.py \
     tests/test_tty_cursor_visibility.py
 
-printf '%s\n' "Bloc 8.5: validació visual, feedback d'activitat i fons estable superada."
+printf '%s\n' "Bloc 8.5.1: validació visual, instal·lador i handoff sense pantalles negres superada."

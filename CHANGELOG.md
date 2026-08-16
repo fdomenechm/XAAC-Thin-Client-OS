@@ -1,3 +1,12 @@
+## 2026-08-16 — Bloc 8.5.1: correcció visual en maquinari real
+
+- Reactivat el cursor de text en l'instal·lador i forçats `LANG/LC_ALL=ca_ES.UTF-8` amb `setupcon` abans de mostrar els formularis de TTY.
+- Tots els missatges de l'instal·lador eviten l'apòstrof tipogràfic i utilitzen text segur per a consola i el perfil de consola passa a `Uni2-Terminus16` per evitar glifs quadrats en català.
+- `labwc` activa `reuseOutputMode=yes` per reduir els blackouts causats per un canvi de mode de vídeo en iniciar el compositor.
+- Afegit `xaac-boot-handoff.service` per preparar `tty1` en blanc abans de `plymouth-quit.service` i `greetd.service`.
+- El handoff Wayland usa `wlrctl` i manté l'overlay amb cursor `wait` fins que apareix una finestra real de XAAC Thin Client o XAAC Thin Client VPN, amb timeout limitat.
+- Afegides regressions específiques de la 8.5.1 al gate visual del Bloc 8.
+
 ## 2026-08-16 — Bloc 8.5: feedback d'activitat i fons estable de sessió
 
 - Separat el fons de transició XAAC del fons de sessió estable: el logotip es conserva en arrencada/espera/recuperació/energia i es retira abans d'exposar el Thin Client.

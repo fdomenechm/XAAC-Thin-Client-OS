@@ -37,6 +37,7 @@ graphical:
 - libgtk4-layer-shell0
 - gir1.2-gtk4layershell-1.0
 - swaybg
+- wlrctl
 - x11-xserver-utils
 - librsvg2-common
 - mesa-utils
