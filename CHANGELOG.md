@@ -1,3 +1,12 @@
+## Bloc 8.2 — Transició visual determinista cap al quiosc
+
+- Afegit un fons `swaybg` blanc amb `XAAC_TC_OS.png` abans d'iniciar el supervisor.
+- La pantalla d'espera GTK usa `gtk4-layer-shell` com a overlay en Wayland.
+- El supervisor espera que la superfície d'espera estiga mapejada abans de llançar XAAC Thin Client.
+- `tty1` es pinta de blanc i manté el cursor ocult durant el traspàs de Plymouth/greetd al compositor.
+- El fallback X11 usa un root window blanc abans d'iniciar Openbox.
+- Afegides proves específiques i ampliat `validate-block8-visual.sh` per cobrir la Fase 8.2.
+
 ## 2026-08-15 — Bloc 8.1: cadena d'arrencada amb identitat XAAC
 
 - Unificada la política de paràmetres del kernel de la ISO Live i del sistema instal·lat: els valors visuals de `config/uefi.yaml` es fusionen amb els del perfil de maquinari sense opcions contradictòries.

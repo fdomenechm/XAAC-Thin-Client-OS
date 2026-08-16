@@ -27,7 +27,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError(f"No s'ha pogut carregar el perfil: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise SessionSupervisorError("Perfil de supervisió invàlid o esquema no suportat")
-    for section in ("supervision", "packages", "files"):
+    for section in ("supervision", "visual_handoff", "packages", "files"):
         if not isinstance(raw.get(section), dict):
             raise SessionSupervisorError(f"Secció obligatòria absent: {section}")
     cfg = raw["supervision"]
@@ -67,8 +67,19 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     codes = cfg.get("voluntary_exit_codes")
     if not isinstance(codes, list) or not codes or any(not isinstance(code, int) or code < 0 or code > 255 for code in codes):
         raise SessionSupervisorError("Codis d'eixida voluntària invàlids")
+    visual = raw["visual_handoff"]
+    if set(visual) != {"background_color", "background_image", "background_command", "ready_timeout_seconds", "use_layer_shell"}:
+        raise SessionSupervisorError("Contracte visual de transició incomplet")
+    if visual.get("background_color") != "#ffffff" or visual.get("use_layer_shell") is not True:
+        raise SessionSupervisorError("La transició visual XAAC ha d'usar fons blanc i layer-shell")
+    _safe_absolute(visual.get("background_image"), "background_image")
+    _safe_absolute(visual.get("background_command"), "background_command")
+    ready_timeout = visual.get("ready_timeout_seconds")
+    if not isinstance(ready_timeout, int) or not 1 <= ready_timeout <= 15:
+        raise SessionSupervisorError("Timeout de transició visual invàlid")
     required = raw["packages"].get("required")
-    if not isinstance(required, list) or not {"python3.13", "python3-gi", "gir1.2-gtk-4.0"} <= set(required):
+    visual_packages = {"gir1.2-gtk4layershell-1.0", "libgtk4-layer-shell0", "swaybg"}
+    if not isinstance(required, list) or not ({"python3.13", "python3-gi", "gir1.2-gtk-4.0"} | visual_packages) <= set(required):
         raise SessionSupervisorError("Dependències obligatòries incompletes")
     for name, value in raw["files"].items():
         _safe_absolute(value, name)
@@ -90,7 +101,7 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     if root == Path("/") or root.parent == Path("/"):
         raise SessionSupervisorError(f"Rootfs insegur: {root}")
     profile = load_session_supervisor_profile(profile_path)
-    cfg, files = profile["supervision"], profile["files"]
+    cfg, visual, files = profile["supervision"], profile["visual_handoff"], profile["files"]
     voluntary = " ".join(str(code) for code in cfg["voluntary_exit_codes"])
     status_name = PurePosixPath(str(cfg["status_file"])).name
     supervisor = f'''#!/bin/sh
@@ -100,9 +111,11 @@ ERROR_SCREEN={cfg["error_screen_command"]}
 STARTUP_SCREEN={cfg["startup_screen_command"]}
 STARTUP_MIN={cfg["startup_screen_minimum_seconds"]}
 STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
+STARTUP_READY_TIMEOUT={visual["ready_timeout_seconds"]}
 STATUS_NAME={status_name}
 RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
 STATUS="$RUNTIME_DIR/$STATUS_NAME"
+STARTUP_READY="$RUNTIME_DIR/xaac-startup-screen.ready"
 SHARED_STATE={cfg["shared_state_file"]}
 EVENT_DIR={cfg["event_directory"]}
 THIN_CLIENT_PACKAGE={cfg["thin_client_package"]}
@@ -226,6 +239,17 @@ wait_for_graphics() {{
   [ -n "${{DISPLAY:-}}" ]
 }}
 
+wait_for_startup_surface() {{
+  pid=$1
+  steps=$((STARTUP_READY_TIMEOUT * 10))
+  waited=0
+  while [ ! -f "$STARTUP_READY" ] && kill -0 "$pid" 2>/dev/null && [ "$waited" -lt "$steps" ]; do
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  [ -f "$STARTUP_READY" ]
+}}
+
 attempts=0
 window_start=$(date +%s)
 if ! wait_for_graphics; then
@@ -239,13 +263,18 @@ while :; do
   write_status starting 0 "$attempts"
   write_shared_state starting 0 "$attempts" || true
   publish_event session-starting 0 "$attempts" info
-  "$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" &
+  rm -f "$STARTUP_READY"
+  "$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" "$STARTUP_READY" &
   splash_pid=$!
+  if ! wait_for_startup_surface "$splash_pid"; then
+    publish_event visual-handoff-degraded 0 "$attempts" warning
+  fi
   "$CLIENT" &
   client_pid=$!
   sleep "$STARTUP_MIN"
   kill "$splash_pid" 2>/dev/null || true
   wait "$splash_pid" 2>/dev/null || true
+  rm -f "$STARTUP_READY"
   write_status running 0 "$attempts"
   write_shared_state running 0 "$attempts" || true
   publish_event session-running 0 "$attempts" info
@@ -281,24 +310,59 @@ while :; do
   BACKOFF=$((BACKOFF * 2)); [ "$BACKOFF" -gt "$MAX_BACKOFF" ] && BACKOFF=$MAX_BACKOFF
 done
 '''
-    startup_screen = '''#!/usr/bin/python3.13
-import gi
+    startup_screen = r'''#!/usr/bin/python3.13
+import os
 import signal
 import sys
+from ctypes import CDLL, RTLD_GLOBAL
+from pathlib import Path
 
+_layer_library_loaded = False
+if os.environ.get("WAYLAND_DISPLAY"):
+    try:
+        CDLL("libgtk4-layer-shell.so.0", mode=RTLD_GLOBAL)
+        _layer_library_loaded = True
+    except OSError:
+        pass
+
+import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk
 
+LayerShell = None
+if _layer_library_loaded:
+    try:
+        gi.require_version("Gtk4LayerShell", "1.0")
+        from gi.repository import Gtk4LayerShell as LayerShell
+    except (ImportError, ValueError):
+        LayerShell = None
+
 minimum = max(1, int(sys.argv[1])) if len(sys.argv) > 1 else 2
 timeout = max(minimum, int(sys.argv[2])) if len(sys.argv) > 2 else 20
+ready_file = Path(sys.argv[3]) if len(sys.argv) > 3 else None
 IMAGE = "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png"
 
 
 class StartupApp(Gtk.Application):
+    def _mapped(self, *_args):
+        if ready_file is not None:
+            try:
+                ready_file.write_text("mapped\n", encoding="utf-8")
+            except OSError:
+                pass
+
     def do_activate(self):
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("XAAC Thin Client")
-        window.fullscreen()
+
+        if LayerShell is not None and LayerShell.is_supported():
+            LayerShell.init_for_window(window)
+            LayerShell.set_namespace(window, "xaac-startup")
+            LayerShell.set_layer(window, LayerShell.Layer.OVERLAY)
+            for edge in (LayerShell.Edge.TOP, LayerShell.Edge.BOTTOM, LayerShell.Edge.LEFT, LayerShell.Edge.RIGHT):
+                LayerShell.set_anchor(window, edge, True)
+        else:
+            window.fullscreen()
 
         css = Gtk.CssProvider()
         css.load_from_data(b"""
@@ -318,6 +382,7 @@ class StartupApp(Gtk.Application):
         picture.set_vexpand(True)
 
         window.set_child(picture)
+        window.connect("map", self._mapped)
         window.present()
         GLib.timeout_add_seconds(timeout, self.quit)
 
@@ -347,9 +412,12 @@ class ErrorApp(Gtk.Application):
 app = ErrorApp(application_id="org.xaac.SessionError")
 raise SystemExit(app.run(sys.argv[:1]))
 '''
-    policy = json.dumps(cfg, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    policy_payload = dict(cfg)
+    policy_payload["visual_handoff"] = visual
+    policy = json.dumps(policy_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
-# Managed by XAAC Thin Client OS — Block 7.3 — local Agent integration
+# Managed by XAAC Thin Client OS — Block 8.2 — deterministic visual handoff
+{visual["background_command"]} -i {visual["background_image"]} -m fit -c '{visual["background_color"]}' >/dev/null 2>&1 &
 {cfg["supervisor_command"]} &
 '''
     planned = (

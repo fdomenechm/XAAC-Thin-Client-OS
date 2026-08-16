@@ -20,11 +20,20 @@ supervision:
   state_heartbeat_seconds: 30
   max_events: 128
   voluntary_exit_codes: [0]
+visual_handoff:
+  background_color: "#ffffff"
+  background_image: /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png
+  background_command: /usr/bin/swaybg
+  ready_timeout_seconds: 5
+  use_layer_shell: true
 packages:
   required:
     - python3.13
     - python3-gi
     - gir1.2-gtk-4.0
+    - gir1.2-gtk4layershell-1.0
+    - libgtk4-layer-shell0
+    - swaybg
 files:
   supervisor: /usr/local/libexec/xaac-session-supervisor
   error_screen: /usr/local/libexec/xaac-session-error

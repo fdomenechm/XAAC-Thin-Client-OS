@@ -130,6 +130,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     launcher = (
         "#!/bin/sh\n"
         "set -eu\n"
+        "/usr/local/libexec/xaac-prepare-kiosk-vt || true\n"
         "export XDG_SESSION_TYPE=wayland\n"
         "export XDG_CURRENT_DESKTOP=XAAC\n"
         "export XDG_SESSION_DESKTOP=xaac-kiosk\n"
@@ -146,10 +147,19 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     x11_session = (
         "#!/bin/sh\n"
         "set -eu\n"
+        "/usr/bin/xsetroot -solid '#ffffff' >/dev/null 2>&1 || true\n"
         "/usr/bin/openbox --config-file /etc/xaac/openbox/rc.xml &\n"
         "wm_pid=$!\n"
         "trap 'kill \"$wm_pid\" 2>/dev/null || true' EXIT HUP INT TERM\n"
         "/usr/local/libexec/xaac-session-supervisor\n"
+    )
+    kiosk_vt_prepare = (
+        "#!/bin/sh\n"
+        "set -eu\n"
+        "# Paint tty1 white before the compositor takes DRM control. This hides\n"
+        "# the console gap between Plymouth/greetd and the first XAAC surface.\n"
+        "[ -w /dev/tty1 ] || exit 0\n"
+        "printf '\\033[?25l\\033[37;47m\\033[2J\\033[H\\033[3J' > /dev/tty1\n"
     )
     desktop = (
         "[Desktop Entry]\n"
@@ -170,6 +180,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     planned = (
         (_safe_absolute(files["greetd_config"], "greetd_config"), greetd, 0o600),
         (_safe_absolute(files["session_launcher"], "session_launcher"), launcher, 0o755),
+        (_safe_absolute(files["kiosk_vt_prepare"], "kiosk_vt_prepare"), kiosk_vt_prepare, 0o755),
         (_safe_absolute(files["x11_session"], "x11_session"), x11_session, 0o755),
         (_safe_absolute(files["wayland_session"], "wayland_session"), desktop, 0o644),
         (_safe_absolute(files["environment"], "environment"), environment, 0o644),

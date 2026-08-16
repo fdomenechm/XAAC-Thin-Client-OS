@@ -303,6 +303,10 @@ class BuildSettings:
             "xwayland",
             "python3-gi",
             "gir1.2-gtk-4.0",
+            "gir1.2-gtk4layershell-1.0",
+            "libgtk4-layer-shell0",
+            "swaybg",
+            "x11-xserver-utils",
             "socat",
             "fonts-roboto",
             "nano",
@@ -890,7 +894,8 @@ class ProductionIsoBuilder:
         )
         self._atomic_write(
             self._inside("/etc/systemd/system/greetd.service.d/10-xaac-mode.conf"),
-            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n",
+            "[Unit]\nConditionKernelCommandLine=!xaac.mode=installer\n\n"
+            "[Service]\nExecStartPre=/usr/local/libexec/xaac-prepare-kiosk-vt\n",
         )
 
     def _configure_openvpn3_network(self) -> None:

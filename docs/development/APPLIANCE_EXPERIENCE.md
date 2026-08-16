@@ -38,10 +38,34 @@ lògica sobre Thin Client, VPN o Agent:
   realment inclosos en l'`initramfs`; si no hi són, la construcció falla abans de
   crear la ISO.
 
+## Fase 8.2 — Transició Plymouth → quiosc → XAAC Thin Client
+
+La Fase 8.2 elimina les carreres visuals entre l'arrancada del compositor, la
+pantalla d'espera i el Thin Client:
+
+- `tty1` es prepara amb fons blanc i cursor ocult abans que `greetd` entregue el
+  control a la sessió gràfica, evitant exposar la consola negra genèrica.
+- `labwc` inicia `swaybg` abans del supervisor amb el mateix actiu
+  `XAAC_TC_OS.png` i fons blanc utilitzats per Plymouth. Això manté una identitat
+  contínua encara que una aplicació tarde a mapar-se.
+- La pantalla d'espera GTK 4 usa `gtk4-layer-shell` en Wayland i ocupa la capa
+  `OVERLAY`; el Thin Client pot inicialitzar-se darrere sense aparéixer abans de
+  temps.
+- El supervisor espera un marcador creat quan la superfície d'espera rep el
+  senyal `map`. Només després llança el client i retira la coberta visual una
+  vegada complida la permanència mínima.
+- Si `gtk4-layer-shell` no està disponible en un backend no Wayland, es conserva
+  el `fullscreen()` GTK com a fallback. El fallback X11 pinta també el root window
+  de blanc abans d'iniciar Openbox.
+- El contracte local OS ↔ Agent i la porta VPN continuen sense canvis: el client
+  segueix iniciant-se mitjançant `/usr/local/libexec/xaac-vpn-session-gate`.
+
+La validació ràpida es realitza amb `scripts/validate-block8-visual.sh` i comprova
+l'ordre del handoff, dependències, scripts POSIX i sintaxi Python sense construir
+la ISO.
+
 ## Àrees pendents del Bloc 8
 
-Les iteracions següents revisaran la transició Plymouth → compositor → pantalla
-d'inici → XAAC Thin Client, el comportament de login/quiosc, les pantalles d'error
-i recuperació, les transicions de reinici/apagat i una validació final sobre
-maquinari real. Es prioritzaran canvis que es puguen validar sense reconstruir la
+Les iteracions següents revisaran les pantalles d'error i recuperació, el
+comportament visual de reinici/apagat i una validació final sobre maquinari real. Es prioritzaran canvis que es puguen validar sense reconstruir la
 ISO i es reservarà la generació completa per a punts de control útils.
