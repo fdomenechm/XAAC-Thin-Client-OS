@@ -149,7 +149,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     x11_session = (
         "#!/bin/sh\n"
         "set -eu\n"
-        "/usr/bin/xsetroot -solid '#ffffff' >/dev/null 2>&1 || true\n"
+        "/usr/bin/xsetroot -solid '#383e42' >/dev/null 2>&1 || true\n"
         "/usr/bin/openbox --config-file /etc/xaac/openbox/rc.xml &\n"
         "wm_pid=$!\n"
         "trap 'kill \"$wm_pid\" 2>/dev/null || true' EXIT HUP INT TERM\n"
@@ -158,10 +158,10 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     kiosk_vt_prepare = (
         "#!/bin/sh\n"
         "set -eu\n"
-        "# Paint tty1 white before the compositor takes DRM control. This hides\n"
+        "# Paint tty1 dark anthracite before the compositor takes DRM control. This hides\n"
         "# the console gap between Plymouth/greetd and the first XAAC surface.\n"
         "[ -w /dev/tty1 ] || exit 0\n"
-        "printf '\\033[?25l\\033[37;47m\\033[2J\\033[H\\033[3J' > /dev/tty1\n"
+        "printf '\\033[?25l\\033[37;100m\\033[2J\\033[H\\033[3J' > /dev/tty1\n"
     )
     desktop = (
         "[Desktop Entry]\n"

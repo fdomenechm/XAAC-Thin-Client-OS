@@ -1027,9 +1027,9 @@ ready_file=$runtime_dir/xaac-power-transition.ready
 pid_file=/run/xaac-power-transition.pid
 screen=/usr/local/libexec/xaac-power-transition
 
-# Prepare tty1 as an XAAC-neutral white canvas in case the compositor vanishes
+# Prepare tty1 as an XAAC-neutral anthracite canvas in case the compositor vanishes
 # before Plymouth takes ownership of the framebuffer.
-printf '\033[?25l\033[37;47m\033[2J\033[H\033[3J' > /dev/tty1 2>/dev/null || true
+printf '\033[?25l\033[37;100m\033[2J\033[H\033[3J' > /dev/tty1 2>/dev/null || true
 rm -f "$ready_file" "$pid_file"
 [ -x "$screen" ] || exit 0
 [ -d "$runtime_dir" ] || exit 0
@@ -1236,7 +1236,7 @@ exit 0
             "systemd-poweroff.service systemd-reboot.service systemd-halt.service\n\n"
             "[Service]\n"
             "Type=oneshot\n"
-            "ExecStart=/bin/sh -c 'printf \"\\033[?25l\\033[37;47m\\033[2J\\033[H\\033[3J\" > /dev/tty1'\n\n"
+            "ExecStart=/bin/sh -c 'printf \"\\033[?25l\\033[37;100m\\033[2J\\033[H\\033[3J\" > /dev/tty1'\n\n"
             "[Install]\n"
             "WantedBy=poweroff.target reboot.target halt.target\n",
             0o644,

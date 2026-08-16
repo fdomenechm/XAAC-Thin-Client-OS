@@ -159,7 +159,8 @@ def test_startup_screen_is_fullscreen_and_bounded(tmp_path: Path, project_root: 
     assert 'IMAGE = "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png"' in splash
     assert "Gtk.Picture.new_for_filename(IMAGE)" in splash
     assert "Gtk.ContentFit.CONTAIN" in splash
-    assert "background: #ffffff" in splash
+    assert "BACKGROUND = \"#383e42\"" in splash
+    assert "window { background: " in splash
     assert '"$STARTUP_SCREEN" "$STARTUP_MIN" "$STARTUP_TIMEOUT" "$STARTUP_READY" &' in supervisor
     assert 'wait_for_startup_surface "$splash_pid"' in supervisor
     assert 'kill "$splash_pid"' in supervisor

@@ -25,4 +25,4 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     tests/test_kiosk_modal_power_runtime.py \
     tests/test_tty_cursor_visibility.py
 
-printf '%s\n' "Bloc 8.5.1: validació visual, instal·lador i handoff sense pantalles negres superada."
+printf '%s\n' "Bloc 8.5.2: validació visual, fons antracita, instal·lador i handoff superada."

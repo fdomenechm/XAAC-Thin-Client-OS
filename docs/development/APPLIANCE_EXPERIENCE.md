@@ -43,10 +43,10 @@ lògica sobre Thin Client, VPN o Agent:
 La Fase 8.2 elimina les carreres visuals entre l'arrancada del compositor, la
 pantalla d'espera i el Thin Client:
 
-- `tty1` es prepara amb fons blanc i cursor ocult abans que `greetd` entregue el
+- `tty1` es prepara amb fons gris fosc de consola i cursor ocult abans que `greetd` entregue el
   control a la sessió gràfica, evitant exposar la consola negra genèrica.
 - `labwc` inicia `swaybg` abans del supervisor amb el mateix actiu
-  `XAAC_TC_OS.png` i fons blanc utilitzats per Plymouth. Això manté una identitat
+  `XAAC_TC_OS.png` sobre un canvas antracita `#383e42`. Això manté una identitat
   contínua encara que una aplicació tarde a mapar-se.
 - La pantalla d'espera GTK 4 usa `gtk4-layer-shell` en Wayland i ocupa la capa
   `OVERLAY`; el Thin Client pot inicialitzar-se darrere sense aparéixer abans de
@@ -56,7 +56,7 @@ pantalla d'espera i el Thin Client:
   vegada complida la permanència mínima.
 - Si `gtk4-layer-shell` no està disponible en un backend no Wayland, es conserva
   el `fullscreen()` GTK com a fallback. El fallback X11 pinta també el root window
-  de blanc abans d'iniciar Openbox.
+  amb el mateix antracita `#383e42` abans d'iniciar Openbox.
 - El contracte local OS ↔ Agent i la porta VPN continuen sense canvis: el client
   segueix iniciant-se mitjançant `/usr/local/libexec/xaac-vpn-session-gate`.
 
@@ -108,8 +108,8 @@ en què Plymouth pren el control del framebuffer:
 - Si `systemctl` rebutja l'acció, el procés visual es tanca i el control torna al
   Thin Client, que pot informar de l'error sense deixar una pantalla de tancament
   permanent.
-- Com a segon nivell de protecció, `tty1` es prepara immediatament amb fons blanc
-  i cursor ocult; el servei `xaac-clear-console-before-shutdown.service` repeteix
+- Com a segon nivell de protecció, `tty1` es prepara immediatament amb gris fosc
+  de consola i cursor ocult; el servei `xaac-clear-console-before-shutdown.service` repeteix
   la neteja just abans dels serveis Plymouth d'apagada/reinici.
 - No es modifica la política d'autorització: els únics executables permesos a
   `xaac-kiosk` continuen sent els helpers fixos `xaac-kiosk-poweroff` i
@@ -123,7 +123,7 @@ XAAC Thin Client ja està disponible per a l'usuari:
 - El branding complet `XAAC_TC_OS.png` continua reservat a arrencada, handoff,
   recuperació i apagada/reinici.
 - Mentre la superfície d'inici cobreix la pantalla, el supervisor substitueix el
-  `swaybg` de branding per un fons uniforme grafit `#4a4d52`; només després retira
+  `swaybg` de branding per un fons uniforme antracita `#383e42`; només després retira
   l'overlay. Per tant, la sessió estable no conserva el logotip darrere del Thin
   Client i tampoc exposa un fons negre o excessivament clar.
 - El fallback X11 aplica el mateix color estable mitjançant `xsetroot`.
@@ -144,12 +144,23 @@ considerar-se tancats només amb tests estàtics:
   consola passa a `Uni2-Terminus16` per ampliar la cobertura Unicode.
 - `labwc` configura `reuseOutputMode=yes`, evitant un canvi de mode de vídeo
   innecessari en prendre el DRM. A més, `xaac-boot-handoff.service` prepara el
-  canvas blanc de `tty1` abans que Plymouth abandone la pantalla i abans de
+  canvas antracita de `tty1` abans que Plymouth abandone la pantalla i abans de
   `greetd`.
 - En Wayland, la coberta d'inici ja no desapareix després d'un temps fix: `wlrctl`
   observa `wlr-foreign-toplevel-management` i la manté amb cursor `wait` fins que
   existeix una superfície interactiva real de XAAC Thin Client o XAAC Thin Client
   VPN. El timeout continua sent limitat per evitar bloquejos permanents.
+
+### Correcció 8.5.2 — canvas antracita coherent
+
+- El color neutre de handoff i de sessió estable passa a `#383e42`, més fosc que
+  el grafit anterior i sense arribar al negre.
+- Wayland i X11 mantenen exactament el mateix color darrere de XAAC Thin Client VPN
+  i XAAC Thin Client.
+- Els canvassos breus de `tty1` usen el gris fosc disponible en la paleta ANSI de
+  consola, reduint el salt visual entre Plymouth, el compositor i l'apagada.
+- Plymouth i les superfícies completes de recuperació/energia conserven el branding
+  clar existent perquè `XAAC_TC_OS.png` està dissenyada per eixe fons.
 
 ## Àrees pendents del Bloc 8
 

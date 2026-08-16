@@ -19,7 +19,7 @@ def test_visual_handoff_profile_is_xaac_branded(project_root: Path) -> None:
     profile = load_session_supervisor_profile(project_root / "config/session-supervisor.yaml")
     visual = profile["visual_handoff"]
     assert visual == {
-        "background_color": "#ffffff",
+        "background_color": "#383e42",
         "background_image": "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png",
         "background_command": "/usr/bin/swaybg",
         "ready_timeout_seconds": 5,
@@ -51,12 +51,12 @@ def test_wayland_handoff_maps_overlay_before_client(tmp_path: Path, project_root
 def test_labwc_background_precedes_supervisor(tmp_path: Path, project_root: Path) -> None:
     files = _supervisor_files(tmp_path, project_root)
     autostart = files["/etc/xaac/labwc/autostart"]
-    background = "/usr/bin/swaybg -i /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png -m fit -c '#ffffff'"
+    background = "/usr/bin/swaybg -i /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png -m fit -c '#383e42'"
     assert background in autostart
     assert autostart.index("/usr/bin/swaybg") < autostart.index("/usr/local/libexec/xaac-session-supervisor")
 
 
-def test_tty_and_x11_fallback_are_white_not_generic_black(tmp_path: Path, project_root: Path) -> None:
+def test_tty_and_x11_fallback_are_anthracite_not_generic_black(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_manager_plan(
         tmp_path / "build/rootfs", project_root / "config/session-manager.yaml"
     )
@@ -64,10 +64,10 @@ def test_tty_and_x11_fallback_are_white_not_generic_black(tmp_path: Path, projec
     tty = files["/usr/local/libexec/xaac-prepare-kiosk-vt"]
     x11 = files["/usr/local/libexec/xaac-x11-session"]
     session = files["/usr/local/libexec/xaac-session"]
-    assert "\\033[37;47m" in tty
+    assert "\\033[37;100m" in tty
     assert "\\033[?25l" in tty
     assert "/usr/local/libexec/xaac-prepare-kiosk-vt || true" in session
-    assert "/usr/bin/xsetroot -solid '#ffffff'" in x11
+    assert "/usr/bin/xsetroot -solid '#383e42'" in x11
 
 
 def test_production_builder_installs_visual_handoff_dependencies(project_root: Path) -> None:

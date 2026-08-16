@@ -18,10 +18,10 @@ def _files(tmp_path: Path, project_root: Path) -> dict[str, str]:
 
 def test_phase85_profile_separates_handoff_from_stable_session(project_root: Path) -> None:
     profile = load_session_supervisor_profile(project_root / "config/session-supervisor.yaml")
-    assert profile["visual_handoff"]["background_color"] == "#ffffff"
+    assert profile["visual_handoff"]["background_color"] == "#383e42"
     assert profile["visual_handoff"]["background_image"].endswith("XAAC_TC_OS.png")
     stable = profile["visual_session"]
-    assert stable["stable_background_color"] == "#4a4d52"
+    assert stable["stable_background_color"] == "#383e42"
     assert stable["stable_background_color"] not in {"#000000", "#ffffff"}
     assert stable["busy_cursor_name"] == "wait"
     assert stable["normal_cursor_name"] == "default"
@@ -37,7 +37,7 @@ def test_phase85_wayland_background_switch_happens_behind_startup_overlay(
     autostart = files["/etc/xaac/labwc/autostart"]
     assert "xaac-handoff-background.pid" in autostart
     assert "-i /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png" in autostart
-    assert 'STABLE_BACKGROUND=#4a4d52' in supervisor
+    assert 'STABLE_BACKGROUND=#383e42' in supervisor
     assert '"$BACKGROUND_COMMAND" -c "$STABLE_BACKGROUND"' in supervisor
     assert 'kill "$handoff_pid"' in supervisor
     start_client = supervisor.index('"$CLIENT" &')
@@ -78,7 +78,7 @@ def test_phase85_session_exports_consistent_cursor_theme(tmp_path: Path, project
 def test_phase85_policy_serializes_visual_feedback(tmp_path: Path, project_root: Path) -> None:
     policy = _files(tmp_path, project_root)["/etc/xaac/session/session-supervisor-policy.json"]
     payload = json.loads(policy)
-    assert payload["visual_session"]["stable_background_color"] == "#4a4d52"
+    assert payload["visual_session"]["stable_background_color"] == "#383e42"
     assert payload["visual_session"]["busy_cursor_name"] == "wait"
 
 

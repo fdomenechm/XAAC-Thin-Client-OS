@@ -1,3 +1,10 @@
+## 2026-08-16 — Bloc 8.5.2: fons antracita coherent
+
+- Enfosquit el canvas visual de handoff i el fons estable de sessió a `#383e42`, un gris antracita uniforme.
+- Wayland (`swaybg`) i el fallback X11 (`xsetroot`) usen el mateix color darrere de XAAC Thin Client VPN i XAAC Thin Client, evitant el negre del compositor o del root window.
+- Els breus canvassos de `tty1` abans/després de la sessió passen de blanc a gris fosc de consola (`ANSI 100`) per reduir canvis bruscos de llum durant el handoff i l'apagada.
+- Es conserva el branding clar de Plymouth i de les pantalles XAAC de recuperació/energia; només s'unifica el canvas neutre que queda visible entre superfícies i darrere de les aplicacions.
+
 ## 2026-08-16 — Bloc 8.5.1: correcció visual en maquinari real
 
 - Reactivat el cursor de text en l'instal·lador i forçats `LANG/LC_ALL=ca_ES.UTF-8` amb `setupcon` abans de mostrar els formularis de TTY.

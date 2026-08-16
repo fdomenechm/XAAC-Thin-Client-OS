@@ -21,13 +21,13 @@ supervision:
   max_events: 128
   voluntary_exit_codes: [0]
 visual_handoff:
-  background_color: "#ffffff"
+  background_color: "#383e42"
   background_image: /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png
   background_command: /usr/bin/swaybg
   ready_timeout_seconds: 5
   use_layer_shell: true
 visual_session:
-  stable_background_color: "#4a4d52"
+  stable_background_color: "#383e42"
   cursor_theme: Adwaita
   cursor_size: 24
   busy_cursor_name: wait

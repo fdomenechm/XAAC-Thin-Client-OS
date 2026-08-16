@@ -70,8 +70,8 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     visual = raw["visual_handoff"]
     if set(visual) != {"background_color", "background_image", "background_command", "ready_timeout_seconds", "use_layer_shell"}:
         raise SessionSupervisorError("Contracte visual de transició incomplet")
-    if visual.get("background_color") != "#ffffff" or visual.get("use_layer_shell") is not True:
-        raise SessionSupervisorError("La transició visual XAAC ha d'usar fons blanc i layer-shell")
+    if visual.get("background_color") != "#383e42" or visual.get("use_layer_shell") is not True:
+        raise SessionSupervisorError("La transició visual XAAC ha d'usar fons antracita i layer-shell")
     _safe_absolute(visual.get("background_image"), "background_image")
     _safe_absolute(visual.get("background_command"), "background_command")
     ready_timeout = visual.get("ready_timeout_seconds")
@@ -463,6 +463,7 @@ minimum = max(1, int(sys.argv[1])) if len(sys.argv) > 1 else 2
 timeout = max(minimum, int(sys.argv[2])) if len(sys.argv) > 2 else 20
 ready_file = Path(sys.argv[3]) if len(sys.argv) > 3 else None
 IMAGE = "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png"
+BACKGROUND = "__HANDOFF_BACKGROUND__"
 
 
 class StartupApp(Gtk.Application):
@@ -487,11 +488,9 @@ class StartupApp(Gtk.Application):
             window.fullscreen()
 
         css = Gtk.CssProvider()
-        css.load_from_data(b"""
-            window {
-                background: #ffffff;
-            }
-        """)
+        css.load_from_data((
+            "window { background: " + BACKGROUND + "; }"
+        ).encode("utf-8"))
         Gtk.StyleContext.add_provider_for_display(
             window.get_display(),
             css,
@@ -514,7 +513,10 @@ app = StartupApp(application_id="org.xaac.StartupScreen")
 signal.signal(signal.SIGTERM, lambda *_: app.quit())
 raise SystemExit(app.run(sys.argv[:1]))
 '''
-    startup_screen = startup_screen.replace("__BUSY_CURSOR__", session_visual["busy_cursor_name"])
+    startup_screen = (startup_screen
+        .replace("__BUSY_CURSOR__", session_visual["busy_cursor_name"])
+        .replace("__HANDOFF_BACKGROUND__", visual["background_color"])
+    )
     error_screen = r'''#!/usr/bin/python3.13
 import os
 import signal

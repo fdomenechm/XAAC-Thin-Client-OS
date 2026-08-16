@@ -94,7 +94,7 @@ def test_phase84_root_launcher_discovers_kiosk_display_and_waits_only_bounded_ti
     assert '"$screen" "$action" "$ready_file"' in launcher
     assert '[ "$steps" -lt 20 ]' in launcher
     assert "sleep 0.1" in launcher
-    assert r"\033[?25l\033[37;47m\033[2J\033[H\033[3J" in launcher
+    assert r"\033[?25l\033[37;100m\033[2J\033[H\033[3J" in launcher
 
 
 def test_phase84_power_helpers_cover_screen_before_systemctl_and_cleanup_on_failure(
@@ -121,8 +121,8 @@ def test_phase84_generated_root_helpers_are_posix_shell(tmp_path: Path) -> None:
         assert result.returncode == 0, result.stderr
 
 
-def test_phase84_shutdown_console_cleanup_hides_cursor_and_uses_white_canvas() -> None:
+def test_phase84_shutdown_console_cleanup_hides_cursor_and_uses_anthracite_canvas() -> None:
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     assert "xaac-clear-console-before-shutdown.service" in source
-    assert r"\033[?25l\033[37;47m\033[2J\033[H\033[3J" in source
+    assert r"\033[?25l\033[37;100m\033[2J\033[H\033[3J" in source
     assert "Before=plymouth-poweroff.service plymouth-reboot.service plymouth-halt.service" in source
