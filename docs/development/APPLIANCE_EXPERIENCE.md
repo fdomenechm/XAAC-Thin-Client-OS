@@ -64,8 +64,35 @@ La validació ràpida es realitza amb `scripts/validate-block8-visual.sh` i comp
 l'ordre del handoff, dependències, scripts POSIX i sintaxi Python sense construir
 la ISO.
 
+## Fase 8.3 — Errors i recuperació amb identitat XAAC
+
+La Fase 8.3 cobreix els camins de fallada del Thin Client sense introduir accions
+destructives ni modificar els contractes validats amb VPN o Agent:
+
+- Quan el procés del Thin Client finalitza de manera inesperada, el supervisor
+  conserva la política de reinici limitada i el `backoff` exponencial existent.
+  Durant eixe interval mostra una superfície XAAC de recuperació en lloc de
+  deixar visible només el compositor o una finestra Linux genèrica.
+- La superfície de recuperació reutilitza `XAAC_TC_OS.png`, fons blanc, Roboto i
+  `gtk4-layer-shell` en capa `OVERLAY`, de manera coherent amb la transició de
+  la Fase 8.2.
+- Cada fallada genera un codi d'incidència local de la forma
+  `SES-<exit>-<intent>`. El codi facilita el suport sense mostrar journals,
+  tracebacks, noms d'unitats systemd ni informació interna a l'usuari.
+- Quan se supera el màxim de reinicis, el supervisor entra en estat `degraded`
+  i manté una pantalla XAAC estable que indica que cal contactar amb
+  l'administrador. No s'executen automàticament factory reset, rollback,
+  apagada ni reinici del dispositiu.
+- Si no existeix ni Wayland ni X11, `xaac-session-error` disposa d'un fallback
+  mínim sobre `tty1`: neteja la consola, aplica fons blanc, oculta el cursor i
+  mostra només identitat XAAC i el codi d'incidència. No inicia cap greeter ni
+  login interactiu en `tty1`.
+- El supervisor publica l'event local `session-recovering` abans de cada intent,
+  mantenint el contracte d'estat OS ↔ Agent sense alterar-ne les rutes ni els
+  permisos.
+
 ## Àrees pendents del Bloc 8
 
-Les iteracions següents revisaran les pantalles d'error i recuperació, el
-comportament visual de reinici/apagat i una validació final sobre maquinari real. Es prioritzaran canvis que es puguen validar sense reconstruir la
+Les iteracions següents revisaran el comportament visual de reinici/apagat i
+una validació final sobre maquinari real. Es prioritzaran canvis que es puguen validar sense reconstruir la
 ISO i es reservarà la generació completa per a punts de control útils.

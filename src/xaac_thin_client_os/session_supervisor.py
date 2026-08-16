@@ -27,7 +27,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError(f"No s'ha pogut carregar el perfil: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise SessionSupervisorError("Perfil de supervisió invàlid o esquema no suportat")
-    for section in ("supervision", "visual_handoff", "packages", "files"):
+    for section in ("supervision", "visual_handoff", "visual_recovery", "packages", "files"):
         if not isinstance(raw.get(section), dict):
             raise SessionSupervisorError(f"Secció obligatòria absent: {section}")
     cfg = raw["supervision"]
@@ -77,6 +77,21 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     ready_timeout = visual.get("ready_timeout_seconds")
     if not isinstance(ready_timeout, int) or not 1 <= ready_timeout <= 15:
         raise SessionSupervisorError("Timeout de transició visual invàlid")
+    recovery = raw["visual_recovery"]
+    recovery_keys = {
+        "background_color", "background_image", "use_layer_shell",
+        "recovery_title", "recovery_message", "failure_title",
+        "failure_message", "incident_prefix",
+    }
+    if set(recovery) != recovery_keys:
+        raise SessionSupervisorError("Contracte visual de recuperació incomplet")
+    if recovery.get("background_color") != "#ffffff" or recovery.get("use_layer_shell") is not True:
+        raise SessionSupervisorError("La recuperació visual XAAC ha d'usar fons blanc i layer-shell")
+    _safe_absolute(recovery.get("background_image"), "visual_recovery.background_image")
+    for key in ("recovery_title", "recovery_message", "failure_title", "failure_message", "incident_prefix"):
+        value = recovery.get(key)
+        if not isinstance(value, str) or not value.strip() or len(value) > 160:
+            raise SessionSupervisorError(f"Text de recuperació invàlid: {key}")
     required = raw["packages"].get("required")
     visual_packages = {"gir1.2-gtk4layershell-1.0", "libgtk4-layer-shell0", "swaybg"}
     if not isinstance(required, list) or not ({"python3.13", "python3-gi", "gir1.2-gtk-4.0"} | visual_packages) <= set(required):
@@ -101,7 +116,7 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     if root == Path("/") or root.parent == Path("/"):
         raise SessionSupervisorError(f"Rootfs insegur: {root}")
     profile = load_session_supervisor_profile(profile_path)
-    cfg, visual, files = profile["supervision"], profile["visual_handoff"], profile["files"]
+    cfg, visual, recovery, files = profile["supervision"], profile["visual_handoff"], profile["visual_recovery"], profile["files"]
     voluntary = " ".join(str(code) for code in cfg["voluntary_exit_codes"])
     status_name = PurePosixPath(str(cfg["status_file"])).name
     supervisor = f'''#!/bin/sh
@@ -256,7 +271,7 @@ if ! wait_for_graphics; then
   write_status degraded 75 0
   write_shared_state degraded 75 0 || true
   publish_event session-degraded 75 0 error
-  exec "$ERROR_SCREEN" 75 0
+  exec "$ERROR_SCREEN" 75 0 degraded 0
 fi
 while :; do
   started=$(date +%s)
@@ -304,9 +319,12 @@ while :; do
     write_status degraded "$code" "$attempts"
     write_shared_state degraded "$code" "$attempts" || true
     publish_event session-degraded "$code" "$attempts" error
-    exec "$ERROR_SCREEN" "$code" "$attempts"
+    exec "$ERROR_SCREEN" "$code" "$attempts" degraded 0
   fi
-  sleep "$BACKOFF"
+  publish_event session-recovering "$code" "$attempts" info
+  if ! "$ERROR_SCREEN" "$code" "$attempts" recovering "$BACKOFF"; then
+    sleep "$BACKOFF"
+  fi
   BACKOFF=$((BACKOFF * 2)); [ "$BACKOFF" -gt "$MAX_BACKOFF" ] && BACKOFF=$MAX_BACKOFF
 done
 '''
@@ -391,29 +409,154 @@ app = StartupApp(application_id="org.xaac.StartupScreen")
 signal.signal(signal.SIGTERM, lambda *_: app.quit())
 raise SystemExit(app.run(sys.argv[:1]))
 '''
-    error_screen = '''#!/usr/bin/python3.13
-import gi, sys
-gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+    error_screen = r'''#!/usr/bin/python3.13
+import os
+import signal
+import sys
+import time
+from ctypes import CDLL, RTLD_GLOBAL
 
-class ErrorApp(Gtk.Application):
+exit_code = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+attempts = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+mode = sys.argv[3] if len(sys.argv) > 3 else "degraded"
+duration = max(0, int(sys.argv[4])) if len(sys.argv) > 4 else 0
+if mode not in {"recovering", "degraded"}:
+    mode = "degraded"
+
+IMAGE = "__RECOVERY_IMAGE__"
+BACKGROUND = "__RECOVERY_BACKGROUND__"
+RECOVERY_TITLE = "__RECOVERY_TITLE__"
+RECOVERY_MESSAGE = "__RECOVERY_MESSAGE__"
+FAILURE_TITLE = "__FAILURE_TITLE__"
+FAILURE_MESSAGE = "__FAILURE_MESSAGE__"
+INCIDENT_PREFIX = "__INCIDENT_PREFIX__"
+incident = f"SES-{exit_code:03d}-{attempts:02d}"
+
+
+def console_fallback():
+    # Keep tty1 XAAC-branded if the graphical stack itself is unavailable.
+    try:
+        with open("/dev/tty1", "w", encoding="utf-8", buffering=1) as tty:
+            tty.write("\033[?25l\033[37;47m\033[2J\033[H\033[3J")
+            tty.write("\n\nXAAC Thin Client\n\n")
+            tty.write((RECOVERY_TITLE if mode == "recovering" else FAILURE_TITLE) + "\n")
+            tty.write(f"{INCIDENT_PREFIX}: {incident}\n")
+    except OSError:
+        pass
+    if duration > 0:
+        time.sleep(duration)
+        return 0
+    while True:
+        time.sleep(3600)
+
+
+if not os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY"):
+    raise SystemExit(console_fallback())
+
+_layer_library_loaded = False
+if os.environ.get("WAYLAND_DISPLAY"):
+    try:
+        CDLL("libgtk4-layer-shell.so.0", mode=RTLD_GLOBAL)
+        _layer_library_loaded = True
+    except OSError:
+        pass
+
+try:
+    import gi
+    gi.require_version("Gtk", "4.0")
+    from gi.repository import GLib, Gtk
+except (ImportError, ValueError):
+    raise SystemExit(console_fallback())
+
+LayerShell = None
+if _layer_library_loaded:
+    try:
+        gi.require_version("Gtk4LayerShell", "1.0")
+        from gi.repository import Gtk4LayerShell as LayerShell
+    except (ImportError, ValueError):
+        LayerShell = None
+
+
+class RecoveryApp(Gtk.Application):
     def do_activate(self):
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("XAAC Thin Client")
-        window.fullscreen()
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        box.set_halign(Gtk.Align.CENTER); box.set_valign(Gtk.Align.CENTER)
-        title = Gtk.Label(label="No s'ha pogut iniciar la sessió")
-        title.add_css_class("title-1")
-        detail = Gtk.Label(label="El sistema ha entrat en mode segur. Contacteu amb l'administrador.")
-        detail.set_wrap(True); detail.set_justify(Gtk.Justification.CENTER)
-        box.append(title); box.append(detail); window.set_child(box); window.present()
 
-app = ErrorApp(application_id="org.xaac.SessionError")
+        if LayerShell is not None and LayerShell.is_supported():
+            LayerShell.init_for_window(window)
+            LayerShell.set_namespace(window, "xaac-recovery")
+            LayerShell.set_layer(window, LayerShell.Layer.OVERLAY)
+            for edge in (LayerShell.Edge.TOP, LayerShell.Edge.BOTTOM, LayerShell.Edge.LEFT, LayerShell.Edge.RIGHT):
+                LayerShell.set_anchor(window, edge, True)
+        else:
+            window.fullscreen()
+
+        css = Gtk.CssProvider()
+        css.load_from_data((
+            "window { background: " + BACKGROUND + "; color: #202124; font-family: Roboto, sans-serif; }"
+            ".xaac-recovery-title { font-size: 30px; font-weight: 700; }"
+            ".xaac-recovery-message { font-size: 17px; }"
+            ".xaac-recovery-code { font-size: 14px; color: #5f6368; }"
+        ).encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_display(
+            window.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        layout.set_halign(Gtk.Align.CENTER)
+        layout.set_valign(Gtk.Align.CENTER)
+        layout.set_margin_start(48)
+        layout.set_margin_end(48)
+
+        picture = Gtk.Picture.new_for_filename(IMAGE)
+        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_size_request(420, 180)
+
+        title = Gtk.Label(label=RECOVERY_TITLE if mode == "recovering" else FAILURE_TITLE)
+        title.add_css_class("xaac-recovery-title")
+        title.set_justify(Gtk.Justification.CENTER)
+
+        message = Gtk.Label(label=RECOVERY_MESSAGE if mode == "recovering" else FAILURE_MESSAGE)
+        message.add_css_class("xaac-recovery-message")
+        message.set_wrap(True)
+        message.set_max_width_chars(60)
+        message.set_justify(Gtk.Justification.CENTER)
+
+        code = Gtk.Label(label=f"{INCIDENT_PREFIX}: {incident}")
+        code.add_css_class("xaac-recovery-code")
+
+        layout.append(picture)
+        layout.append(title)
+        layout.append(message)
+        layout.append(code)
+        window.set_child(layout)
+        window.present()
+
+        if duration > 0:
+            GLib.timeout_add_seconds(duration, self._finish)
+
+    def _finish(self):
+        self.quit()
+        return False
+
+
+app = RecoveryApp(application_id="org.xaac.SessionRecovery")
+signal.signal(signal.SIGTERM, lambda *_: app.quit())
 raise SystemExit(app.run(sys.argv[:1]))
 '''
+    error_screen = (
+        error_screen
+        .replace("__RECOVERY_IMAGE__", recovery["background_image"])
+        .replace("__RECOVERY_BACKGROUND__", recovery["background_color"])
+        .replace("__RECOVERY_TITLE__", recovery["recovery_title"])
+        .replace("__RECOVERY_MESSAGE__", recovery["recovery_message"])
+        .replace("__FAILURE_TITLE__", recovery["failure_title"])
+        .replace("__FAILURE_MESSAGE__", recovery["failure_message"])
+        .replace("__INCIDENT_PREFIX__", recovery["incident_prefix"])
+    )
     policy_payload = dict(cfg)
     policy_payload["visual_handoff"] = visual
+    policy_payload["visual_recovery"] = recovery
     policy = json.dumps(policy_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
 # Managed by XAAC Thin Client OS — Block 8.2 — deterministic visual handoff

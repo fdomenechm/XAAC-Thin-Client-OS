@@ -1,3 +1,12 @@
+## 2026-08-16 — Bloc 8.3: errors i recuperació amb identitat XAAC
+
+- Les caigudes inesperades del Thin Client queden cobertes durant el `backoff` per una superfície XAAC de recuperació.
+- La pantalla de recuperació reutilitza el branding XAAC, fons blanc, Roboto i `gtk4-layer-shell` en capa `OVERLAY`.
+- En superar el límit de reinicis, el mode `degraded` manté una pantalla XAAC estable amb codi d'incidència `SES-<exit>-<intent>`, sense exposar diàlegs GTK genèrics, journals o tracebacks.
+- Afegit fallback de `tty1` per a absència total de display: consola neta, blanca, cursor ocult i missatge XAAC, sense greeter ni login a `tty1`.
+- No s'han afegit accions destructives ni reinicis automàtics; es conserva la política de supervisió existent i els contractes VPN/Agent.
+- Afegides proves específiques de Fase 8.3 i ampliat `scripts/validate-block8-visual.sh`.
+
 ## Bloc 8.2 — Transició visual determinista cap al quiosc
 
 - Afegit un fons `swaybg` blanc amb `XAAC_TC_OS.png` abans d'iniciar el supervisor.
