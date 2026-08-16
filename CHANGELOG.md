@@ -1,3 +1,12 @@
+## 2026-08-16 — Bloc 8.5: feedback d'activitat i fons estable de sessió
+
+- Separat el fons de transició XAAC del fons de sessió estable: el logotip es conserva en arrencada/espera/recuperació/energia i es retira abans d'exposar el Thin Client.
+- Afegit fons estable grafit `#4a4d52`, uniforme, no negre i sense text ni logotip, tant en Wayland (`swaybg`) com en el fallback X11 (`xsetroot`).
+- El canvi de fons es realitza darrere de l'overlay d'inici per evitar flaixos del compositor durant el handoff.
+- Afegit cursor `wait` durant inici/VPN, recuperació i transicions d'apagada/reinici; la sessió normal conserva el cursor estàndard.
+- Fixats `XCURSOR_THEME=Adwaita` i `XCURSOR_SIZE=24` abans d'iniciar el compositor per mantindre un feedback visual coherent.
+- Afegides proves específiques de la Fase 8.5 i ampliat el gate ràpid del Bloc 8.
+
 ## 2026-08-16 — Bloc 8.4: apagada i reinici amb transició XAAC
 
 - Afegida la superfície `xaac-power-transition` per cobrir el tram entre la confirmació d'apagada/reinici i Plymouth.

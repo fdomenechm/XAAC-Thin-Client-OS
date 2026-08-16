@@ -115,8 +115,25 @@ en què Plymouth pren el control del framebuffer:
   `xaac-kiosk` continuen sent els helpers fixos `xaac-kiosk-poweroff` i
   `xaac-kiosk-reboot`, sense concedir sudo genèric.
 
+## Fase 8.5 — Feedback d'activitat i fons estable de sessió
+
+La Fase 8.5 diferencia explícitament els moments de transició dels moments en què
+XAAC Thin Client ja està disponible per a l'usuari:
+
+- El branding complet `XAAC_TC_OS.png` continua reservat a arrencada, handoff,
+  recuperació i apagada/reinici.
+- Mentre la superfície d'inici cobreix la pantalla, el supervisor substitueix el
+  `swaybg` de branding per un fons uniforme grafit `#4a4d52`; només després retira
+  l'overlay. Per tant, la sessió estable no conserva el logotip darrere del Thin
+  Client i tampoc exposa un fons negre o excessivament clar.
+- El fallback X11 aplica el mateix color estable mitjançant `xsetroot`.
+- Les superfícies que representen treball real del sistema —inici/VPN, recuperació
+  i apagada/reinici— estableixen el cursor GTK `wait`. El mode d'error estable usa
+  el cursor normal i la sessió ordinària no força cap cursor d'espera.
+- La sessió exporta `XCURSOR_THEME=Adwaita` i `XCURSOR_SIZE=24` abans d'iniciar
+  `labwc`, garantint un cursor coherent i amb animació disponible en el tema base.
+
 ## Àrees pendents del Bloc 8
 
-Després de la Fase 8.4 queda la validació visual integrada sobre una ISO real i
-maquinari Wyse 3040: arrencada, handoff, recuperació, apagada i reinici. Aquest és
-el següent punt útil per assumir el cost d'una construcció completa de la ISO.
+Després de la Fase 8.5 només queda la consolidació i tancament de la Fase 8.6,
+incorporant la validació visual final sobre la ISO i el maquinari real.

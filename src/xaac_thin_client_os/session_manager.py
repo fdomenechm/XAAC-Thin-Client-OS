@@ -136,6 +136,8 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "export XDG_SESSION_DESKTOP=xaac-kiosk\n"
         "export XDG_CONFIG_HOME=/etc/xaac\n"
         "export GDK_BACKEND=wayland,x11\n"
+        "export XCURSOR_THEME=Adwaita\n"
+        "export XCURSOR_SIZE=24\n"
         "if [ -x /usr/bin/labwc ] && [ -e /dev/dri/card0 ]; then\n"
         "    export XDG_SESSION_TYPE=wayland\n"
         "    exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml\n"
@@ -175,6 +177,8 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "XDG_SESSION_DESKTOP=xaac-kiosk\n"
         "XDG_CONFIG_HOME=/etc/xaac\n"
         "GDK_BACKEND=wayland,x11\n"
+        "XCURSOR_THEME=Adwaita\n"
+        "XCURSOR_SIZE=24\n"
     )
     policy = json.dumps({"manager": p["manager"], "session": p["session"], "autologin": p["autologin"], "restrictions": p["restrictions"]}, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     planned = (

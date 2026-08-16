@@ -27,7 +27,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
         raise SessionSupervisorError(f"No s'ha pogut carregar el perfil: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise SessionSupervisorError("Perfil de supervisió invàlid o esquema no suportat")
-    for section in ("supervision", "visual_handoff", "visual_recovery", "visual_power", "packages", "files"):
+    for section in ("supervision", "visual_handoff", "visual_session", "visual_recovery", "visual_power", "packages", "files"):
         if not isinstance(raw.get(section), dict):
             raise SessionSupervisorError(f"Secció obligatòria absent: {section}")
     cfg = raw["supervision"]
@@ -77,6 +77,25 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     ready_timeout = visual.get("ready_timeout_seconds")
     if not isinstance(ready_timeout, int) or not 1 <= ready_timeout <= 15:
         raise SessionSupervisorError("Timeout de transició visual invàlid")
+    session_visual = raw["visual_session"]
+    session_visual_keys = {
+        "stable_background_color", "cursor_theme", "cursor_size",
+        "busy_cursor_name", "normal_cursor_name",
+    }
+    if set(session_visual) != session_visual_keys:
+        raise SessionSupervisorError("Contracte visual de sessió incomplet")
+    stable_background = session_visual.get("stable_background_color")
+    if not isinstance(stable_background, str) or not stable_background.startswith("#") or len(stable_background) != 7:
+        raise SessionSupervisorError("Fons estable de sessió invàlid")
+    if stable_background.lower() in {"#000000", "#ffffff"}:
+        raise SessionSupervisorError("El fons estable no pot ser negre ni blanc")
+    if session_visual.get("cursor_theme") != "Adwaita":
+        raise SessionSupervisorError("El cursor del quiosc ha d'usar el tema Adwaita")
+    cursor_size = session_visual.get("cursor_size")
+    if not isinstance(cursor_size, int) or not 16 <= cursor_size <= 48:
+        raise SessionSupervisorError("Mida de cursor invàlida")
+    if session_visual.get("busy_cursor_name") != "wait" or session_visual.get("normal_cursor_name") != "default":
+        raise SessionSupervisorError("Noms de cursor de sessió invàlids")
     recovery = raw["visual_recovery"]
     recovery_keys = {
         "background_color", "background_image", "use_layer_shell",
@@ -135,6 +154,7 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     profile = load_session_supervisor_profile(profile_path)
     cfg = profile["supervision"]
     visual = profile["visual_handoff"]
+    session_visual = profile["visual_session"]
     recovery = profile["visual_recovery"]
     power = profile["visual_power"]
     files = profile["files"]
@@ -148,8 +168,12 @@ STARTUP_SCREEN={cfg["startup_screen_command"]}
 STARTUP_MIN={cfg["startup_screen_minimum_seconds"]}
 STARTUP_TIMEOUT={cfg["startup_screen_timeout_seconds"]}
 STARTUP_READY_TIMEOUT={visual["ready_timeout_seconds"]}
+BACKGROUND_COMMAND={visual["background_command"]}
+STABLE_BACKGROUND={session_visual["stable_background_color"]}
 STATUS_NAME={status_name}
 RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
+HANDOFF_BG_PID="$RUNTIME_DIR/xaac-handoff-background.pid"
+STABLE_BG_PID="$RUNTIME_DIR/xaac-stable-background.pid"
 STATUS="$RUNTIME_DIR/$STATUS_NAME"
 STARTUP_READY="$RUNTIME_DIR/xaac-startup-screen.ready"
 SHARED_STATE={cfg["shared_state_file"]}
@@ -286,6 +310,32 @@ wait_for_startup_surface() {{
   [ -f "$STARTUP_READY" ]
 }}
 
+set_stable_background() {{
+  if [ -n "${{WAYLAND_DISPLAY:-}}" ]; then
+    if [ -r "$STABLE_BG_PID" ]; then
+      stable_pid=$(cat "$STABLE_BG_PID" 2>/dev/null || true)
+      if [ -n "$stable_pid" ] && kill -0 "$stable_pid" 2>/dev/null; then
+        return 0
+      fi
+    fi
+    "$BACKGROUND_COMMAND" -c "$STABLE_BACKGROUND" >/dev/null 2>&1 &
+    stable_pid=$!
+    printf '%s\\n' "$stable_pid" > "$STABLE_BG_PID"
+    # The startup overlay is still covering the display while the neutral
+    # background maps, so the handoff cannot expose the compositor canvas.
+    sleep 0.1
+    if [ -r "$HANDOFF_BG_PID" ]; then
+      handoff_pid=$(cat "$HANDOFF_BG_PID" 2>/dev/null || true)
+      [ -n "$handoff_pid" ] && kill "$handoff_pid" 2>/dev/null || true
+      rm -f "$HANDOFF_BG_PID"
+    fi
+    return 0
+  fi
+  if [ -n "${{DISPLAY:-}}" ] && [ -x /usr/bin/xsetroot ]; then
+    /usr/bin/xsetroot -solid "$STABLE_BACKGROUND" >/dev/null 2>&1 || true
+  fi
+}}
+
 attempts=0
 window_start=$(date +%s)
 if ! wait_for_graphics; then
@@ -308,6 +358,7 @@ while :; do
   "$CLIENT" &
   client_pid=$!
   sleep "$STARTUP_MIN"
+  set_stable_background
   kill "$splash_pid" 2>/dev/null || true
   wait "$splash_pid" 2>/dev/null || true
   rm -f "$STARTUP_READY"
@@ -421,6 +472,7 @@ class StartupApp(Gtk.Application):
         picture.set_vexpand(True)
 
         window.set_child(picture)
+        window.set_cursor_from_name("__BUSY_CURSOR__")
         window.connect("map", self._mapped)
         window.present()
         GLib.timeout_add_seconds(timeout, self.quit)
@@ -430,6 +482,7 @@ app = StartupApp(application_id="org.xaac.StartupScreen")
 signal.signal(signal.SIGTERM, lambda *_: app.quit())
 raise SystemExit(app.run(sys.argv[:1]))
 '''
+    startup_screen = startup_screen.replace("__BUSY_CURSOR__", session_visual["busy_cursor_name"])
     error_screen = r'''#!/usr/bin/python3.13
 import os
 import signal
@@ -502,6 +555,7 @@ class RecoveryApp(Gtk.Application):
     def do_activate(self):
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("XAAC Thin Client")
+        window.set_cursor_from_name("__RECOVERY_BUSY_CURSOR__" if mode == "recovering" else "__NORMAL_CURSOR__")
 
         if LayerShell is not None and LayerShell.is_supported():
             LayerShell.init_for_window(window)
@@ -574,6 +628,8 @@ raise SystemExit(app.run(sys.argv[:1]))
         .replace("__FAILURE_TITLE__", recovery["failure_title"])
         .replace("__FAILURE_MESSAGE__", recovery["failure_message"])
         .replace("__INCIDENT_PREFIX__", recovery["incident_prefix"])
+        .replace("__RECOVERY_BUSY_CURSOR__", session_visual["busy_cursor_name"])
+        .replace("__NORMAL_CURSOR__", session_visual["normal_cursor_name"])
     )
     power_transition_screen = r'''#!/usr/bin/python3.13
 import os
@@ -625,6 +681,7 @@ class PowerTransitionApp(Gtk.Application):
     def do_activate(self):
         window = Gtk.ApplicationWindow(application=self)
         window.set_title("XAAC Thin Client")
+        window.set_cursor_from_name("__POWER_BUSY_CURSOR__")
 
         if LayerShell is not None and LayerShell.is_supported():
             LayerShell.init_for_window(window)
@@ -690,15 +747,20 @@ raise SystemExit(app.run(sys.argv[:1]))
         .replace("__POWEROFF_MESSAGE__", power["poweroff_message"])
         .replace("__REBOOT_TITLE__", power["reboot_title"])
         .replace("__REBOOT_MESSAGE__", power["reboot_message"])
+        .replace("__POWER_BUSY_CURSOR__", session_visual["busy_cursor_name"])
     )
     policy_payload = dict(cfg)
     policy_payload["visual_handoff"] = visual
+    policy_payload["visual_session"] = session_visual
     policy_payload["visual_recovery"] = recovery
     policy_payload["visual_power"] = power
     policy = json.dumps(policy_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     autostart = f'''#!/bin/sh
-# Managed by XAAC Thin Client OS — Block 8.2 — deterministic visual handoff
+# Managed by XAAC Thin Client OS — Block 8.5 — branded handoff, neutral stable session
+runtime_dir=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
+mkdir -p "$runtime_dir"
 {visual["background_command"]} -i {visual["background_image"]} -m fit -c '{visual["background_color"]}' >/dev/null 2>&1 &
+printf '%s\\n' "$!" > "$runtime_dir/xaac-handoff-background.pid"
 {cfg["supervisor_command"]} &
 '''
     planned = (
