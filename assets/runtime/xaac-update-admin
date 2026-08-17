@@ -456,9 +456,9 @@ def main(argv: list[str] | None = None) -> int:
             payload = verify_manifest(manifest, signature, bundle)
             ok = True
         elif args.command == "update":
-            _require_root()
             if not args.yes:
                 raise UpdateAdminError("Cal confirmar explícitament l'actualització amb --yes")
+            _require_root()
             if update_runtime is None:
                 raise UpdateAdminError(f"Runtime transaccional no disponible: {_RUNTIME_IMPORT_ERROR}")
             manifest = args.manifest.resolve()
@@ -474,9 +474,9 @@ def main(argv: list[str] | None = None) -> int:
             }
             ok = payload.get("status") == "confirmed"
         elif args.command == "rollback":
-            _require_root()
             if not args.yes:
                 raise UpdateAdminError("Cal confirmar explícitament el rollback amb --yes")
+            _require_root()
             if update_runtime is None:
                 raise UpdateAdminError(f"Runtime transaccional no disponible: {_RUNTIME_IMPORT_ERROR}")
             payload = update_runtime.manual_rollback(audit=_audit_event)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 import subprocess
 from pathlib import Path
 
@@ -42,3 +43,37 @@ def test_rollback_requires_explicit_confirmation() -> None:
     result = subprocess.run([str(SCRIPT), "rollback"], capture_output=True, text=True)
     assert result.returncode == 2
     assert "--yes" in result.stderr
+
+
+def test_confirmation_is_checked_before_root_privileges(monkeypatch, tmp_path: Path, capsys) -> None:
+    namespace = runpy.run_path(str(SCRIPT))
+    monkeypatch.setattr(namespace["os"], "geteuid", lambda: 1000)
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}")
+
+    assert namespace["main"](["update", str(manifest)]) == 2
+    update_error = capsys.readouterr().err
+    assert "--yes" in update_error
+    assert "sudo" not in update_error
+
+    assert namespace["main"](["rollback"]) == 2
+    rollback_error = capsys.readouterr().err
+    assert "--yes" in rollback_error
+    assert "sudo" not in rollback_error
+
+
+def test_root_privileges_are_required_after_confirmation(monkeypatch, tmp_path: Path, capsys) -> None:
+    namespace = runpy.run_path(str(SCRIPT))
+    monkeypatch.setattr(namespace["os"], "geteuid", lambda: 1000)
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}")
+
+    assert namespace["main"](["update", str(manifest), "--yes"]) == 2
+    update_error = capsys.readouterr().err
+    assert "sudo" in update_error
+
+    assert namespace["main"](["rollback", "--yes"]) == 2
+    rollback_error = capsys.readouterr().err
+    assert "sudo" in rollback_error
