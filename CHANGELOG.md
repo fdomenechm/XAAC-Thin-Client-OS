@@ -1,3 +1,10 @@
+# Correcció Bloc 9.4 — intèrpret Python del gate pre-ISO
+
+- Els tests que validen la sintaxi dels scripts Python generats utilitzen ara `sys.executable` en lloc de l'ordre genèrica `python`.
+- El gate pre-ISO deixa de dependre del paquet opcional `python-is-python3` de la màquina constructora.
+- La validació usa exactament el mateix Python 3.13 que executa `pytest`, inclòs el de `.venv`.
+- Verificat el gate visual també amb un `PATH` sense cap ordre `python`.
+
 # Correcció Bloc 9.4 — retirada definitiva del client de suport remot
 
 - Eliminats codi, configuracions, tests, assets, paquet placeholder i documentació residuals del client de suport remot retirat.

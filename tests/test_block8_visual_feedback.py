@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import subprocess
+import sys
 
 from xaac_thin_client_os.session_manager import create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import (
@@ -96,5 +97,5 @@ def test_phase85_generated_scripts_keep_valid_syntax(tmp_path: Path, project_roo
     ):
         path = tmp_path / (Path(key).name + ".py")
         path.write_text(files[key], encoding="utf-8")
-        result = subprocess.run(["python", "-m", "py_compile", str(path)], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, "-m", "py_compile", str(path)], capture_output=True, text=True)
         assert result.returncode == 0, result.stderr

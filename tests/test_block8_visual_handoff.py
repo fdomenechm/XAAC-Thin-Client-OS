@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import sys
 
 from xaac_thin_client_os.session_manager import create_session_manager_plan
 from xaac_thin_client_os.session_supervisor import (
@@ -99,5 +100,5 @@ def test_generated_phase82_scripts_have_valid_syntax(tmp_path: Path, project_roo
 
     startup = tmp_path / "startup.py"
     startup.write_text(supervisor_files["/usr/local/libexec/xaac-startup-screen"], encoding="utf-8")
-    result = subprocess.run(["python", "-m", "py_compile", str(startup)], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, "-m", "py_compile", str(startup)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

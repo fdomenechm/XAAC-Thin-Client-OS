@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import subprocess
+import sys
 
 from xaac_thin_client_os.session_supervisor import (
     create_session_supervisor_plan,
@@ -96,7 +97,7 @@ def test_generated_phase83_error_screen_has_valid_python_syntax(
     path = tmp_path / "xaac-session-error.py"
     path.write_text(error, encoding="utf-8")
     result = subprocess.run(
-        ["python", "-m", "py_compile", str(path)], capture_output=True, text=True
+        [sys.executable, "-m", "py_compile", str(path)], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
 

@@ -2,6 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import json
 import subprocess
+import sys
 
 from xaac_thin_client_os.production_builder import ProductionIsoBuilder
 from xaac_thin_client_os.session_supervisor import (
@@ -77,7 +78,7 @@ def test_phase84_power_surface_has_valid_python_syntax(
     path = tmp_path / "xaac-power-transition.py"
     path.write_text(screen, encoding="utf-8")
     result = subprocess.run(
-        ["python", "-m", "py_compile", str(path)], capture_output=True, text=True
+        [sys.executable, "-m", "py_compile", str(path)], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
 
