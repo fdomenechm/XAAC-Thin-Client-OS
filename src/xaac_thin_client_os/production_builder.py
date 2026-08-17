@@ -219,6 +219,16 @@ from xaac_thin_client_os.firewall_configuration import (
     FirewallConfigurator,
     create_firewall_configuration_plan,
 )
+from xaac_thin_client_os.kernel_hardening import (
+    KernelHardeningError,
+    KernelHardeningInstaller,
+    create_kernel_hardening_plan,
+)
+from xaac_thin_client_os.resource_optimization import (
+    ResourceConfigurator,
+    ResourceOptimizationError,
+    create_resource_configuration_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -982,6 +992,65 @@ class ProductionIsoBuilder:
             phase="configure-verify-network-hardening",
         )
 
+    def _configure_production_kernel_resources(self) -> None:
+        """Apply kernel, RAM and eMMC policies to the production rootfs.
+
+        The policy is installed as static configuration only; the builder must
+        never run sysctl against the chroot because that would modify the host
+        kernel.  Runtime activation is therefore validated structurally and is
+        left to the target boot.
+        """
+        try:
+            kernel_plan = create_kernel_hardening_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/kernel-hardening.yaml",
+            )
+            KernelHardeningInstaller().install(kernel_plan, dry_run=self.dry_run)
+            resource_plan = create_resource_configuration_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/resources.yaml",
+            )
+            missing_packages = sorted(set(resource_plan.packages) - set(self.settings.packages))
+            if missing_packages:
+                raise ProductionBuildError(
+                    "La política de recursos requereix paquets absents del build: "
+                    + ", ".join(missing_packages)
+                )
+            ResourceConfigurator().execute(resource_plan, dry_run=self.dry_run)
+        except (KernelHardeningError, ResourceOptimizationError) as exc:
+            raise ProductionBuildError(
+                f"No s'ha pogut aplicar el hardening de kernel/recursos: {exc}"
+            ) from exc
+
+        if self.dry_run:
+            return
+
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "test -f /etc/sysctl.d/90-xaac-hardening.conf; "
+                "grep -Fx 'kernel.randomize_va_space = 2' /etc/sysctl.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'kernel.yama.ptrace_scope = 2' /etc/sysctl.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'kernel.sysrq = 0' /etc/sysctl.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'install sctp /bin/false' /etc/modprobe.d/xaac-hardening.conf >/dev/null; "
+                "! grep -Eq '^(install|blacklist)[[:space:]]+squashfs([[:space:]]|$)' /etc/modprobe.d/xaac-hardening.conf; "
+                "test -f /etc/systemd/zram-generator.conf; "
+                "grep -F 'zram-size = ram * 50 / 100' /etc/systemd/zram-generator.conf >/dev/null; "
+                "grep -Fx 'vm.swappiness = 100' /etc/sysctl.d/70-xaac-memory.conf >/dev/null; "
+                "grep -Fx 'Storage=Volatile' /etc/systemd/journald.conf.d/xaac-limits.conf >/dev/null; "
+                "grep -Fx 'RuntimeMaxUse=32M' /etc/systemd/journald.conf.d/xaac-limits.conf >/dev/null; "
+                "test \"$(readlink /etc/systemd/system/local-fs.target.wants/tmp.mount)\" = '/lib/systemd/system/tmp.mount'; "
+                "test \"$(readlink /etc/systemd/system/timers.target.wants/fstrim.timer)\" = '/lib/systemd/system/fstrim.timer'; "
+                "test -e /lib/systemd/system/tmp.mount; test -e /lib/systemd/system/fstrim.timer; "
+                "test \"$(readlink /etc/systemd/system/apt-daily.service)\" = '/dev/null'; "
+                "test \"$(readlink /etc/systemd/system/apt-daily.timer)\" = '/dev/null'; "
+                "test \"$(readlink /etc/systemd/system/apt-daily-upgrade.service)\" = '/dev/null'; "
+                "test \"$(readlink /etc/systemd/system/apt-daily-upgrade.timer)\" = '/dev/null'; "
+                "dpkg-query -W -f='${Status}' systemd-zram-generator | grep -Fx 'install ok installed' >/dev/null",
+            ],
+            phase="configure-verify-kernel-resources",
+        )
+
     def _configure_openvpn3_network(self) -> None:
         """Persist the OpenVPN 3 DNS backend used by the minimal XAAC OS.
 
@@ -1725,7 +1794,7 @@ exit 0
             'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key" || { printf \'%s\\n\' \'No ha sigut possible generar la host key ED25519 de OpenSSH.\'; exit 1; }\n'
             'test -s "$mount_root/etc/ssh/ssh_host_ed25519_key.pub" || { printf \'%s\\n\' \'No ha sigut possible generar la host key pública ED25519 de OpenSSH.\'; exit 1; }\n'
             'chroot "$mount_root" /usr/sbin/sshd -t || { printf \'%s\\n\' \'La configuració OpenSSH instal·lada no és vàlida.\'; exit 1; }\n'
-            'chroot "$mount_root" systemctl enable ssh.service >/dev/null\n'
+            'chroot "$mount_root" systemctl disable ssh.service >/dev/null 2>&1 || true\n'
             'touch "$mount_root/var/lib/xaac/first-boot.pending" "$mount_root/etc/xaac-first-boot.pending"\n'
             "printf '%s\\n' '[10/10] Verificant la instal·lació...'\n"
             'test -x "$mount_root/usr/bin/systemctl"\n'
@@ -1952,6 +2021,7 @@ exit 0
                 ],
                 phase="configure-vpn-config-permissions",
             )
+            self._configure_production_kernel_resources()
             self._configure_production_network_hardening()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
@@ -1978,6 +2048,15 @@ exit 0
             self._chroot(["systemctl", "set-default", "graphical.target"], phase="configure-graphical-target")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
             self._verify_block7_rootfs(context="configure")
+            self._chroot(
+                [
+                    "/bin/sh", "-ec",
+                    "apt-get clean; "
+                    "rm -rf /var/lib/apt/lists/* /tmp/xaac-packages; "
+                    "find /var/cache/apt/archives -maxdepth 1 -type f -name '*.deb' -delete",
+                ],
+                phase="configure-clean-build-cache",
+            )
         with contextlib.suppress(FileNotFoundError):
             self._inside("/usr/sbin/policy-rc.d").unlink()
         self._save_state("configure")

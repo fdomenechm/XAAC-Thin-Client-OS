@@ -1,3 +1,14 @@
+## 2026-08-17 — Bloc 9.2: kernel, memòria i eMMC
+
+- Integrades `config/kernel-hardening.yaml` i `config/resources.yaml` en el constructor ISO de producció.
+- Retirat `squashfs` de la blacklist de mòduls i declarat com a necessari en runtime per al Live i l'instal·lador.
+- Activats zram al 50 % amb zstd, swappiness 100, `/tmp` en tmpfs de 128 MiB i journald volàtil limitat a 32 MiB.
+- Activat `fstrim.timer`, conservat `noatime` en les particions ext4 instal·lades i bloquejats els timers automàtics d'APT/man-db que generen activitat periòdica.
+- El builder valida la configuració estàtica sense executar `sysctl` contra el kernel host.
+- Netejades caches APT i `.deb` temporals abans de generar SquashFS.
+- Corregida la regressió de la 9.1 que reactivava SSH després de generar les claus host del sistema instal·lat.
+- La fase 9.2 continua sense generar ISO; la validació física de recursos queda ajornada a la 9.4.
+
 ## 2026-08-17 — Bloc 9.1: línia base efectiva de xarxa
 
 - Integrada la política canònica `config/ssh.yaml` en el constructor ISO de producció.

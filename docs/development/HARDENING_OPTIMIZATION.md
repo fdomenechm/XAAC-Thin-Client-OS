@@ -1,6 +1,6 @@
 # Bloc 9 — Hardening i optimització final
 
-**Estat:** EN CURS — Fase 9.1 implementada, pendent de validació de les fases següents.
+**Estat:** EN CURS — Fase 9.2 implementada, pendents 9.3 i 9.4.
 
 Aquest és el bloc final de consolidació tècnica abans de les proves finals de
 release. No substitueix el `docs/phases/block-09/` històric del calendari original:
@@ -43,12 +43,35 @@ Aquesta fase no genera ISO.
 
 ## Fase 9.2 — Kernel, memòria, eMMC i serveis mínims
 
-Pendent. Inclourà la reconciliació de `kernel-hardening.yaml` i `resources.yaml`
-amb el camí de producció, revisant especialment els mòduls imprescindibles per a
-Live/instal·lació, zram, journald volàtil, escriptures a eMMC, temporitzadors i
-serveis prescindibles.
+Fase 9.2 implementada. La configuració declarativa deixa de ser només històrica i
+passa a formar part del constructor ISO de producció.
 
-No es generarà ISO en aquesta fase mentre els gates estàtics siguen satisfactoris.
+Canvis consolidats:
+
+- `squashfs` s'ha retirat explícitament de la blacklist del kernel i es declara
+  com a mòdul permés en runtime, perquè és imprescindible per al Live i per al
+  desplegament de `filesystem.squashfs` durant la instal·lació;
+- el constructor aplica `config/kernel-hardening.yaml` al rootfs abans de generar
+  l'initramfs, incloent ASLR, restricció de `ptrace`, desactivació de core dumps,
+  SysRq i mòduls/protocols no utilitzats;
+- el build **no executa `sysctl` contra el chroot**, perquè això afectaria el kernel
+  de la màquina constructora; només instal·la i valida estàticament la política,
+  que entra en vigor quan arranca el terminal;
+- `config/resources.yaml` passa a ser efectiva: zram del 50 % de RAM amb `zstd`,
+  `vm.swappiness=100`, `vm.page-cluster=0`, journald volàtil limitat a 32 MiB i
+  `/tmp` sobre tmpfs limitat a 128 MiB;
+- s'activa `fstrim.timer` i el sistema instal·lat conserva `noatime` en les
+  particions ext4 de root, dades i recuperació;
+- es bloquegen `apt-daily`, `apt-daily-upgrade` i els seus timers, així com
+  `man-db.timer`, per evitar treball periòdic i escriptures a eMMC fora del model
+  d'actualització XAAC;
+- abans del SquashFS es netegen la cache d'APT, les llistes descarregades i els
+  `.deb` temporals copiats només per a construir la imatge;
+- s'ha corregit la regressió residual de la Fase 9.1: l'instal·lador genera claus
+  host SSH úniques i valida `sshd`, però deixa `ssh.service` deshabilitat.
+
+No es genera ISO en aquesta fase. La comprovació efectiva de zram, TRIM, ús de RAM
+i comportament de journald es reserva per al maquinari real en la Fase 9.4.
 
 ## Fase 9.3 — Hardening de serveis i AppArmor real
 

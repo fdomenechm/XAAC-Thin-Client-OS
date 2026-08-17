@@ -28,9 +28,9 @@ def test_low_space_warns(project_root): assert compare_resources(inv(root_free_m
 def test_noatime_warns(project_root): assert compare_resources(inv(root_mount_options=('rw',)),load_resource_profile(project_root/'config/resources.yaml')).compatible
 def test_persistent_journal_warns(project_root): assert compare_resources(inv(journald_persistent=True),load_resource_profile(project_root/'config/resources.yaml')).compatible
 def test_plan(project_root,tmp_path):
- p=create_resource_configuration_plan(tmp_path/'build/rootfs',project_root/'config/resources.yaml');assert 'systemd-zram-generator' in p.packages and len(p.files)==7
+ p=create_resource_configuration_plan(tmp_path/'build/rootfs',project_root/'config/resources.yaml');assert 'systemd-zram-generator' in p.packages and len(p.files)==7 and len(p.enabled_units)==2
 def test_execute(project_root,tmp_path):
- p=create_resource_configuration_plan(tmp_path/'build/rootfs',project_root/'config/resources.yaml');w=ResourceConfigurator().execute(p);assert len(w)==10;assert 'zram-size' in w[0].read_text();assert w[-1].is_symlink()
+ p=create_resource_configuration_plan(tmp_path/'build/rootfs',project_root/'config/resources.yaml');w=ResourceConfigurator().execute(p);assert len(w)==14;assert 'zram-size' in w[0].read_text();assert w[-1].is_symlink();assert (p.rootfs/'etc/systemd/system/local-fs.target.wants/tmp.mount').readlink()==Path('/lib/systemd/system/tmp.mount');assert (p.rootfs/'etc/systemd/system/timers.target.wants/fstrim.timer').readlink()==Path('/lib/systemd/system/fstrim.timer')
 def test_dry_run(project_root,tmp_path): assert ResourceConfigurator().execute(create_resource_configuration_plan(tmp_path/'build/rootfs',project_root/'config/resources.yaml'),dry_run=True)==()
 def test_unsafe(project_root):
  with pytest.raises(ResourceOptimizationError):create_resource_configuration_plan(Path('/'),project_root/'config/resources.yaml')

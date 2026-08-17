@@ -11,6 +11,8 @@ def test_policy_loads_required_controls():
     assert p['sysctl']['kernel.randomize_va_space']==2
     assert p['sysctl']['kernel.yama.ptrace_scope']==2
     assert 'sctp' in p['module_policy']['disabled']
+    assert 'squashfs' not in p['module_policy']['disabled']
+    assert 'squashfs' in p['module_policy']['allowed_runtime']
 
 def test_unsafe_rootfs_rejected(tmp_path):
     with pytest.raises(KernelHardeningError,match='Rootfs insegur'): create_kernel_hardening_plan(tmp_path,PROFILE)
@@ -32,6 +34,7 @@ def test_install_writes_controls_and_state(tmp_path):
     assert len(paths)==5
     text=plan.destination('sysctl').read_text(); assert 'kernel.randomize_va_space = 2' in text and 'kernel.sysrq = 0' in text
     mods=plan.destination('modules').read_text(); assert 'install sctp /bin/false' in mods and 'blacklist udf' in mods
+    assert 'squashfs' not in mods
     assert plan.destination('sysctl').stat().st_mode & 0o777==0o644
     state=json.loads(plan.destination('state').read_text()); assert state['core_dumps_disabled'] is True
 

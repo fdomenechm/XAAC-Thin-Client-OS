@@ -25,8 +25,11 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 "$PYTHON" -m pytest -q \
     tests/test_block9_hardening.py \
+    tests/test_kernel_hardening.py \
+    tests/test_resource_optimization.py \
     tests/test_ssh_configuration.py \
     tests/test_firewall_configuration.py \
+    tests/test_production_installer_ssh_hostkeys.py \
     tests/test_production_builder.py
 
-printf '%s\n' "Bloc 9.1: hardening de xarxa de producció validat; no cal generar ISO encara."
+printf '%s\n' "Bloc 9.2: kernel, recursos i eMMC validats; no cal generar ISO encara."

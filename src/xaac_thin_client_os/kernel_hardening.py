@@ -1,4 +1,4 @@
-"""Declarative kernel hardening policy (phase 9.5)."""
+"""Declarative kernel hardening policy for the production appliance."""
 from __future__ import annotations
 import json, os, re, tempfile
 from dataclasses import dataclass
@@ -63,8 +63,8 @@ class KernelHardeningInstaller:
         targets=tuple(plan.destination(k) for k in ('sysctl','modules','limits','policy','state'))
         if dry_run:return targets
         p=plan.profile
-        sysctl='# Managed by XAAC Thin Client OS — phase 9.5\n'+''.join(f'{k} = {v}\n' for k,v in sorted(p['sysctl'].items()))
-        modules='# Managed by XAAC Thin Client OS — phase 9.5\n'+''.join(f'install {m} /bin/false\nblacklist {m}\n' for m in sorted(p['module_policy']['disabled']))
+        sysctl='# Managed by XAAC Thin Client OS — Bloc 9 / phase 9.2\n'+''.join(f'{k} = {v}\n' for k,v in sorted(p['sysctl'].items()))
+        modules='# Managed by XAAC Thin Client OS — Bloc 9 / phase 9.2\n'+''.join(f'install {m} /bin/false\nblacklist {m}\n' for m in sorted(p['module_policy']['disabled']))
         limits='# Disable core dumps for all users\n* hard core 0\n* soft core 0\nroot hard core 0\nroot soft core 0\n'
         policy={k:v for k,v in p.items() if k!='outputs'}; state={**plan.manifest(),'status':'installed','aslr':True,'ptrace_restricted':True,'core_dumps_disabled':True,'magic_sysrq_disabled':True}
         self._write(plan.destination('sysctl'),sysctl,0o644); self._write(plan.destination('modules'),modules,0o644); self._write(plan.destination('limits'),limits,0o644)

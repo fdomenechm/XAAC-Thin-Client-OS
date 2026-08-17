@@ -20,14 +20,15 @@ journald:
   max_file_sec: 1day
 tmpfs:
   tmp_size_mib: 128
-  run_size_percent: 10
 cleanup:
   enabled: true
   age_days: 7
 services:
   disabled:
     - apt-daily.service
+    - apt-daily.timer
     - apt-daily-upgrade.service
+    - apt-daily-upgrade.timer
     - man-db.timer
 configuration:
   zram_generator_file: /etc/systemd/zram-generator.conf
