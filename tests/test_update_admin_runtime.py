@@ -14,16 +14,31 @@ def test_update_admin_is_executable_and_valid_python() -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_update_admin_exposes_phase_10_1_commands() -> None:
+def test_update_admin_exposes_phase_10_2_commands() -> None:
     result = subprocess.run([str(SCRIPT), "--help"], capture_output=True, text=True)
     assert result.returncode == 0
     assert "status" in result.stdout
     assert "preflight" in result.stdout
     assert "check" in result.stdout
     assert "update" in result.stdout
+    assert "rollback" in result.stdout
 
 
-def test_update_command_is_explicitly_non_destructive_in_phase_10_1() -> None:
+def test_update_command_requires_a_manifest_and_explicit_confirmation() -> None:
     result = subprocess.run([str(SCRIPT), "update"], capture_output=True, text=True)
-    assert result.returncode == 64
-    assert "fase 10.2" in result.stderr
+    assert result.returncode == 2
+    assert "manifest" in result.stderr
+
+
+def test_update_command_requires_yes_before_transaction(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text("{}")
+    result = subprocess.run([str(SCRIPT), "update", str(manifest)], capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "--yes" in result.stderr
+
+
+def test_rollback_requires_explicit_confirmation() -> None:
+    result = subprocess.run([str(SCRIPT), "rollback"], capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "--yes" in result.stderr

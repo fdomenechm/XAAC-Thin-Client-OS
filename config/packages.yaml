@@ -13,6 +13,8 @@ base:
 - squashfs-tools
 - parted
 - ca-certificates
+- gpgv
+- procps
 - apt
 - iproute2
 - iputils-ping

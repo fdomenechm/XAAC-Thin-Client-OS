@@ -1,4 +1,4 @@
-"""Update architecture and version policy for XAAC Thin Client OS phase 10.1."""
+"""Update architecture and version policy for XAAC Thin Client OS phase 10.2."""
 from __future__ import annotations
 
 import json
@@ -13,7 +13,7 @@ import yaml
 
 
 class UpdateModelError(RuntimeError):
-    """Raised when the phase 10.1 update architecture is unsafe or inconsistent."""
+    """Raised when the phase 10.2 update architecture is unsafe or inconsistent."""
 
 
 _SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$")
@@ -56,14 +56,14 @@ def _identifier(value: object, field: str) -> str:
 
 
 def load_update_model(path: Path) -> dict[str, Any]:
-    """Load and strictly validate the phase 10.1 update contract."""
+    """Load and strictly validate the phase 10.2 update contract."""
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         raise UpdateModelError(f"No s'ha pogut carregar el model: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 2:
         raise UpdateModelError("Model d'actualització invàlid")
-    if raw.get("model_id") != "xaac-update-architecture-v1" or raw.get("phase") != "10.1":
+    if raw.get("model_id") != "xaac-update-architecture-v1" or raw.get("phase") != "10.2":
         raise UpdateModelError("Identitat del model d'actualització invàlida")
     if raw.get("hardware_profile") != "wyse3040" or raw.get("architecture") != "amd64":
         raise UpdateModelError("Perfil de maquinari o arquitectura no suportats")
@@ -143,6 +143,8 @@ def load_update_model(path: Path) -> dict[str, Any]:
         raise UpdateModelError("Política de formats de versió invàlida")
     if versions.get("allow_downgrade") is not False:
         raise UpdateModelError("Els downgrades han d'estar bloquejats")
+    if versions.get("allow_os_version_change") is not False:
+        raise UpdateModelError("La fase 10.2 no pot canviar VERSION_ID sense un paquet de plataforma")
     minimum = versions.get("minimum_os_version")
     if not isinstance(minimum, str) or not _SEMVER.fullmatch(minimum):
         raise UpdateModelError("Versió mínima del sistema invàlida")
@@ -248,7 +250,7 @@ def create_update_model_plan(rootfs: Path, profile_path: Path) -> UpdateModelPla
 
 
 class UpdateModelInstaller:
-    """Install only the phase 10.1 policy and initial state into a rootfs."""
+    """Install only the phase 10.2 policy and initial state into a rootfs."""
 
     @staticmethod
     def _write(path: Path, content: str, mode: int) -> None:

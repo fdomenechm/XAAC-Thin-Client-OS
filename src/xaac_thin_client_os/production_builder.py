@@ -250,6 +250,16 @@ from xaac_thin_client_os.update_release_manifest import (
     build_release_manifest,
     write_release_manifest,
 )
+from xaac_thin_client_os.transactional_update import (
+    TransactionalUpdateError,
+    TransactionalUpdateInstaller,
+    create_transactional_update_plan,
+)
+from xaac_thin_client_os.package_rollback import (
+    PackageRollbackError,
+    PackageRollbackInstaller,
+    create_package_rollback_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -1201,48 +1211,113 @@ class ProductionIsoBuilder:
         )
 
     def _configure_update_architecture(self) -> None:
-        """Install the non-destructive phase 10.1 update contract and admin CLI."""
+        """Install phases 10.1/10.2 update contract, transaction runtime and rollback cache."""
         try:
-            plan = create_update_model_plan(
+            model_plan = create_update_model_plan(
                 self.paths.rootfs,
                 self.paths.project_root / "config/update-model.yaml",
             )
-            UpdateModelInstaller().install(plan)
+            UpdateModelInstaller().install(model_plan)
             manifest = build_release_manifest(
                 self.paths.project_root,
                 self.paths.project_root / "config/update-model.yaml",
                 target_os_version=self.settings.version,
-                channel=resolve_update_channel(plan.profile, self.settings.channel),
+                channel=resolve_update_channel(model_plan.profile, self.settings.channel),
             )
-            write_release_manifest(plan.output("current_release"), manifest)
-        except (UpdateModelError, UpdateReleaseManifestError) as exc:
-            raise ProductionBuildError(f"Arquitectura d'actualització 10.1 invàlida: {exc}") from exc
+            write_release_manifest(model_plan.output("current_release"), manifest)
+
+            transaction_plan = create_transactional_update_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/transactional-update.yaml",
+            )
+            TransactionalUpdateInstaller().install(transaction_plan)
+            rollback_plan = create_package_rollback_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/package-rollback.yaml",
+            )
+            PackageRollbackInstaller().install(rollback_plan)
+        except (
+            UpdateModelError,
+            UpdateReleaseManifestError,
+            TransactionalUpdateError,
+            PackageRollbackError,
+        ) as exc:
+            raise ProductionBuildError(f"Arquitectura d'actualització 10.2 invàlida: {exc}") from exc
 
         admin_source = self.paths.project_root / "assets/runtime/xaac-update-admin"
+        runtime_source = self.paths.project_root / "assets/runtime/xaac_update_runtime.py"
         if not admin_source.is_file():
             raise ProductionBuildError("Falta assets/runtime/xaac-update-admin")
-        admin_target = plan.output("admin")
+        if not runtime_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac_update_runtime.py")
+        admin_target = model_plan.output("admin")
+        runtime_target = transaction_plan.output("runtime")
         admin_target.parent.mkdir(parents=True, exist_ok=True)
+        runtime_target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(admin_source, admin_target)
+        shutil.copy2(runtime_source, runtime_target)
         admin_target.chmod(0o750)
+        runtime_target.chmod(0o640)
+
+        # Seed the exact baseline .deb files into a root-only cache. This makes
+        # the very first rollback independent of network/repository availability.
+        package_cache = self._inside(transaction_plan.profile["recovery_point"]["package_cache"])
+        for component in manifest["components"]:
+            source = self.paths.project_root / "packages" / component["filename"]
+            if not source.is_file():
+                raise ProductionBuildError(f"Falta el paquet base de rollback: {source}")
+            version_dir = str(component["version"]).replace(":", "_")
+            target = package_cache / component["package"] / f"{version_dir}.deb"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.parent.chmod(0o700)
+            shutil.copy2(source, target)
+            target.chmod(0o600)
+            digest = hashlib.sha256(target.read_bytes()).hexdigest()
+            if digest != component["sha256"]:
+                raise ProductionBuildError(f"Cache base de rollback corrupte: {target}")
+
+        blocked = self._inside("/var/lib/xaac-update/blocked-versions.json")
+        self._atomic_write(
+            blocked,
+            json.dumps({"schema_version": 1, "blocked": []}, indent=2, sort_keys=True) + "\n",
+            0o640,
+        )
+
+        # A production release key is deliberately never generated here. If a
+        # real public keyring is supplied by release engineering, copy it into
+        # the immutable image. Otherwise update verification remains fail-closed.
+        keyring_source = self.paths.project_root / "assets/release/xaac-archive-keyring.gpg"
+        if keyring_source.is_file():
+            keyring_target = self._inside(model_plan.profile["manifest"]["keyring"])
+            keyring_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(keyring_source, keyring_target)
+            keyring_target.chmod(0o644)
 
         if self.dry_run:
             return
+        self._chroot(["systemd-tmpfiles", "--create", "/usr/lib/tmpfiles.d/xaac-update.conf"], phase="configure-update-tmpfiles")
+        self._chroot(["systemctl", "enable", "xaac-update-recover.service"], phase="configure-update-recovery-service")
         self._chroot(
             [
                 "/bin/sh",
                 "-ec",
                 "test -r /etc/xaac/update/policy.json; "
+                "test -r /etc/xaac/update/transactional-installation.json; "
+                "test -r /etc/xaac/update/package-rollback.json; "
                 "test -r /var/lib/xaac-update/state.json; "
+                "test -r /var/lib/xaac-update/transaction-state.json; "
+                "test -r /var/lib/xaac-update/rollback-state.json; "
                 "test -r /usr/share/xaac/update/current-release.json; "
                 "test -x /usr/local/sbin/xaac-update-admin; "
-                "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-update-admin; "
+                "test -r /usr/local/libexec/xaac_update_runtime.py; "
+                "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-update-admin /usr/local/libexec/xaac_update_runtime.py; "
                 "/usr/local/sbin/xaac-update-admin --help >/dev/null; "
-                "test \"$(stat -c '%a' /etc/xaac/update/policy.json)\" = '640'; "
-                "test \"$(stat -c '%a' /var/lib/xaac-update/state.json)\" = '640'; "
-                "test \"$(stat -c '%a' /usr/local/sbin/xaac-update-admin)\" = '750'",
+                "systemctl is-enabled --quiet xaac-update-recover.service; "
+                "test \"$(stat -c '%a' /usr/local/sbin/xaac-update-admin)\" = '750'; "
+                "test \"$(stat -c '%a' /usr/local/libexec/xaac_update_runtime.py)\" = '640'; "
+                "test \"$(stat -c '%a' /var/lib/xaac-update/package-cache)\" = '700'",
             ],
-            phase="configure-update-architecture-10-1",
+            phase="configure-update-architecture-10-2",
         )
 
     def _configure_openvpn3_network(self) -> None:

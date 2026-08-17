@@ -10,4 +10,4 @@ El Bloc 10 queda consolidat en cinc fases, amb una única generació d'ISO previ
 
 ## Nota sobre el codi preexistent
 
-El repositori contenia prototips declaratius d'un full de ruta anterior del Bloc 10 amb més subfases (`update-service`, `transactional-update`, `package-rollback`, `update-rings`, `update-sources`, etc.). Es mantenen temporalment com a material reutilitzable i cobert per proves, però **no representen fases tancades del nou Bloc 10**. La integració de producció es farà exclusivament segons les cinc fases anteriors.
+El repositori contenia prototips declaratius d'un full de ruta anterior del Bloc 10 amb més subfases (`update-service`, `transactional-update`, `package-rollback`, `update-rings`, `update-sources`, etc.). Els elements `transactional-update` i `package-rollback` ja han sigut absorbits per la Fase 10.2. La resta continua com a material reutilitzable fins que siga incorporat explícitament a una de les cinc fases actuals.

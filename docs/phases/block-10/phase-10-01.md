@@ -48,7 +48,7 @@ Els bundles externs han d'estar signats amb una signatura OpenPGP separada (`.as
 /usr/share/keyrings/xaac-archive-keyring.gpg
 ```
 
-No s'inclou cap clau privada al codi font ni es genera cap clau fictícia. Mentre el keyring real de releases no siga provisionat, la verificació de bundles falla de manera segura (*fail-closed*). El provisionament del canal real d'actualització forma part de la fase 10.2.
+No s'inclou cap clau privada al codi font ni es genera cap clau fictícia. En el tancament de la 10.1, l'absència del keyring bloquejava la verificació de manera segura. La Fase 10.2 ha afegit el mecanisme de provisionament d'una clau pública real sense incorporar secrets al repositori.
 
 ## Preflight
 
@@ -82,7 +82,7 @@ L'ordre següent existeix només per deixar estable la superfície CLI:
 sudo xaac-update-admin update
 ```
 
-En la fase 10.1 retorna explícitament que la instal·lació està deshabilitada. La transacció real i el rollback corresponen a la fase 10.2.
+En el gate històric de la Fase 10.1 aquesta ordre estava explícitament deshabilitada. Després de completar la Fase 10.2, la mateixa superfície CLI executa ja la transacció real i disposa també de `rollback`.
 
 ## Integració amb la ISO de producció
 

@@ -1,3 +1,15 @@
+# 2026-08-17 — Bloc 10.2: actualització transaccional i rollback
+
+- Activat `xaac-update-admin update MANIFEST --yes` amb verificació OpenPGP/SHA-256 prèvia i staging root-only.
+- Afegit punt de recuperació amb còpia de configuració i cache local dels `.deb` exactes per permetre rollback sense xarxa, inclosa la primera actualització.
+- Afegit health-check fail-closed adaptat a l'arquitectura real del quiosc, sense assumir `xaac-thin-client.service`.
+- Afegit rollback automàtic en fallada, `xaac-update-admin rollback --yes` i bloqueig de combinacions de versions que han fallat.
+- Afegit `xaac-update-recover.service` per restaurar transaccions interrompudes abans de l'arranc del quiosc.
+- El constructor integra política 10.2, runtime, estats, `gpgv`, `procps` i sembra el cache de rollback amb els tres `.deb` de la ISO.
+- Afegits scripts POSIX per provisionar un keyring públic real i crear bundles signats; cap clau privada ni clau fictícia entra al repositori.
+- La verificació continua fail-closed si `assets/release/xaac-archive-keyring.gpg` no ha sigut provisionat per release engineering.
+- Afegit `scripts/validate-block10-phase2.sh`; la ISO continua ajornada fins a la Fase 10.5.
+
 # 2026-08-17 — Reestructuració del Bloc 10 i Fase 10.1
 
 - Consolidat el Bloc 10 en cinc fases: arquitectura; actualització/rollback; manteniment; recuperació; validació final.

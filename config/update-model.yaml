@@ -1,6 +1,6 @@
 schema_version: 2
 model_id: xaac-update-architecture-v1
-phase: "10.1"
+phase: "10.2"
 hardware_profile: wyse3040
 architecture: amd64
 platform:
@@ -41,6 +41,7 @@ version_policy:
   os_format: semver
   package_format: debian
   allow_downgrade: false
+  allow_os_version_change: false
   allow_prerelease_channels:
     - laboratory
     - pilot
@@ -69,6 +70,7 @@ preflight:
   preserve_configuration:
     - /etc/xaac
     - /etc/xaac-agent
+    - /etc/xaac-thinclient
     - /etc/NetworkManager/system-connections
     - /etc/ssh
     - /etc/hostname

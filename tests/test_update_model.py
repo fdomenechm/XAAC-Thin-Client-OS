@@ -27,10 +27,10 @@ def altered(tmp_path: Path, old: str, new: str) -> Path:
     return path
 
 
-def test_loads_phase_10_1_update_architecture() -> None:
+def test_loads_phase_10_2_update_architecture() -> None:
     model = load_update_model(ROOT / "config/update-model.yaml")
     assert model["schema_version"] == 2
-    assert model["phase"] == "10.1"
+    assert model["phase"] == "10.2"
     assert [component["package"] for component in model["components"]] == [
         "xaac-thinclient",
         "xaac-thin-client-vpn",
@@ -38,6 +38,7 @@ def test_loads_phase_10_1_update_architecture() -> None:
     ]
     assert model["manifest"]["require_detached_signature"] is True
     assert model["version_policy"]["allow_downgrade"] is False
+    assert model["version_policy"]["allow_os_version_change"] is False
 
 
 def test_manifest_is_stable(tmp_path: Path) -> None:
@@ -45,7 +46,7 @@ def test_manifest_is_stable(tmp_path: Path) -> None:
     assert manifest == {
         "schema_version": 2,
         "model_id": "xaac-update-architecture-v1",
-        "phase": "10.1",
+        "phase": "10.2",
         "hardware_profile": "wyse3040",
         "architecture": "amd64",
         "component_count": 3,

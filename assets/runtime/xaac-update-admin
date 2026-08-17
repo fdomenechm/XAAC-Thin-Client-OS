@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Read-only phase 10.1 update administration and manifest verification."""
+"""Secure update administration for phases 10.1 and 10.2."""
 from __future__ import annotations
 
 import argparse
@@ -12,6 +12,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+RUNTIME_DIR = Path(__file__).resolve().parent
+if str(RUNTIME_DIR) not in sys.path:
+    sys.path.insert(0, str(RUNTIME_DIR))
+try:
+    import xaac_update_runtime as update_runtime
+except ImportError as exc:
+    update_runtime = None  # type: ignore[assignment]
+    _RUNTIME_IMPORT_ERROR = exc
+else:
+    _RUNTIME_IMPORT_ERROR = None
 
 POLICY_PATH = Path("/etc/xaac/update/policy.json")
 STATE_PATH = Path("/var/lib/xaac-update/state.json")
@@ -124,7 +135,7 @@ def status_payload() -> dict[str, object]:
         current_release = _load_json(CURRENT_RELEASE_PATH, "el manifest de la versió instal·lada")
     return {
         "status": "ok",
-        "phase": "10.1",
+        "phase": "10.2",
         "os": {
             "id": os_release.get("ID"),
             "version": os_release.get("VERSION_ID"),
@@ -134,7 +145,7 @@ def status_payload() -> dict[str, object]:
         "components": _component_status(policy),
         "update_state": state,
         "current_release": current_release.get("release") if current_release else None,
-        "installation_enabled": False,
+        "installation_enabled": Path(policy["manifest"]["keyring"]).is_file(),
     }
 
 
@@ -204,11 +215,8 @@ def preflight_payload() -> tuple[dict[str, object], bool]:
         }
     )
 
-    # A missing release key does not make the installed terminal unhealthy in phase 10.1,
-    # but it blocks checking/installing external updates until phase 10.2 provisions trust.
-    operational_checks = [item for item in checks if item["name"] != "update_trust_keyring"]
-    ok = all(bool(item["ok"]) for item in operational_checks)
-    return {"status": "ok" if ok else "failed", "phase": "10.1", "checks": checks}, ok
+    ok = all(bool(item["ok"]) for item in checks)
+    return {"status": "ok" if ok else "failed", "phase": "10.2", "checks": checks}, ok
 
 
 def _require_root() -> None:
@@ -294,8 +302,11 @@ def verify_manifest(manifest_path: Path, signature_path: Path, bundle: Path) -> 
     assert isinstance(installed_os, str) and isinstance(target_os, str) and isinstance(minimum_os, str)
     if not _compare_versions(installed_os, "ge", minimum_os):
         raise UpdateAdminError("La versió instal·lada és massa antiga per a aquesta actualització")
-    if not _compare_versions(target_os, "ge", installed_os):
-        raise UpdateAdminError("Downgrade de XAAC Thin Client OS bloquejat")
+    if target_os != installed_os:
+        raise UpdateAdminError(
+            "La fase 10.2 només actualitza el conjunt de components XAAC; "
+            "el manifest ha de correspondre exactament al VERSION_ID instal·lat"
+        )
 
     expected_components = {item["id"]: item for item in policy["components"]}
     if {item.get("id") for item in components if isinstance(item, dict)} != set(expected_components):
@@ -337,23 +348,33 @@ def verify_manifest(manifest_path: Path, signature_path: Path, bundle: Path) -> 
 
     payload = {
         "status": "verified",
-        "phase": "10.1",
+        "phase": "10.2",
         "manifest": str(manifest_path.resolve()),
         "manifest_sha256": _sha256(manifest_path),
         "target_os_version": target_os,
         "components": verified,
-        "installation_enabled": False,
+        "installation_enabled": True,
         "preflight": preflight,
     }
     _record_check(policy, payload)
     return payload
 
 
+def _audit_event(event: str, data: dict[str, Any]) -> None:
+    policy = _load_policy()
+    audit_path = Path(policy["audit"]["path"])
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {"timestamp": datetime.now(timezone.utc).isoformat(), "event": event, **data}
+    with audit_path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+    os.chmod(audit_path, 0o640)
+
+
 def _record_check(policy: dict[str, Any], payload: dict[str, object]) -> None:
     state = {
         "schema_version": 2,
         "model_id": policy["model_id"],
-        "phase": "10.1",
+        "phase": "10.2",
         "status": "available",
         "last_check": datetime.now(timezone.utc).isoformat(),
         "last_manifest_sha256": payload["manifest_sha256"],
@@ -381,7 +402,7 @@ def _record_check(policy: dict[str, Any], payload: dict[str, object]) -> None:
 
 
 def _print_human(payload: dict[str, object]) -> None:
-    if payload.get("phase") == "10.1" and "os" in payload:
+    if payload.get("phase") == "10.2" and "os" in payload:
         os_info = payload["os"]
         assert isinstance(os_info, dict)
         print(f"XAAC Thin Client OS {os_info.get('version')} ({os_info.get('architecture')})")
@@ -389,7 +410,7 @@ def _print_human(payload: dict[str, object]) -> None:
         for component in payload.get("components", []):
             if isinstance(component, dict):
                 print(f"{component.get('package')}: {component.get('installed_version') or 'NO INSTAL·LAT'}")
-        print("Instal·lació d'actualitzacions: reservada per a la fase 10.2")
+        print("Instal·lació d'actualitzacions: habilitada" if payload.get("installation_enabled") else "Instal·lació d'actualitzacions: BLOQUEJADA (falta keyring de releases)")
         return
     if "checks" in payload:
         for check in payload["checks"]:  # type: ignore[index]
@@ -410,7 +431,13 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("manifest", type=Path, help="Manifest JSON del bundle")
     check.add_argument("--signature", type=Path, help="Signatura OpenPGP separada (.asc)")
     check.add_argument("--bundle", type=Path, help="Directori que conté els paquets .deb")
-    subparsers.add_parser("update", help="Reservat per a la fase 10.2; no instal·la res en la fase 10.1")
+    update = subparsers.add_parser("update", help="Verifica i instal·la transaccionalment un bundle signat")
+    update.add_argument("manifest", type=Path, help="Manifest JSON del bundle")
+    update.add_argument("--signature", type=Path, help="Signatura OpenPGP separada (.asc)")
+    update.add_argument("--bundle", type=Path, help="Directori que conté els paquets .deb")
+    update.add_argument("--yes", action="store_true", help="Confirma explícitament la instal·lació")
+    rollback = subparsers.add_parser("rollback", help="Restaura l'últim punt de recuperació funcional")
+    rollback.add_argument("--yes", action="store_true", help="Confirma explícitament el rollback")
     return parser
 
 
@@ -428,13 +455,34 @@ def main(argv: list[str] | None = None) -> int:
             bundle = (args.bundle or manifest.parent).resolve()
             payload = verify_manifest(manifest, signature, bundle)
             ok = True
-        else:
-            print(
-                "xaac-update-admin update encara no instal·la paquets: la instal·lació transaccional "
-                "i el rollback corresponen a la fase 10.2.",
-                file=sys.stderr,
+        elif args.command == "update":
+            _require_root()
+            if not args.yes:
+                raise UpdateAdminError("Cal confirmar explícitament l'actualització amb --yes")
+            if update_runtime is None:
+                raise UpdateAdminError(f"Runtime transaccional no disponible: {_RUNTIME_IMPORT_ERROR}")
+            manifest = args.manifest.resolve()
+            signature = (args.signature or Path(str(manifest) + ".asc")).resolve()
+            bundle = (args.bundle or manifest.parent).resolve()
+            verified = verify_manifest(manifest, signature, bundle)
+            payload = update_runtime.apply_update(
+                manifest, signature, bundle, audit=_audit_event
             )
-            return 64
+            payload["verification"] = {
+                "manifest_sha256": verified["manifest_sha256"],
+                "target_os_version": verified["target_os_version"],
+            }
+            ok = payload.get("status") == "confirmed"
+        elif args.command == "rollback":
+            _require_root()
+            if not args.yes:
+                raise UpdateAdminError("Cal confirmar explícitament el rollback amb --yes")
+            if update_runtime is None:
+                raise UpdateAdminError(f"Runtime transaccional no disponible: {_RUNTIME_IMPORT_ERROR}")
+            payload = update_runtime.manual_rollback(audit=_audit_event)
+            ok = payload.get("status") == "rolled_back"
+        else:
+            raise UpdateAdminError("Ordre administrativa no suportada")
     except UpdateAdminError as exc:
         if getattr(args, "json", False):
             print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False))
