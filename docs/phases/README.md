@@ -11,7 +11,7 @@ operació actual cal utilitzar els manuals i la referència tècnica.
 - [Bloc 5](block-05/README.md) — 7 fases documentades.
 - [Bloc 6](block-06/README.md) — 8 fases documentades.
 - [Bloc 7](block-07/README.md) — 7 fases documentades.
-- [Bloc 8](block-08/README.md) — 7 fases documentades.
+- [Bloc 8](block-08/README.md) — 7 fases documentades de l'històric original (RustDesk; no confondre amb el Bloc 8 actual d'acabat visual).
 - [Bloc 9](block-09/README.md) — 8 fases documentades.
 - [Bloc 10](block-10/README.md) — 5 fases documentades.
 - [Bloc 11](block-11/README.md) — 8 fases documentades.

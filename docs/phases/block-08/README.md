@@ -1,5 +1,9 @@
 # Bloc 8
 
+> **Nota:** aquest directori conserva el **Bloc 8 del calendari històric original**,
+> dedicat a RustDesk. El **Bloc 8 actual — Acabat visual i experiència d'appliance**
+> està documentat a [`docs/development/APPLIANCE_EXPERIENCE.md`](../../development/APPLIANCE_EXPERIENCE.md).
+
 Documents històrics del desenvolupament:
 
 - [Fase 8.1 — Paquet RustDesk XAAC](phase-08-01.md)

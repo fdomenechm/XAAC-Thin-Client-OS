@@ -1,5 +1,7 @@
 # Bloc 8 — Acabat visual i experiència d'appliance
 
+**Estat:** **TANCAT** — validat en ISO i maquinari real el 2026-08-16.
+
 Aquest document descriu el bloc de consolidació visual posterior a les integracions
 validades de XAAC Thin Client, XAAC Thin Client VPN i XAAC Thin Client Agent.
 
@@ -162,7 +164,28 @@ considerar-se tancats només amb tests estàtics:
 - Plymouth i les superfícies completes de recuperació/energia conserven el branding
   clar existent perquè `XAAC_TC_OS.png` està dissenyada per eixe fons.
 
-## Àrees pendents del Bloc 8
+## Fase 8.6 — Consolidació i tancament
 
-Després de la Fase 8.5 només queda la consolidació i tancament de la Fase 8.6,
-incorporant la validació visual final sobre la ISO i el maquinari real.
+La validació final de la ISO en el Dell Wyse 3040 confirma el comportament visual
+consolidat de les fases 8.1–8.5.2. No s'han requerit canvis funcionals en XAAC
+Thin Client, XAAC Thin Client VPN ni XAAC Thin Client Agent.
+
+El contracte visual estable del producte queda fixat així:
+
+- arrencada, recuperació i accions d'energia amb identitat XAAC i sense exposar
+  GRUB, systemd, greeters o consoles durant el flux normal;
+- instal·lador en català amb cursor de text visible i consola Unicode;
+- transició Plymouth → compositor coberta i sense canvi de mode de vídeo evitable;
+- fons antracita `#383e42` com a canvas estable darrere de XAAC Thin Client VPN i
+  XAAC Thin Client, sense negre residual ni logotip permanent;
+- cursor `wait` mentre el sistema està iniciant, connectant, recuperant o executant
+  una transició d'energia, i cursor normal quan la sessió torna a ser interactiva;
+- camins de fallada amb superfícies XAAC i codis d'incidència, sense tracebacks ni
+  interfícies genèriques de Debian.
+
+`scripts/validate-block8-visual.sh` és el gate ràpid canònic del bloc. La suite
+completa del projecte continua sent el gate de regressió abans d'una release.
+
+**Bloc 8 tancat.** Qualsevol canvi visual posterior es tractarà com una nova
+necessitat de producte o com una correcció de release, no com una fase pendent
+d'aquest bloc.

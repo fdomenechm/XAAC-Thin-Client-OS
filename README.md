@@ -20,6 +20,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 ## Característiques principals
 
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
+- Experiència d'appliance XAAC de punta a punta: arrencada silenciosa, transicions controlades, fons antracita de sessió, feedback d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
@@ -70,6 +71,7 @@ El punt d'entrada oficial és [`docs/README.md`](docs/README.md).
 - [Administració i operació](docs/administration/README.md)
 - [Arquitectura](docs/architecture/README.md)
 - [Desenvolupament](docs/development/README.md)
+- [Experiència visual d'appliance](docs/development/APPLIANCE_EXPERIENCE.md)
 - [Referència tècnica](docs/reference/README.md)
 - [Release 1.0.0](docs/release/README.md)
 - [Històric de fases](docs/phases/README.md)

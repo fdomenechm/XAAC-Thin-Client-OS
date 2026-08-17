@@ -1,3 +1,13 @@
+## 2026-08-16 — Bloc 8.6: consolidació i tancament de l'experiència d'appliance
+
+- Tancat formalment el Bloc 8 després de la validació visual final de la ISO sobre maquinari real.
+- Consolidat el contracte visual final: branding XAAC en arrencada/transicions/recuperació/energia, canvas antracita `#383e42` darrere de VPN i Thin Client, i cursor `wait` durant operacions no interactives.
+- Confirmades les correccions de l'instal·lador: cursor de text visible, `ca_ES.UTF-8`, consola Unicode i missatges sense apòstrofs tipogràfics problemàtics.
+- Convertit `scripts/validate-block8-visual.sh` en el gate final del Bloc 8 i afegides proves de tancament documental.
+- Aclarida la separació entre l'antic `docs/phases/block-08/` històric de RustDesk i el Bloc 8 actual d'acabat visual.
+- Actualitzats README i notes de release perquè l'experiència d'appliance forme part explícita de l'abast estable 1.0.0.
+- Sense canvis funcionals en XAAC Thin Client, XAAC Thin Client VPN ni XAAC Thin Client Agent.
+
 ## 2026-08-16 — Bloc 8.5.2: fons antracita coherent
 
 - Enfosquit el canvas visual de handoff i el fons estable de sessió a `#383e42`, un gris antracita uniforme.

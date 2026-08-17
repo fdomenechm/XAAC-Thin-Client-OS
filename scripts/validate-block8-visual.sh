@@ -4,10 +4,21 @@ set -eu
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PYTHON=${PYTHON:-"$PROJECT_ROOT/.venv/bin/python"}
 
-if [ ! -x "$PYTHON" ]; then
-    printf 'Error: no existeix %s. Executa scripts/create-venv.sh.\n' "$PYTHON" >&2
-    exit 1
-fi
+case "$PYTHON" in
+    */*)
+        if [ ! -x "$PYTHON" ]; then
+            printf 'Error: no existeix %s. Executa scripts/create-venv.sh.\n' "$PYTHON" >&2
+            exit 1
+        fi
+        ;;
+    *)
+        PYTHON=$(command -v "$PYTHON" 2>/dev/null || true)
+        if [ -z "$PYTHON" ] || [ ! -x "$PYTHON" ]; then
+            printf "Error: no s'ha trobat l'intèrpret Python sol·licitat.\n" >&2
+            exit 1
+        fi
+        ;;
+esac
 
 cd "$PROJECT_ROOT"
 export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
@@ -22,7 +33,8 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     tests/test_block8_visual_power.py \
     tests/test_block8_visual_feedback.py \
     tests/test_block8_visual_polish_851.py \
+    tests/test_block8_closure.py \
     tests/test_kiosk_modal_power_runtime.py \
     tests/test_tty_cursor_visibility.py
 
-printf '%s\n' "Bloc 8.5.2: validació visual, fons antracita, instal·lador i handoff superada."
+printf '%s\n' "Bloc 8 tancat (Fase 8.6): validació visual i consolidació superades."
