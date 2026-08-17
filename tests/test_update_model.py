@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+
 import pytest
 
 from xaac_thin_client_os.cli import build_parser, main
@@ -8,6 +9,7 @@ from xaac_thin_client_os.update_model import (
     UpdateModelInstaller,
     create_update_model_plan,
     load_update_model,
+    resolve_update_channel,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -25,31 +27,50 @@ def altered(tmp_path: Path, old: str, new: str) -> Path:
     return path
 
 
-def test_loads_complete_update_model() -> None:
+def test_loads_phase_10_1_update_architecture() -> None:
     model = load_update_model(ROOT / "config/update-model.yaml")
-    assert len(model["components"]) == 3
-    assert [channel["id"] for channel in model["channels"]] == ["laboratory", "pilot", "production"]
-    assert model["states"]["initial"] == "idle"
+    assert model["schema_version"] == 2
+    assert model["phase"] == "10.1"
+    assert [component["package"] for component in model["components"]] == [
+        "xaac-thinclient",
+        "xaac-thin-client-vpn",
+        "xaac-agent",
+    ]
+    assert model["manifest"]["require_detached_signature"] is True
+    assert model["version_policy"]["allow_downgrade"] is False
 
 
 def test_manifest_is_stable(tmp_path: Path) -> None:
     manifest = create_update_model_plan(rootfs(tmp_path), ROOT / "config/update-model.yaml").manifest()
     assert manifest == {
-        "schema_version": 1,
-        "model_id": "xaac-update-model-1",
+        "schema_version": 2,
+        "model_id": "xaac-update-architecture-v1",
+        "phase": "10.1",
         "hardware_profile": "wyse3040",
+        "architecture": "amd64",
         "component_count": 3,
-        "channel_count": 3,
-        "initial_state": "idle",
+        "manifest_schema": "xaac-update-manifest/v1",
+        "downgrades_allowed": False,
     }
+
+
+def test_maps_image_build_channels_to_update_channels() -> None:
+    model = load_update_model(ROOT / "config/update-model.yaml")
+    assert resolve_update_channel(model, "development") == "laboratory"
+    assert resolve_update_channel(model, "testing") == "pilot"
+    assert resolve_update_channel(model, "candidate") == "pilot"
+    assert resolve_update_channel(model, "stable") == "production"
+    assert resolve_update_channel(model, "long-term") == "production"
 
 
 def test_installs_policy_and_initial_state_with_safe_permissions(tmp_path: Path) -> None:
     plan = create_update_model_plan(rootfs(tmp_path), ROOT / "config/update-model.yaml")
     policy, state = UpdateModelInstaller().install(plan)
-    assert json.loads(policy.read_text())["version_policy"]["format"] == "semver"
+    installed_policy = json.loads(policy.read_text())
+    assert installed_policy["manifest"]["hash_algorithm"] == "sha256"
+    assert "package_config" not in installed_policy["components"][0]
     assert json.loads(state.read_text())["status"] == "idle"
-    assert policy.stat().st_mode & 0o777 == 0o644
+    assert policy.stat().st_mode & 0o777 == 0o640
     assert state.stat().st_mode & 0o777 == 0o640
 
 
@@ -69,33 +90,33 @@ def test_dry_run_does_not_write(tmp_path: Path) -> None:
     assert not any(path.exists() for path in paths)
 
 
-def test_rejects_duplicate_components(tmp_path: Path) -> None:
-    path = altered(tmp_path, "id: xaac-agent", "id: xaac-thin-client")
-    with pytest.raises(UpdateModelError, match="duplicats"):
+def test_rejects_wrong_production_package_name(tmp_path: Path) -> None:
+    path = altered(tmp_path, "package: xaac-thinclient", "package: xaac-thin-client")
+    with pytest.raises(UpdateModelError, match="paquets de producció"):
         load_update_model(path)
 
 
-def test_rejects_unknown_promotion_channel(tmp_path: Path) -> None:
-    path = altered(tmp_path, "promotion_target: pilot", "promotion_target: unknown")
-    with pytest.raises(UpdateModelError, match="inexistent"):
+def test_rejects_relaxed_downgrade_policy(tmp_path: Path) -> None:
+    path = altered(tmp_path, "allow_downgrade: false", "allow_downgrade: true")
+    with pytest.raises(UpdateModelError, match="downgrades"):
         load_update_model(path)
 
 
-def test_rejects_invalid_maintenance_time(tmp_path: Path) -> None:
-    path = altered(tmp_path, 'start: 02:00', 'start: 25:00')
-    with pytest.raises(UpdateModelError, match="Hora"):
-        load_update_model(path)
-
-
-def test_rejects_unknown_atomic_component(tmp_path: Path) -> None:
-    path = altered(tmp_path, "  - - xaac-thin-client\n    - xaac-agent", "  - - xaac-thin-client\n    - missing")
+def test_rejects_incomplete_atomic_set(tmp_path: Path) -> None:
+    path = altered(tmp_path, "    - xaac-agent\n", "")
     with pytest.raises(UpdateModelError, match="atòmic"):
         load_update_model(path)
 
 
-def test_rejects_unreachable_state(tmp_path: Path) -> None:
-    path = altered(tmp_path, "    cancelled:\n    - idle", "    cancelled:\n    - idle\n    orphaned:\n    - idle")
-    with pytest.raises(UpdateModelError, match="inaccessibles"):
+def test_rejects_unsigned_manifest_policy(tmp_path: Path) -> None:
+    path = altered(tmp_path, "require_detached_signature: true", "require_detached_signature: false")
+    with pytest.raises(UpdateModelError, match="fail-closed"):
+        load_update_model(path)
+
+
+def test_rejects_too_little_preflight_space(tmp_path: Path) -> None:
+    path = altered(tmp_path, "minimum_free_bytes: 536870912", "minimum_free_bytes: 1024")
+    with pytest.raises(UpdateModelError, match="Espai lliure"):
         load_update_model(path)
 
 

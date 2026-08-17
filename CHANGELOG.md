@@ -1,3 +1,15 @@
+# 2026-08-17 — Reestructuració del Bloc 10 i Fase 10.1
+
+- Consolidat el Bloc 10 en cinc fases: arquitectura; actualització/rollback; manteniment; recuperació; validació final.
+- Els prototips de l'antic full de ruta de 8 subfases es mantenen només com a codi reutilitzable no integrat.
+- Refet `config/update-model.yaml` com a contracte de producció de la Fase 10.1.
+- Corregits els noms reals dels paquets: `xaac-thinclient`, `xaac-thin-client-vpn` i `xaac-agent`.
+- Afegit manifest determinista `xaac-update-manifest/v1` amb SHA-256 dels `.deb`, compatibilitat i bloqueig de downgrades.
+- Afegida la CLI instal·lable `xaac-update-admin` amb `status`, `preflight` i `check`; `update` queda explícitament deshabilitat fins a la Fase 10.2.
+- Integrada l'arquitectura 10.1 al `ProductionIsoBuilder` sense requerir generació d'ISO en aquesta fase.
+- Afegit `scripts/validate-block10-phase1.sh` i proves específiques de regressió.
+- La verificació de bundles és fail-closed i no incorpora claus fictícies; el keyring públic real es provisionarà en la Fase 10.2.
+
 # Correcció Bloc 8.7 — continuïtat visual després del Bloc 9
 
 - Forçat `i915` dins l'`initramfs` per avançar el KMS i reduir l'interval negre abans de Plymouth en el Dell Wyse 3040.

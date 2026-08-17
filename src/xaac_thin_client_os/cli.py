@@ -108,7 +108,16 @@ from xaac_thin_client_os.xaac_apt_repository import (
     XaacAptRepositoryError, XaacAptRepositoryInstaller, create_xaac_apt_repository_plan,
 )
 from xaac_thin_client_os.update_model import (
-    UpdateModelError, UpdateModelInstaller, create_update_model_plan,
+    UpdateModelError,
+    UpdateModelInstaller,
+    create_update_model_plan,
+    load_update_model,
+    resolve_update_channel,
+)
+from xaac_thin_client_os.update_release_manifest import (
+    UpdateReleaseManifestError,
+    build_release_manifest,
+    write_release_manifest,
 )
 from xaac_thin_client_os.recovery_model import (
     RecoveryModelError, RecoveryModelInstaller, create_recovery_model_plan,
@@ -362,6 +371,20 @@ def build_parser() -> argparse.ArgumentParser:
     secure_boot_tpm.add_argument("--dry-run", action="store_true")
     update_model = subparsers.add_parser("configure-update-model", help="Configura el model declaratiu d’actualitzacions")
     update_model.add_argument("--dry-run", action="store_true")
+    update_manifest = subparsers.add_parser(
+        "create-update-manifest",
+        help="Genera el manifest SHA-256 d'un release XAAC sense instal·lar-lo",
+    )
+    update_manifest.add_argument("--target-os-version")
+    update_manifest.add_argument(
+        "--channel",
+        choices=("laboratory", "pilot", "production"),
+    )
+    update_manifest.add_argument("--minimum-installed-os-version")
+    update_manifest.add_argument(
+        "--output",
+        default=".build/artifacts/xaac-update-manifest.json",
+    )
     recovery_model = subparsers.add_parser("configure-recovery-model", help="Configura el model declaratiu d’estats de recuperació")
     recovery_model.add_argument("--dry-run", action="store_true")
     application_recovery = subparsers.add_parser("configure-application-recovery", help="Configura la recuperació del client i de la sessió")
@@ -1805,6 +1828,46 @@ def _configure_update_model(root: Path, *, dry_run: bool, as_json: bool) -> int:
     return 0
 
 
+def _create_update_manifest(
+    root: Path,
+    *,
+    target_os_version: str | None,
+    channel: str | None,
+    minimum_installed_os_version: str | None,
+    output: str,
+    as_json: bool,
+) -> int:
+    target = target_os_version or (root / "VERSION").read_text(encoding="utf-8").strip()
+    selected_channel = channel
+    if selected_channel is None:
+        policy = load_update_model(root / "config/update-model.yaml")
+        build_channel = load_project_configuration(root).build.channel.value
+        selected_channel = resolve_update_channel(policy, build_channel)
+    output_path = Path(output)
+    if output_path.is_absolute() or ".." in output_path.parts:
+        raise UpdateReleaseManifestError("La ruta d'eixida del manifest ha de quedar dins del projecte")
+    destination = root / output_path
+    manifest = build_release_manifest(
+        root,
+        root / "config/update-model.yaml",
+        target_os_version=target,
+        channel=selected_channel,
+        minimum_installed_os_version=minimum_installed_os_version,
+    )
+    write_release_manifest(destination, manifest)
+    payload = {
+        "status": "ok",
+        "message": "Manifest d'actualització generat; resta pendent la signatura OpenPGP externa",
+        "phase": "10.1",
+        "target_os_version": target,
+        "channel": selected_channel,
+        "output": str(destination),
+        "manifest_sha256": manifest["integrity"]["manifest_payload"],
+    }
+    _emit(payload, as_json=as_json)
+    return 0
+
+
 def _configure_recovery_model(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_recovery_model_plan(root / ".build/rootfs", root / "config/recovery-model.yaml")
     paths = RecoveryModelInstaller().install(plan, dry_run=dry_run)
@@ -2394,6 +2457,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _configure_secure_boot_tpm(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-update-model":
             return _configure_update_model(root, dry_run=args.dry_run, as_json=args.json)
+        if args.command == "create-update-manifest":
+            return _create_update_manifest(
+                root,
+                target_os_version=args.target_os_version,
+                channel=args.channel,
+                minimum_installed_os_version=args.minimum_installed_os_version,
+                output=args.output,
+                as_json=args.json,
+            )
         if args.command == "configure-recovery-model":
             return _configure_recovery_model(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-application-recovery":
@@ -2537,7 +2609,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, LocalIntegrationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, UpdateReleaseManifestError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, LocalIntegrationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,

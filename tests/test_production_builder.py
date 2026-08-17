@@ -878,3 +878,15 @@ def test_agent_preflight_accepts_current_canonical_release_provenance(project_ro
     builder = object.__new__(ProductionIsoBuilder)
     builder.paths = BuildPaths.create(project_root)  # type: ignore[misc]
     assert builder._validate_xaac_agent_artifact() == "1.0.0-8"
+
+
+def test_phase_10_1_update_architecture_is_integrated_into_production_builder() -> None:
+    import inspect
+
+    helper = inspect.getsource(ProductionIsoBuilder._configure_update_architecture)
+    configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "config/update-model.yaml" in helper
+    assert "xaac-update-admin" in helper
+    assert "current-release.json" in helper
+    assert "build_release_manifest" in helper
+    assert "_configure_update_architecture()" in configure

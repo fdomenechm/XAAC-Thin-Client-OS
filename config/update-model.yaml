@@ -1,102 +1,85 @@
-schema_version: 1
-model_id: xaac-update-model-1
+schema_version: 2
+model_id: xaac-update-architecture-v1
+phase: "10.1"
 hardware_profile: wyse3040
+architecture: amd64
+platform:
+  id: xaac-thin-client-os
+  version_source: /etc/os-release:VERSION_ID
+  version_format: semver
+  update_strategy: controlled-debian-package-set
 components:
-- id: xaac-thin-client-os
-  package: xaac-thin-client-os
-  kind: operating-system
-  restart: reboot
-  critical: true
-- id: xaac-thin-client
-  package: xaac-thin-client
-  kind: application
-  restart: xaac-thin-client.service
-  critical: true
-- id: xaac-agent
-  package: xaac-agent
-  kind: agent
-  restart: xaac-agent.service
-  critical: true
+  - id: xaac-thin-client
+    package: xaac-thinclient
+    kind: application
+    architecture: all
+    package_config: config/xaac-thin-client-package.yaml
+    critical: true
+  - id: xaac-thin-client-vpn
+    package: xaac-thin-client-vpn
+    kind: vpn
+    architecture: all
+    package_config: config/xaac-thin-client-vpn-package.yaml
+    critical: true
+  - id: xaac-agent
+    package: xaac-agent
+    kind: agent
+    architecture: amd64
+    package_config: config/xaac-agent-package.yaml
+    critical: true
 channels:
-- id: laboratory
-  priority: 10
-  promotion_target: pilot
-  automatic: true
-- id: pilot
-  priority: 20
-  promotion_target: production
-  automatic: false
-- id: production
-  priority: 30
-  promotion_target: null
-  automatic: false
-maintenance_windows:
-  timezone: Europe/Madrid
-  default:
-    days:
-    - tuesday
-    - wednesday
-    - thursday
-    start: 02:00
-    duration_minutes: 180
-  emergency_updates_bypass_window: true
+  - id: laboratory
+    priority: 10
+    build_channels: [development]
+  - id: pilot
+    priority: 20
+    build_channels: [testing, candidate]
+  - id: production
+    priority: 30
+    build_channels: [stable, long-term]
 version_policy:
-  format: semver
+  os_format: semver
+  package_format: debian
   allow_downgrade: false
-  allow_prerelease_in:
-  - laboratory
-  - pilot
-  minimum_os_version: 0.1.0
-  blocked_versions: []
-dependency_policy:
-  require_declared_dependencies: true
-  reject_cycles: true
-  atomic_component_sets:
-  - - xaac-thin-client
+  allow_prerelease_channels:
+    - laboratory
+    - pilot
+  minimum_os_version: 1.0.0
+compatibility:
+  require_complete_component_set: true
+  atomic_component_set:
+    - xaac-thin-client
+    - xaac-thin-client-vpn
     - xaac-agent
-states:
-  initial: idle
-  terminal:
-  - confirmed
-  - rolled-back
-  - failed
-  - cancelled
-  transitions:
-    idle:
-    - checking
-    checking:
-    - available
-    - idle
-    - failed
-    available:
-    - downloading
-    - cancelled
-    downloading:
-    - staged
-    - failed
-    - cancelled
-    staged:
-    - installing
-    - cancelled
-    installing:
-    - validating
-    - rolling-back
-    - failed
-    validating:
-    - confirmed
-    - rolling-back
-    - failed
-    rolling-back:
-    - rolled-back
-    - failed
-    confirmed:
-    - idle
-    rolled-back:
-    - idle
-    failed:
-    - idle
-    cancelled:
-    - idle
+  require_exact_manifest_versions: true
+  require_hardware_profile: true
+  require_architecture: true
+manifest:
+  schema: xaac-update-manifest/v1
+  hash_algorithm: sha256
+  require_detached_signature: true
+  signature_suffix: .asc
+  keyring: /usr/share/keyrings/xaac-archive-keyring.gpg
+  fail_closed: true
+preflight:
+  minimum_free_bytes: 536870912
+  require_dpkg_audit_clean: true
+  require_apt_check: true
+  require_os_identity: xaac-thin-client-os
+  preserve_configuration:
+    - /etc/xaac
+    - /etc/xaac-agent
+    - /etc/NetworkManager/system-connections
+    - /etc/ssh
+    - /etc/hostname
+    - /etc/hosts
+audit:
+  enabled: true
+  path: /var/log/xaac/update-audit.jsonl
+  record_manifest_hash: true
+  record_component_versions: true
 outputs:
-  policy: /usr/share/xaac/update/update-model.json
-  state: /var/lib/xaac-agent/update/state.json
+  policy: /etc/xaac/update/policy.json
+  state: /var/lib/xaac-update/state.json
+  current_release: /usr/share/xaac/update/current-release.json
+  admin: /usr/local/sbin/xaac-update-admin

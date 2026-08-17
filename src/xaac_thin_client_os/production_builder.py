@@ -239,6 +239,17 @@ from xaac_thin_client_os.apparmor_configuration import (
     AppArmorInstaller,
     create_apparmor_plan,
 )
+from xaac_thin_client_os.update_model import (
+    UpdateModelError,
+    UpdateModelInstaller,
+    create_update_model_plan,
+    resolve_update_channel,
+)
+from xaac_thin_client_os.update_release_manifest import (
+    UpdateReleaseManifestError,
+    build_release_manifest,
+    write_release_manifest,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -1187,6 +1198,51 @@ class ProductionIsoBuilder:
                 "test \"$(stat -c '%U:%G:%a' /usr/local/sbin/xaac-block9-validate)\" = 'root:root:750'",
             ],
             phase="configure-verify-block9-target-validator",
+        )
+
+    def _configure_update_architecture(self) -> None:
+        """Install the non-destructive phase 10.1 update contract and admin CLI."""
+        try:
+            plan = create_update_model_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/update-model.yaml",
+            )
+            UpdateModelInstaller().install(plan)
+            manifest = build_release_manifest(
+                self.paths.project_root,
+                self.paths.project_root / "config/update-model.yaml",
+                target_os_version=self.settings.version,
+                channel=resolve_update_channel(plan.profile, self.settings.channel),
+            )
+            write_release_manifest(plan.output("current_release"), manifest)
+        except (UpdateModelError, UpdateReleaseManifestError) as exc:
+            raise ProductionBuildError(f"Arquitectura d'actualització 10.1 invàlida: {exc}") from exc
+
+        admin_source = self.paths.project_root / "assets/runtime/xaac-update-admin"
+        if not admin_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac-update-admin")
+        admin_target = plan.output("admin")
+        admin_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(admin_source, admin_target)
+        admin_target.chmod(0o750)
+
+        if self.dry_run:
+            return
+        self._chroot(
+            [
+                "/bin/sh",
+                "-ec",
+                "test -r /etc/xaac/update/policy.json; "
+                "test -r /var/lib/xaac-update/state.json; "
+                "test -r /usr/share/xaac/update/current-release.json; "
+                "test -x /usr/local/sbin/xaac-update-admin; "
+                "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-update-admin; "
+                "/usr/local/sbin/xaac-update-admin --help >/dev/null; "
+                "test \"$(stat -c '%a' /etc/xaac/update/policy.json)\" = '640'; "
+                "test \"$(stat -c '%a' /var/lib/xaac-update/state.json)\" = '640'; "
+                "test \"$(stat -c '%a' /usr/local/sbin/xaac-update-admin)\" = '750'",
+            ],
+            phase="configure-update-architecture-10-1",
         )
 
     def _configure_openvpn3_network(self) -> None:
@@ -2203,6 +2259,7 @@ exit 0
             self._configure_production_network_hardening()
             self._configure_production_service_hardening()
             self._install_block9_target_validation()
+            self._configure_update_architecture()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
