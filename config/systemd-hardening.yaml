@@ -1,5 +1,5 @@
 schema_version: 1
-policy_id: xaac-systemd-hardening-v1
+policy_id: xaac-systemd-hardening-v2
 defaults:
   no_new_privileges: true
   private_tmp: true
@@ -23,24 +23,12 @@ defaults:
     - "~@reboot"
     - "~@swap"
 services:
-  - unit: xaac-agent.service
-    writable_paths: [/var/lib/xaac-agent, /run/xaac-agent, /var/log/xaac-agent]
+  # The Agent and privileged helper own their hardening in xaac-agent.deb and
+  # are verified by the production builder.  Do not duplicate those units here:
+  # a generic OS drop-in must never broaden their package-owned privileges.
+  - unit: xaac-vpn-manager.service
+    writable_paths: []
     address_families: [AF_UNIX, AF_INET, AF_INET6, AF_NETLINK]
-    capabilities: [CAP_NET_ADMIN]
-    devices: []
-  - unit: xaac-rustdesk.service
-    writable_paths: [/var/lib/xaac-rustdesk, /run/xaac-rustdesk, /var/log/xaac-rustdesk]
-    address_families: [AF_UNIX, AF_INET, AF_INET6]
-    capabilities: []
-    devices: [/dev/dri/renderD128, /dev/uinput]
-  - unit: xaac-thin-client.service
-    writable_paths: [/run/xaac-thin-client, /var/lib/xaac-thin-client]
-    address_families: [AF_UNIX, AF_INET, AF_INET6]
-    capabilities: []
-    devices: [/dev/dri/renderD128, /dev/snd]
-  - unit: xaac-session-supervisor.service
-    writable_paths: [/run/xaac-session-supervisor, /var/lib/xaac-session-supervisor]
-    address_families: [AF_UNIX]
     capabilities: []
     devices: []
 outputs:

@@ -1,4 +1,4 @@
-"""Declarative AppArmor profiles for XAAC services (phase 9.4)."""
+"""Declarative AppArmor profiles for XAAC services (phase 9.3)."""
 from __future__ import annotations
 import json, os, re, tempfile
 from dataclasses import dataclass
@@ -70,7 +70,7 @@ class AppArmorInstaller:
             if os.path.exists(tmp):os.unlink(tmp)
     @staticmethod
     def _render(defaults:dict[str,Any],p:dict[str,Any])->str:
-        flags=['attach_disconnected','mediate_deleted']; lines=[f"# Managed by XAAC Thin Client OS — phase 9.4",f"# mode: {p['mode']}"]
+        flags=['attach_disconnected','mediate_deleted']; lines=[f"# Managed by XAAC Thin Client OS — phase 9.3",f"# mode: {p['mode']}"]
         lines += [f"#include <tunables/global>",f"profile {p['name']} {p['executable']} flags=({','.join(flags)}) {{"]
         lines += [f"  #include <abstractions/{x}>" for x in p['abstractions']]
         lines += [f"  {x} r," for x in p['read_paths']]+[f"  {x} rwk," for x in p['write_paths']]

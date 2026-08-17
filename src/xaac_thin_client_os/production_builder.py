@@ -229,6 +229,16 @@ from xaac_thin_client_os.resource_optimization import (
     ResourceOptimizationError,
     create_resource_configuration_plan,
 )
+from xaac_thin_client_os.systemd_hardening import (
+    SystemdHardeningError,
+    SystemdHardeningInstaller,
+    create_systemd_hardening_plan,
+)
+from xaac_thin_client_os.apparmor_configuration import (
+    AppArmorError,
+    AppArmorInstaller,
+    create_apparmor_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -1049,6 +1059,107 @@ class ProductionIsoBuilder:
                 "dpkg-query -W -f='${Status}' systemd-zram-generator | grep -Fx 'install ok installed' >/dev/null",
             ],
             phase="configure-verify-kernel-resources",
+        )
+
+    def _configure_production_service_hardening(self) -> None:
+        """Harden the effective services and install AppArmor audit profiles.
+
+        Package-owned Agent units remain authoritative: the OS verifies their
+        least-privilege contract instead of layering a generic drop-in that
+        could accidentally broaden capabilities.  The VPN manager receives the
+        OS-owned hardening drop-in.  Custom AppArmor profiles are installed in
+        complain mode for the complex Python/GUI entry points so the 9.4
+        physical gate can observe real accesses before any enforce promotion.
+
+        AppArmor profiles are syntax-checked with ``apparmor_parser -Q``.  They
+        are never loaded into the builder host kernel from inside the chroot.
+        """
+        try:
+            systemd_plan = create_systemd_hardening_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/systemd-hardening.yaml",
+            )
+            SystemdHardeningInstaller().install(systemd_plan, dry_run=self.dry_run)
+            apparmor_plan = create_apparmor_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/apparmor.yaml",
+            )
+            AppArmorInstaller().install(apparmor_plan, dry_run=self.dry_run)
+        except (SystemdHardeningError, AppArmorError) as exc:
+            raise ProductionBuildError(
+                f"No s'ha pogut aplicar el hardening de serveis/AppArmor: {exc}"
+            ) from exc
+
+        if self.dry_run:
+            return
+
+        self._chroot(
+            ["systemctl", "enable", "apparmor.service"],
+            phase="configure-enable-apparmor",
+        )
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                # Agent: the package owns this sandbox.  Verify it and, above
+                # all, ensure the OS has not reintroduced CAP_NET_ADMIN.
+                "test -f /usr/lib/systemd/system/xaac-agent.service; "
+                "grep -Fx 'NoNewPrivileges=true' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "grep -Fx 'ProtectSystem=strict' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "grep -Fx 'ProtectKernelTunables=true' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "grep -Fx 'ProtectKernelModules=true' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "grep -Fx 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "grep -Fx 'CapabilityBoundingSet=' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                "! grep -F 'CAP_NET_ADMIN' /usr/lib/systemd/system/xaac-agent.service >/dev/null; "
+                # Privileged helper: CAP_SYS_BOOT is the sole deliberate
+                # capability and the service remains local-socket only.
+                "test -f /usr/lib/systemd/system/xaac-privileged-helper.service; "
+                "grep -Fx 'ProtectSystem=strict' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "grep -Fx 'RestrictAddressFamilies=AF_UNIX' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "grep -Fx 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                "! grep -F 'CAP_SYS_ADMIN' /usr/lib/systemd/system/xaac-privileged-helper.service >/dev/null; "
+                # The VPN manager is the only current system service receiving
+                # the generic OS hardening policy in phase 9.3.
+                "test -f /lib/systemd/system/xaac-vpn-manager.service; "
+                "test -f /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf; "
+                "grep -Fx 'NoNewPrivileges=yes' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'ProtectSystem=strict' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'MemoryDenyWriteExecute=yes' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'RestrictNamespaces=yes' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'CapabilityBoundingSet=' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'SystemCallFilter=@system-service ~@mount ~@reboot ~@swap' /etc/systemd/system/xaac-vpn-manager.service.d/90-xaac-hardening.conf >/dev/null; "
+                "systemctl is-enabled --quiet apparmor.service; "
+                # Profiles must point at the executables that actually exist in
+                # the current .deb set.  All remain complain-only pre-9.4.
+                "test -x /usr/bin/xaac-agent; test -x /usr/bin/xaac-thinclient; test -x /usr/bin/xaac-thin-client-vpn; "
+                "test -f /etc/apparmor.d/usr.bin.xaac-agent; "
+                "test -f /etc/apparmor.d/usr.bin.xaac-thinclient; "
+                "test -f /etc/apparmor.d/usr.bin.xaac-thin-client-vpn; "
+                "test \"$(readlink /etc/apparmor.d/force-complain/usr.bin.xaac-agent)\" = '../usr.bin.xaac-agent'; "
+                "test \"$(readlink /etc/apparmor.d/force-complain/usr.bin.xaac-thinclient)\" = '../usr.bin.xaac-thinclient'; "
+                "test \"$(readlink /etc/apparmor.d/force-complain/usr.bin.xaac-thin-client-vpn)\" = '../usr.bin.xaac-thin-client-vpn'; "
+                "! test -e /etc/apparmor.d/usr.sbin.xaac-agent; "
+                "! test -e /etc/apparmor.d/usr.bin.xaac-thin-client; "
+                "! test -e /etc/apparmor.d/usr.bin.xaac-rustdesk",
+            ],
+            phase="configure-verify-service-hardening",
+        )
+        self._chroot(
+            [
+                "systemd-analyze", "verify",
+                "xaac-agent.service",
+                "xaac-privileged-helper.service",
+                "xaac-vpn-manager.service",
+            ],
+            phase="configure-verify-systemd-units",
+        )
+        self._chroot(
+            [
+                "apparmor_parser", "-Q", "-K",
+                "/etc/apparmor.d/usr.bin.xaac-agent",
+                "/etc/apparmor.d/usr.bin.xaac-thinclient",
+                "/etc/apparmor.d/usr.bin.xaac-thin-client-vpn",
+            ],
+            phase="configure-verify-apparmor-syntax",
         )
 
     def _configure_openvpn3_network(self) -> None:
@@ -2023,6 +2134,7 @@ exit 0
             )
             self._configure_production_kernel_resources()
             self._configure_production_network_hardening()
+            self._configure_production_service_hardening()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()

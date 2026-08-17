@@ -29,7 +29,9 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     tests/test_resource_optimization.py \
     tests/test_ssh_configuration.py \
     tests/test_firewall_configuration.py \
+    tests/test_systemd_hardening.py \
+    tests/test_apparmor_configuration.py \
     tests/test_production_installer_ssh_hostkeys.py \
     tests/test_production_builder.py
 
-printf '%s\n' "Bloc 9.2: kernel, recursos i eMMC validats; no cal generar ISO encara."
+printf '%s\n' "Bloc 9.3: xarxa, kernel/recursos, serveis i AppArmor validats; no cal generar ISO encara."

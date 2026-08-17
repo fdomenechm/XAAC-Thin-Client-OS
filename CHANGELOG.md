@@ -1,3 +1,14 @@
+## 2026-08-17 — Bloc 9.3: hardening de serveis i AppArmor efectiu
+
+- Revisats els noms d'unitats i executables contra els `.deb` que entren realment al constructor de producció; eliminades de la política efectiva les referències històriques a serveis/paths inexistents.
+- Mantingut el sandbox de `xaac-agent.service` i `xaac-privileged-helper.service` sota propietat del paquet, amb gates que impedeixen reintroduir `CAP_NET_ADMIN` i exigeixen que el helper conserve únicament `CAP_SYS_BOOT`.
+- Aplicat el drop-in XAAC de systemd a `xaac-vpn-manager.service` amb `ProtectSystem=strict`, `NoNewPrivileges`, `MemoryDenyWriteExecute`, `RestrictNamespaces`, `DevicePolicy=closed`, filtre de syscalls i cap capability.
+- Afegida verificació `systemd-analyze verify` de les unitats efectives durant el build.
+- Habilitat AppArmor explícitament i actualitzats els perfils als entrypoints reals d'Agent, Thin Client i VPN.
+- Els perfils XAAC personalitzats queden en `complain` fins a la validació física 9.4; es compilen amb `apparmor_parser -Q -K` sense tocar el kernel host.
+- No s'instal·la un perfil RustDesk fictici: l'artefacte RustDesk actual del checkout no és un `.deb` vàlid i el builder de producció no l'instal·la.
+- La fase 9.3 continua sense generar ISO; la construcció neta i l'observació real d'AppArmor es reserven per a la 9.4.
+
 ## 2026-08-17 — Bloc 9.2: kernel, memòria i eMMC
 
 - Integrades `config/kernel-hardening.yaml` i `config/resources.yaml` en el constructor ISO de producció.

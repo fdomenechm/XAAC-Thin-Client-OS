@@ -18,12 +18,14 @@ from xaac_thin_client_os.systemd_hardening import (
 PROFILE = Path("config/systemd-hardening.yaml")
 
 
-def test_profile_loads_and_covers_required_controls() -> None:
+def test_profile_loads_and_targets_only_os_owned_vpn_dropin() -> None:
     profile = load_systemd_hardening(PROFILE)
+    assert profile["policy_id"] == "xaac-systemd-hardening-v2"
     assert profile["defaults"]["no_new_privileges"] is True
     assert profile["defaults"]["protect_system"] == "strict"
     assert profile["defaults"]["device_policy"] == "closed"
-    assert len(profile["services"]) == 4
+    assert [service["unit"] for service in profile["services"]] == ["xaac-vpn-manager.service"]
+    assert profile["services"][0]["capabilities"] == []
 
 
 def test_plan_rejects_unsafe_rootfs(tmp_path: Path) -> None:
@@ -58,28 +60,31 @@ def test_unsafe_writable_path_is_rejected(tmp_path: Path) -> None:
         load_systemd_hardening(profile)
 
 
-def test_install_writes_dropins_policy_and_state(tmp_path: Path) -> None:
+def test_install_writes_vpn_dropin_policy_and_state(tmp_path: Path) -> None:
     rootfs = tmp_path / "rootfs"
     plan = create_systemd_hardening_plan(rootfs, PROFILE)
     paths = SystemdHardeningInstaller().install(plan)
-    assert len(paths) == 6
-    content = plan.dropin("xaac-agent.service").read_text()
+    assert len(paths) == 3
+    content = plan.dropin("xaac-vpn-manager.service").read_text()
     assert "NoNewPrivileges=yes" in content
     assert "ProtectSystem=strict" in content
-    assert "CapabilityBoundingSet=CAP_NET_ADMIN" in content
+    assert "MemoryDenyWriteExecute=yes" in content
+    assert "RestrictNamespaces=yes" in content
+    assert "CapabilityBoundingSet=\n" in content
     assert "SystemCallFilter=@system-service ~@mount ~@reboot ~@swap" in content
     state = json.loads(plan.destination("state").read_text())
-    assert state["service_count"] == 4
+    assert state["service_count"] == 1
     assert state["least_privilege"] is True
 
 
-def test_device_allow_is_service_specific(tmp_path: Path) -> None:
+def test_vpn_dropin_does_not_add_devices_or_capabilities(tmp_path: Path) -> None:
     plan = create_systemd_hardening_plan(tmp_path / "rootfs", PROFILE)
     SystemdHardeningInstaller().install(plan)
-    rustdesk = plan.dropin("xaac-rustdesk.service").read_text()
-    agent = plan.dropin("xaac-agent.service").read_text()
-    assert "DeviceAllow=/dev/uinput rw" in rustdesk
-    assert "DeviceAllow=" not in agent
+    vpn = plan.dropin("xaac-vpn-manager.service").read_text()
+    assert "DeviceAllow=" not in vpn
+    assert "CapabilityBoundingSet=\n" in vpn
+    assert "CAP_NET_ADMIN" not in vpn
+    assert "CAP_SYS_ADMIN" not in vpn
 
 
 def test_install_is_idempotent(tmp_path: Path) -> None:
@@ -106,7 +111,7 @@ def test_dry_run_does_not_write(tmp_path: Path) -> None:
     assert all(not path.exists() for path in paths)
 
 
-def test_cli_exposes_systemd_hardening(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_exposes_systemd_hardening(tmp_path: Path) -> None:
     args = build_parser().parse_args(["configure-systemd-hardening", "--dry-run"])
     assert args.command == "configure-systemd-hardening"
     root = tmp_path / "project"

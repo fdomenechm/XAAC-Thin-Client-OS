@@ -1,6 +1,6 @@
 # Bloc 9 — Hardening i optimització final
 
-**Estat:** EN CURS — Fase 9.2 implementada, pendents 9.3 i 9.4.
+**Estat:** EN CURS — Fases 9.1–9.3 implementades, pendent 9.4.
 
 Aquest és el bloc final de consolidació tècnica abans de les proves finals de
 release. No substitueix el `docs/phases/block-09/` històric del calendari original:
@@ -75,13 +75,44 @@ i comportament de journald es reserva per al maquinari real en la Fase 9.4.
 
 ## Fase 9.3 — Hardening de serveis i AppArmor real
 
-Pendent. Revisarà els noms i executables efectius de les unitats i paquets actuals
-abans d'aplicar qualsevol drop-in systemd o perfil AppArmor. La regla és no
-aplicar una política històrica si pot ampliar privilegis o apuntar a un executable
-que ja no existeix.
+Fase 9.3 implementada sobre els artefactes que arriben realment a la ISO de
+producció. La política històrica no s'ha aplicat a cegues: els noms antics
+`xaac-thin-client.service`, `xaac-session-supervisor.service`,
+`xaac-rustdesk.service`, `/usr/sbin/xaac-agent` i `/usr/bin/xaac-thin-client` no
+formen part del runtime actual i, per tant, no reben drop-ins ni perfils ficticis.
 
-També es farà una verificació de regressió dels contractes Agent, VPN, quiosc i
-experiència d'appliance.
+Canvis consolidats:
+
+- `xaac-agent.service` i `xaac-privileged-helper.service` conserven el hardening
+  propietat del `.deb` de XAAC Agent. El constructor el valida explícitament i
+  comprova que l'Agent continue amb `CapabilityBoundingSet=` buit, que no es
+  reintroduïsca `CAP_NET_ADMIN` i que el helper només expose `CAP_SYS_BOOT`;
+- `config/systemd-hardening.yaml` passa a descriure només el servei del sistema
+  que necessita una capa addicional de l'OS en aquesta versió:
+  `xaac-vpn-manager.service`. El drop-in aplica `ProtectSystem=strict`,
+  `NoNewPrivileges`, `MemoryDenyWriteExecute`, `RestrictNamespaces`,
+  `DevicePolicy=closed`, filtres de syscalls i un `CapabilityBoundingSet` buit;
+- el build executa `systemd-analyze verify` sobre Agent, helper i VPN manager, de
+  manera que una unitat o drop-in incoherent impedeix continuar;
+- AppArmor queda habilitat explícitament en la imatge i els perfils XAAC apunten
+  als executables reals `/usr/bin/xaac-agent`, `/usr/bin/xaac-thinclient` i
+  `/usr/bin/xaac-thin-client-vpn`;
+- els tres perfils personalitzats entren inicialment en **mode `complain`**. Són
+  processos Python/GTK amb accés a D-Bus, Wayland, FreeRDP i diversos recursos
+  dinàmics; imposar `enforce` sense observar el maquinari real podria bloquejar
+  el quiosc o la VPN. Aquesta decisió és deliberada i forma part del gate 9.4;
+- durant la construcció els perfils es compilen amb `apparmor_parser -Q -K`, que
+  valida sintaxi i includes però no carrega cap política al kernel de la màquina
+  constructora;
+- els perfils històrics de RustDesk no s'instal·len perquè l'artefacte RustDesk
+  present en aquest checkout no és un `.deb` vàlid i el constructor de producció
+  actual no l'instal·la. No s'ha inventat cap confinament per a un executable
+  absent. Aquesta situació queda visible per a la consolidació final.
+
+No es genera ISO en aquesta fase. En la Fase 9.4, la validació física ha de revisar
+`aa-status` i els `DENIED`/audits d'AppArmor durant l'ús real de Thin Client, VPN
+i Agent abans de considerar qualsevol promoció selectiva de `complain` a
+`enforce`.
 
 ## Fase 9.4 — Consolidació, ISO única i validació física
 
