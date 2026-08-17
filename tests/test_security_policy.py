@@ -18,9 +18,9 @@ def test_profile_is_complete_and_cross_referenced(project_root: Path) -> None:
     assert profile["policy_id"] == "xaac-thin-client-os-base"
     assert len(profile["assets"]) == 5
     assert len(profile["actors"]) == 5
-    assert len(profile["attack_surfaces"]) == 5
+    assert len(profile["attack_surfaces"]) == 4
     assert len(profile["threats"]) == 5
-    assert len(profile["controls"]) == 11
+    assert len(profile["controls"]) == 9
     assert len(profile["accepted_risks"]) == 2
 
 
@@ -72,7 +72,7 @@ def test_unsafe_root_and_symlink_are_rejected(tmp_path: Path, project_root: Path
         ("criticality: critical", "criticality: urgent", "Criticitat"),
         ("trust: untrusted", "trust: unknown", "confiança"),
         ("type: preventive", "type: advisory", "Tipus de control"),
-        ("controls: [C01, C02]", "controls: [C99]", "Referència desconeguda"),
+        ("  controls:\n  - C01\n  - C02", "  controls:\n  - C99", "Referència desconeguda"),
         ("threat: T03", "threat: T99", "Risc acceptat"),
         ("policy: /etc/xaac/security/base-policy.json", "policy: ../outside", "absolutes"),
     ],

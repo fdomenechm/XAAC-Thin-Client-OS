@@ -3,7 +3,7 @@
 ## Visió general
 
 XAAC Thin Client OS és una imatge Debian 13 mínima i especialitzada. Separa la
-sessió d'usuari, l'administració, la gestió central i el suport remot.
+sessió d'usuari, l'administració i la gestió central.
 
 ```text
 Firmware UEFI
@@ -14,7 +14,7 @@ Firmware UEFI
           ├─ XAAC Thin Client Agent
           ├─ sessió gràfica xaac-kiosk
           │   └─ XAAC Thin Client
-          └─ XAAC Remote Support (activació controlada)
+          └─ OpenSSH restringit (administració temporal)
 ```
 
 ## Components
@@ -23,7 +23,7 @@ Firmware UEFI
 - **Configuració declarativa**: YAML sota `config/` i perfils sota `profiles/`.
 - **Sessió de quiosc**: compte dedicat, compositor i supervisor amb restriccions.
 - **Agent**: identitat, inventari, enrolament, polítiques, estat i diagnòstic.
-- **Suport remot**: RustDesk personalitzat, desactivat per defecte i auditable.
+- **Administració remota**: OpenSSH restringit, desactivat per defecte i activable temporalment.
 - **Actualització i recuperació**: verificació criptogràfica, staging, rollback i diversos nivells de recuperació.
 
 ## Decisions de disseny
@@ -38,4 +38,3 @@ Firmware UEFI
 ## Integracions
 
 - [Administració i enrolament de XAAC Agent](agent-enrollment.md)
-La documentació específica de XAAC Remote Support es troba a [`integrations/`](integrations/).

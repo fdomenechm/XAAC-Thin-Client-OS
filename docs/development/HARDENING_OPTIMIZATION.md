@@ -1,6 +1,6 @@
 # Bloc 9 — Hardening i optimització final
 
-**Estat:** EN CURS — Fases 9.1–9.3 implementades, pendent 9.4.
+**Estat:** EN VALIDACIÓ FINAL — Fases 9.1–9.4 implementades; pendent executar la ISO candidata en maquinari real.
 
 Aquest és el bloc final de consolidació tècnica abans de les proves finals de
 release. No substitueix el `docs/phases/block-09/` històric del calendari original:
@@ -77,9 +77,8 @@ i comportament de journald es reserva per al maquinari real en la Fase 9.4.
 
 Fase 9.3 implementada sobre els artefactes que arriben realment a la ISO de
 producció. La política històrica no s'ha aplicat a cegues: els noms antics
-`xaac-thin-client.service`, `xaac-session-supervisor.service`,
-`xaac-rustdesk.service`, `/usr/sbin/xaac-agent` i `/usr/bin/xaac-thin-client` no
-formen part del runtime actual i, per tant, no reben drop-ins ni perfils ficticis.
+`xaac-thin-client.service`, `xaac-session-supervisor.service` i `/usr/sbin/xaac-agent`
+no formen part del runtime actual i, per tant, no reben drop-ins ni perfils ficticis.
 
 Canvis consolidats:
 
@@ -104,10 +103,6 @@ Canvis consolidats:
 - durant la construcció els perfils es compilen amb `apparmor_parser -Q -K`, que
   valida sintaxi i includes però no carrega cap política al kernel de la màquina
   constructora;
-- els perfils històrics de RustDesk no s'instal·len perquè l'artefacte RustDesk
-  present en aquest checkout no és un `.deb` vàlid i el constructor de producció
-  actual no l'instal·la. No s'ha inventat cap confinament per a un executable
-  absent. Aquesta situació queda visible per a la consolidació final.
 
 No es genera ISO en aquesta fase. En la Fase 9.4, la validació física ha de revisar
 `aa-status` i els `DENIED`/audits d'AppArmor durant l'ús real de Thin Client, VPN
@@ -116,15 +111,89 @@ i Agent abans de considerar qualsevol promoció selectiva de `complain` a
 
 ## Fase 9.4 — Consolidació, ISO única i validació física
 
-Pendent. Serà el gate final del bloc:
+Fase 9.4 implementada. El codi queda congelat com a candidat per a una única
+construcció neta i una validació física reproduïble. El tancament del Bloc 9 es
+produeix només quan el terminal real supera el gate i les comprovacions manuals
+funcionals.
 
-- suite completa de tests;
-- validators dels Blocs 7, 8 i 9;
-- construcció neta amb `./scripts/build-production-iso.sh --clean`;
-- verificació de l'artefacte i instal·lació en Dell Wyse 3040;
-- mesures de RAM, zram, espai lliure, temps d'arrencada, serveis actius i política
-  efectiva de xarxa;
-- prova funcional de XAAC Thin Client, VPN, Agent, administració local, reinici i
-  apagada.
+### Gate previ a la ISO
 
-Només després d'aquesta validació es marcarà el Bloc 9 com a tancat.
+`scripts/validate-block9-release.sh` és el punt únic de validació abans del build.
+Executa, en aquest ordre:
+
+- gate canònic i d'integració del Bloc 7;
+- gate visual del Bloc 8;
+- gate de hardening del Bloc 9;
+- suite completa de `pytest`;
+- validació amb `dpkg-deb` dels tres paquets que el constructor de producció
+  integra actualment: Agent, Thin Client VPN i Thin Client.
+
+El `build-production-iso.sh` executa automàticament aquest gate abans d'elevar
+privilegis. També es pot executar explícitament:
+
+```sh
+./scripts/validate-block9-release.sh
+```
+
+Després del gate, la candidata es construeix una sola vegada:
+
+```sh
+./scripts/build-production-iso.sh --clean
+```
+
+La fase `verify` genera al costat de la ISO:
+
+- `xaac-thin-client-os-amd64.iso.sha256`;
+- `xaac-thin-client-os-amd64.iso.release.json`.
+
+El manifest de release registra versió, perfil, arquitectura, mida i SHA-256 de
+la ISO i del SquashFS. També deixa explícit que AppArmor continua en `complain`
+fins revisar els accessos reals.
+
+### Gate en el Dell Wyse 3040 instal·lat
+
+La candidata instal·la `/usr/local/sbin/xaac-block9-validate` com `root:root 0750`.
+És un validador de només lectura: no activa serveis, no modifica `sysctl` i no
+carrega ni promou perfils AppArmor. S'executa així:
+
+```sh
+sudo /usr/local/sbin/xaac-block9-validate
+```
+
+Per defecte genera:
+
+- `/var/log/xaac/block9-validation.txt`;
+- `/var/log/xaac/block9-validation-evidence/`.
+
+El gate comprova, entre altres punts:
+
+- Dell Wyse 3040, UEFI i arrel `XAAC_ROOT`;
+- mínim de RAM, ús en repòs, espai lliure i `noatime`;
+- zram 50 %, `zstd`, swap activa i `swappiness=100`;
+- `/tmp` en tmpfs, journald volàtil i `fstrim.timer`;
+- timers APT emmascarats;
+- sysctls de hardening i SquashFS no bloquejat;
+- SSH deshabilitat, nftables actiu amb política d'entrada `drop`;
+- NetworkManager, greetd, VPN manager, AppArmor i socket privilegiat;
+- paquets XAAC i procés del Thin Client;
+- absència d'unitats systemd fallides;
+- temps d'arrencada objectiu de 45 segons.
+
+Els events AppArmor `DENIED` es marquen com **REVIEW**, no com a fallada automàtica,
+perquè els perfils estan deliberadament en `complain`. L'evidència s'ha de revisar
+abans de plantejar qualsevol promoció a `enforce`.
+
+### Validació funcional manual
+
+Després d'un gate automàtic sense `FAIL`, cal verificar en el terminal real:
+
+1. arrencada, pantalla de quiosc i XAAC Thin Client;
+2. connexió RDP completa;
+3. VPN opcional i, quan estiga configurada, autenticació 2FA i connexió;
+4. enrolament/operació de XAAC Thin Client Agent quan corresponga;
+5. accés administratiu local i activació temporal d'SSH;
+6. reinici i apagada amb l'experiència visual prevista.
+
+
+Només després de la validació física i funcional es pot marcar el Bloc 9 com a
+tancat.

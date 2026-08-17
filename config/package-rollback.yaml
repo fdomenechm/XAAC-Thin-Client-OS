@@ -14,14 +14,18 @@ restore:
 services:
   restart_only_affected: true
   allowed_units:
-    - xaac-thin-client.service
-    - xaac-agent.service
-    - rustdesk-xaac.service
+  - xaac-thin-client.service
+  - xaac-agent.service
 validation:
   required: true
   fail_closed: true
   timeout_seconds: 300
-  checks: [packages, configuration, services, client_session, agent_health]
+  checks:
+  - packages
+  - configuration
+  - services
+  - client_session
+  - agent_health
 failed_versions:
   block: true
   registry: /var/lib/xaac-update/blocked-versions.json

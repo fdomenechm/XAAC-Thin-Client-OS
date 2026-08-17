@@ -1,80 +1,118 @@
 schema_version: 1
 policy_id: xaac-account-permissions-v1
 accounts:
-  - name: root
-    kind: privileged
-    uid: 0
-    primary_group: root
-    supplementary_groups: []
-    shell: /bin/bash
-    home: /root
-    locked: true
-    interactive_login: console-recovery-only
-  - name: xaac-admin
-    kind: administrator
-    uid: null
-    primary_group: xaac-admin
-    supplementary_groups: [sudo]
-    shell: /bin/bash
-    home: /home/xaac-admin
-    locked: true
-    interactive_login: local-console-and-authorized-ssh
-  - name: xaac-kiosk
-    kind: kiosk
-    uid: null
-    primary_group: xaac-kiosk
-    supplementary_groups: [video, render, audio, input]
-    shell: /usr/sbin/nologin
-    home: /var/lib/xaac-kiosk
-    locked: true
-    interactive_login: denied
-  - name: xaac-agent
-    kind: service
-    uid: null
-    primary_group: xaac-agent
-    supplementary_groups: []
-    shell: /usr/sbin/nologin
-    home: /var/lib/xaac-agent
-    locked: true
-    interactive_login: denied
-  - name: xaac-rustdesk
-    kind: service
-    uid: null
-    primary_group: xaac-rustdesk
-    supplementary_groups: [video, render, input]
-    shell: /usr/sbin/nologin
-    home: /var/lib/xaac-rustdesk
-    locked: true
-    interactive_login: denied
+- name: root
+  kind: privileged
+  uid: 0
+  primary_group: root
+  supplementary_groups: []
+  shell: /bin/bash
+  home: /root
+  locked: true
+  interactive_login: console-recovery-only
+- name: xaac-admin
+  kind: administrator
+  uid: null
+  primary_group: xaac-admin
+  supplementary_groups:
+  - sudo
+  shell: /bin/bash
+  home: /home/xaac-admin
+  locked: true
+  interactive_login: local-console-and-authorized-ssh
+- name: xaac-kiosk
+  kind: kiosk
+  uid: null
+  primary_group: xaac-kiosk
+  supplementary_groups:
+  - video
+  - render
+  - audio
+  - input
+  shell: /usr/sbin/nologin
+  home: /var/lib/xaac-kiosk
+  locked: true
+  interactive_login: denied
+- name: xaac-agent
+  kind: service
+  uid: null
+  primary_group: xaac-agent
+  supplementary_groups: []
+  shell: /usr/sbin/nologin
+  home: /var/lib/xaac-agent
+  locked: true
+  interactive_login: denied
 groups:
-  - {name: xaac-admin, system: true}
-  - {name: xaac-kiosk, system: true}
-  - {name: xaac-agent, system: true}
-  - {name: xaac-rustdesk, system: true}
+- name: xaac-admin
+  system: true
+- name: xaac-kiosk
+  system: true
+- name: xaac-agent
+  system: true
 separation_rules:
-  - id: no-kiosk-privilege
-    subject: xaac-kiosk
-    forbidden_groups: [sudo, adm, systemd-journal, root, xaac-admin]
-  - id: no-agent-interactive-login
-    subject: xaac-agent
-    forbidden_shells: [/bin/bash, /bin/sh, /usr/bin/bash]
-  - id: no-rustdesk-interactive-login
-    subject: xaac-rustdesk
-    forbidden_shells: [/bin/bash, /bin/sh, /usr/bin/bash]
-  - id: root-remote-login-disabled
-    subject: root
-    ssh_login: denied
+- id: no-kiosk-privilege
+  subject: xaac-kiosk
+  forbidden_groups:
+  - sudo
+  - adm
+  - systemd-journal
+  - root
+  - xaac-admin
+- id: no-agent-interactive-login
+  subject: xaac-agent
+  forbidden_shells:
+  - /bin/bash
+  - /bin/sh
+  - /usr/bin/bash
+- id: root-remote-login-disabled
+  subject: root
+  ssh_login: denied
 sensitive_paths:
-  - {path: /etc/xaac, owner: root, group: xaac-agent, mode: '0750', recursive: false}
-  - {path: /etc/xaac/agent, owner: root, group: xaac-agent, mode: '0750', recursive: true}
-  - {path: /etc/xaac/freerdp, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: false}
-  - {path: /etc/xaac/freerdp/server, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: true}
-  - {path: /var/lib/xaac-agent, owner: xaac-agent, group: xaac-agent, mode: '0750', recursive: true}
-  - {path: /var/lib/xaac-rustdesk, owner: xaac-rustdesk, group: xaac-rustdesk, mode: '0750', recursive: true}
-  - {path: /var/lib/xaac-kiosk, owner: xaac-kiosk, group: xaac-kiosk, mode: '0700', recursive: true}
-  - {path: /home/xaac-admin, owner: xaac-admin, group: xaac-admin, mode: '0750', recursive: true}
-  - {path: /etc/ssh, owner: root, group: root, mode: '0755', recursive: false}
-  - {path: /etc/sudoers.d, owner: root, group: root, mode: '0750', recursive: false}
+- path: /etc/xaac
+  owner: root
+  group: xaac-agent
+  mode: '0750'
+  recursive: false
+- path: /etc/xaac/agent
+  owner: root
+  group: xaac-agent
+  mode: '0750'
+  recursive: true
+- path: /etc/xaac/freerdp
+  owner: xaac-kiosk
+  group: xaac-kiosk
+  mode: '0700'
+  recursive: false
+- path: /etc/xaac/freerdp/server
+  owner: xaac-kiosk
+  group: xaac-kiosk
+  mode: '0700'
+  recursive: true
+- path: /var/lib/xaac-agent
+  owner: xaac-agent
+  group: xaac-agent
+  mode: '0750'
+  recursive: true
+- path: /var/lib/xaac-kiosk
+  owner: xaac-kiosk
+  group: xaac-kiosk
+  mode: '0700'
+  recursive: true
+- path: /home/xaac-admin
+  owner: xaac-admin
+  group: xaac-admin
+  mode: '0750'
+  recursive: true
+- path: /etc/ssh
+  owner: root
+  group: root
+  mode: '0755'
+  recursive: false
+- path: /etc/sudoers.d
+  owner: root
+  group: root
+  mode: '0750'
+  recursive: false
 outputs:
   sysusers: /usr/lib/sysusers.d/xaac-security-accounts.conf
   tmpfiles: /usr/lib/tmpfiles.d/xaac-security-permissions.conf

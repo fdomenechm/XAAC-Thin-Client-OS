@@ -80,31 +80,6 @@ from xaac_thin_client_os.xaac_thin_client_package import (
 from xaac_thin_client_os.xaac_agent_package import (
     XaacAgentPackageError, XaacAgentInstaller, create_xaac_agent_plan,
 )
-from xaac_thin_client_os.rustdesk_package import (
-    RustDeskPackageError, RustDeskPackageManager, create_rustdesk_package_plan,
-)
-from xaac_thin_client_os.rustdesk_branding import (
-    RustDeskBrandingError, RustDeskBrandingInstaller, create_rustdesk_branding_plan,
-)
-from xaac_thin_client_os.rustdesk_configuration import (
-    RustDeskConfigurationError, RustDeskConfigurationManager, create_rustdesk_configuration_plan,
-)
-from xaac_thin_client_os.rustdesk_service import (
-    RustDeskServiceError, RustDeskServiceInstaller, create_rustdesk_service_plan,
-)
-from xaac_thin_client_os.rustdesk_activation import (
-    RustDeskActivationError, RustDeskActivationManager, create_rustdesk_activation_plan,
-)
-from xaac_thin_client_os.rustdesk_consent import (
-    RustDeskConsentError, RustDeskConsentManager, create_rustdesk_consent_plan,
-)
-from xaac_thin_client_os.rustdesk_session_audit import (
-    RustDeskSessionAuditError, RustDeskSessionAuditManager, create_rustdesk_session_audit_plan,
-)
-from xaac_thin_client_os.rustdesk_kiosk_validation import (
-    RustDeskKioskValidationError, RustDeskKioskValidationManager,
-    create_rustdesk_kiosk_validation_plan,
-)
 from xaac_thin_client_os.security_policy import (
     SecurityPolicyError, SecurityPolicyInstaller, create_security_policy_plan,
 )
@@ -367,64 +342,6 @@ def build_parser() -> argparse.ArgumentParser:
     install_xaac_client.add_argument("--dry-run", action="store_true", help="Valida i planifica sense instal·lar el paquet")
     install_xaac_agent = subparsers.add_parser("install-xaac-agent", help="Instal·la i configura XAAC Thin Client Agent")
     install_xaac_agent.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    install_rustdesk = subparsers.add_parser("install-rustdesk", help="Valida i instal·la el paquet RustDesk XAAC")
-    install_rustdesk.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    uninstall_rustdesk = subparsers.add_parser("uninstall-rustdesk", help="Desinstal·la completament el paquet RustDesk XAAC")
-    uninstall_rustdesk.add_argument("--dry-run", action="store_true", help="Planifica la desinstal·lació sense modificar el rootfs")
-    rustdesk_branding = subparsers.add_parser("configure-rustdesk-branding", help="Aplica el branding de XAAC Remote Support")
-    rustdesk_branding.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    rustdesk_central = subparsers.add_parser("configure-rustdesk-central", help="Aplica la configuració centralitzada de RustDesk")
-    rustdesk_central.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    rustdesk_rollback = subparsers.add_parser("rollback-rustdesk-central", help="Restaura la configuració RustDesk anterior")
-    rustdesk_rollback.add_argument("--dry-run", action="store_true", help="Planifica el rollback sense modificar el rootfs")
-    rustdesk_service = subparsers.add_parser("configure-rustdesk-service", help="Configura el servei systemd de RustDesk XAAC")
-    rustdesk_service.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    rustdesk_activation = subparsers.add_parser("configure-rustdesk-activation", help="Configura l'activació temporal de RustDesk XAAC")
-    rustdesk_activation.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    activate_rustdesk = subparsers.add_parser("activate-rustdesk-support", help="Autoritza una sessió temporal de suport RustDesk")
-    activate_rustdesk.add_argument("--source", choices=("local", "xms"), default="local", help="Origen de la petició")
-    activate_rustdesk.add_argument("--duration", type=int, help="Duració en minuts")
-    activate_rustdesk.add_argument("--token", help="Token d'autorització; se'n genera un si s'omet")
-    activate_rustdesk.add_argument("--dry-run", action="store_true", help="Valida sense modificar el rootfs")
-    deactivate_rustdesk = subparsers.add_parser("deactivate-rustdesk-support", help="Tanca la sessió temporal de suport RustDesk")
-    deactivate_rustdesk.add_argument("--dry-run", action="store_true", help="Planifica sense modificar el rootfs")
-    rustdesk_consent = subparsers.add_parser("configure-rustdesk-consent", help="Configura la política de consentiment RustDesk")
-    rustdesk_consent.add_argument("--dry-run", action="store_true", help="Valida i planifica sense modificar el rootfs")
-    request_consent = subparsers.add_parser("request-rustdesk-consent", help="Registra una petició de consentiment RustDesk")
-    request_consent.add_argument("--session-id", required=True)
-    request_consent.add_argument("--source", choices=("local", "xms"), default="xms")
-    request_consent.add_argument("--operator", required=True)
-    request_consent.add_argument("--reason", required=True)
-    request_consent.add_argument("--expires-at", required=True)
-    request_consent.add_argument("--mode", choices=("required", "authorized-unattended"), default="required")
-    request_consent.add_argument("--managed-device", action="store_true")
-    request_consent.add_argument("--policy-authorized", action="store_true")
-    request_consent.add_argument("--dry-run", action="store_true")
-    decide_consent = subparsers.add_parser("decide-rustdesk-consent", help="Aprova, denega o cancel·la una petició RustDesk")
-    decide_consent.add_argument("--session-id", required=True)
-    decide_consent.add_argument("--decision", choices=("approve", "deny", "cancel"), required=True)
-    decide_consent.add_argument("--actor", default="kiosk-user")
-    decide_consent.add_argument("--dry-run", action="store_true")
-    audit = subparsers.add_parser("configure-rustdesk-audit", help="Configura l'auditoria de sessions RustDesk")
-    audit.add_argument("--dry-run", action="store_true")
-    start_audit = subparsers.add_parser("start-rustdesk-audit", help="Registra l'inici d'una sessió RustDesk")
-    start_audit.add_argument("--session-id", required=True)
-    start_audit.add_argument("--operator", required=True)
-    start_audit.add_argument("--device-id", required=True)
-    start_audit.add_argument("--reason", required=True)
-    start_audit.add_argument("--source", choices=("local", "xms"), default="xms")
-    start_audit.add_argument("--started-at")
-    start_audit.add_argument("--dry-run", action="store_true")
-    end_audit = subparsers.add_parser("end-rustdesk-audit", help="Registra la fi d'una sessió RustDesk")
-    end_audit.add_argument("--session-id", required=True)
-    end_audit.add_argument("--status", choices=("completed", "cancelled", "expired", "failed"), required=True)
-    end_audit.add_argument("--ended-at")
-    end_audit.add_argument("--dry-run", action="store_true")
-    kiosk_validation = subparsers.add_parser("configure-rustdesk-kiosk-validation", help="Configura la validació de RustDesk en mode quiosc")
-    kiosk_validation.add_argument("--dry-run", action="store_true")
-    validate_kiosk = subparsers.add_parser("validate-rustdesk-kiosk", help="Valida RustDesk amb evidència de sessió i maquinari")
-    validate_kiosk.add_argument("--evidence", type=Path, required=True)
-    validate_kiosk.add_argument("--dry-run", action="store_true")
     security_policy = subparsers.add_parser("configure-security-policy", help="Instal·la la política base de seguretat i el model d'amenaces")
     security_policy.add_argument("--dry-run", action="store_true")
     account_permissions = subparsers.add_parser("configure-account-permissions", help="Aplica la política d'usuaris, grups i permisos sensibles")
@@ -1270,7 +1187,6 @@ def _configure_firewall(root: Path, *, dry_run: bool, as_json: bool) -> int:
             "ssh_port": plan.ssh_port,
             "management_sources": list(plan.management_sources_v4 + plan.management_sources_v6),
             "agent_ports": list(plan.agent_tcp_ports + plan.agent_udp_ports),
-            "rustdesk_ports": list(plan.rustdesk_tcp_ports + plan.rustdesk_udp_ports),
             "log": str(result.log_path.relative_to(root)),
         },
         as_json=as_json,
@@ -1783,117 +1699,6 @@ def _install_xaac_agent(root: Path, *, dry_run: bool, as_json: bool) -> int:
     written = XaacAgentInstaller().execute(plan, dry_run=dry_run)
     payload = {"status": "planned" if dry_run else "installed", "manifest": plan.manifest(), "written": [str(path) for path in written]}
     print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"XAAC Agent: {payload['status']} ({plan.metadata.version})")
-    return 0
-
-
-def _manage_rustdesk(root: Path, *, uninstall: bool, dry_run: bool, as_json: bool) -> int:
-    plan = create_rustdesk_package_plan(
-        root / ".build/rootfs", root, root / "config/rustdesk-package.yaml"
-    )
-    manager = RustDeskPackageManager()
-    written = manager.uninstall(plan, dry_run=dry_run) if uninstall else manager.install(plan, dry_run=dry_run)
-    action = "uninstall" if uninstall else "install"
-    payload = {
-        "status": "planned" if dry_run else "ok",
-        "action": action,
-        "executed": not dry_run,
-        "manifest": plan.manifest(),
-        "files": [str(path) for path in written],
-    }
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk XAAC: {payload['status']} ({action}, {plan.metadata.version})")
-    return 0
-
-
-def _configure_rustdesk_branding(root: Path, *, dry_run: bool, as_json: bool) -> int:
-    plan = create_rustdesk_branding_plan(
-        root / ".build/rootfs", root, root / "config/rustdesk-branding.yaml"
-    )
-    written = RustDeskBrandingInstaller().install(plan, dry_run=dry_run)
-    payload = {
-        "status": "planned" if dry_run else "ok",
-        "executed": not dry_run,
-        "manifest": plan.manifest(),
-        "files": [str(path) for path in written],
-    }
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk branding: {payload['status']}")
-    return 0
-
-
-def _configure_rustdesk_central(root: Path, *, rollback: bool, dry_run: bool, as_json: bool) -> int:
-    plan = create_rustdesk_configuration_plan(root / ".build/rootfs", root / "config/rustdesk-central.yaml")
-    manager = RustDeskConfigurationManager()
-    written = manager.rollback(plan, dry_run=dry_run) if rollback else manager.apply(plan, dry_run=dry_run)
-    payload = {"status": "planned" if dry_run else "ok", "action": "rollback" if rollback else "apply", "revision": plan.profile["revision"], "files": [str(path) for path in written]}
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk central: {payload['status']} ({payload['action']}, revisió {payload['revision']})")
-    return 0
-
-
-def _configure_rustdesk_service(root: Path, *, dry_run: bool, as_json: bool) -> int:
-    plan = create_rustdesk_service_plan(root / ".build/rootfs", root / "config/rustdesk-service.yaml")
-    written = RustDeskServiceInstaller().install(plan, dry_run=dry_run)
-    payload = {"status": "planned" if dry_run else "ok", "service": plan.profile["service"]["name"], "enabled": False, "files": [str(path) for path in written]}
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk service: {payload['status']} ({payload['service']})")
-    return 0
-
-
-def _manage_rustdesk_activation(root: Path, *, action: str, source: str = "local", duration: int | None = None, token: str | None = None, dry_run: bool, as_json: bool) -> int:
-    plan = create_rustdesk_activation_plan(root / ".build/rootfs", root / "config/rustdesk-activation.yaml")
-    manager = RustDeskActivationManager()
-    if action == "configure":
-        written = manager.install(plan, dry_run=dry_run)
-        payload = {"status": "planned" if dry_run else "ok", "action": action, "files": [str(path) for path in written]}
-    elif action == "activate":
-        result = manager.activate(plan, source=source, duration_minutes=duration, token=token, dry_run=dry_run)
-        payload = {"status": "planned" if dry_run else "ok", "action": action, **result}
-    else:
-        payload = {"status": "planned" if dry_run else "ok", "action": action, **manager.deactivate(plan, dry_run=dry_run)}
-    if as_json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-    else:
-        detail = f" ({payload.get('expires_at')})" if payload.get("expires_at") else ""
-        print(f"RustDesk activation: {payload['status']} ({action}){detail}")
-    return 0
-
-
-def _manage_rustdesk_consent(root: Path, *, action: str, dry_run: bool, as_json: bool, **kwargs: object) -> int:
-    plan = create_rustdesk_consent_plan(root / ".build/rootfs", root / "config/rustdesk-consent.yaml")
-    manager = RustDeskConsentManager()
-    if action == "configure":
-        result = {"files": [str(path) for path in manager.install(plan, dry_run=dry_run)]}
-    elif action == "request":
-        result = manager.request(plan, dry_run=dry_run, **kwargs)
-    else:
-        result = manager.decide(plan, dry_run=dry_run, **kwargs)
-    payload = {"status": "planned" if dry_run else "ok", "action": action, **result}
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk consent: {payload['status']} ({action})")
-    return 0
-
-
-def _manage_rustdesk_audit(root: Path, *, action: str, dry_run: bool, as_json: bool, **kwargs: object) -> int:
-    plan = create_rustdesk_session_audit_plan(root / ".build/rootfs", root / "config/rustdesk-session-audit.yaml")
-    manager = RustDeskSessionAuditManager()
-    if action == "configure":
-        result = {"files": [str(path) for path in manager.install(plan, dry_run=dry_run)]}
-    elif action == "start":
-        result = manager.start(plan, dry_run=dry_run, **kwargs)
-    else:
-        result = manager.end(plan, dry_run=dry_run, **kwargs)
-    payload = {"status": "planned" if dry_run else "ok", "action": action, **result}
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk audit: {payload['status']} ({action})")
-    return 0
-
-
-def _manage_rustdesk_kiosk_validation(root: Path, *, action: str, dry_run: bool, as_json: bool, evidence: Path | None = None) -> int:
-    plan = create_rustdesk_kiosk_validation_plan(root / ".build/rootfs", root / "config/rustdesk-kiosk-validation.yaml")
-    manager = RustDeskKioskValidationManager()
-    if action == "configure":
-        result = {"files": [str(path) for path in manager.install(plan, dry_run=dry_run)]}
-    else:
-        if evidence is None:
-            raise RustDeskKioskValidationError("Cal indicar un fitxer d'evidència")
-        result = manager.validate_file(plan, evidence, dry_run=dry_run)
-    payload = {"status": "planned" if dry_run else "ok", "action": action, **result}
-    print(json.dumps(payload, ensure_ascii=False, indent=2) if as_json else f"RustDesk kiosk validation: {payload['status']} ({action})")
     return 0
 
 
@@ -2569,40 +2374,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _install_xaac_thin_client(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "install-xaac-agent":
             return _install_xaac_agent(root, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "install-rustdesk":
-            return _manage_rustdesk(root, uninstall=False, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "uninstall-rustdesk":
-            return _manage_rustdesk(root, uninstall=True, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-rustdesk-branding":
-            return _configure_rustdesk_branding(root, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-rustdesk-central":
-            return _configure_rustdesk_central(root, rollback=False, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "rollback-rustdesk-central":
-            return _configure_rustdesk_central(root, rollback=True, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-rustdesk-service":
-            return _configure_rustdesk_service(root, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-rustdesk-activation":
-            return _manage_rustdesk_activation(root, action="configure", dry_run=args.dry_run, as_json=args.json)
-        if args.command == "activate-rustdesk-support":
-            return _manage_rustdesk_activation(root, action="activate", source=args.source, duration=args.duration, token=args.token, dry_run=args.dry_run, as_json=args.json)
-        if args.command == "deactivate-rustdesk-support":
-            return _manage_rustdesk_activation(root, action="deactivate", dry_run=args.dry_run, as_json=args.json)
-        if args.command == "configure-rustdesk-consent":
-            return _manage_rustdesk_consent(root, action="configure", dry_run=args.dry_run, as_json=args.json)
-        if args.command == "request-rustdesk-consent":
-            return _manage_rustdesk_consent(root, action="request", dry_run=args.dry_run, as_json=args.json, session_id=args.session_id, source=args.source, operator=args.operator, reason=args.reason, expires_at=args.expires_at, mode=args.mode, managed_device=args.managed_device, policy_authorized=args.policy_authorized)
-        if args.command == "decide-rustdesk-consent":
-            return _manage_rustdesk_consent(root, action="decide", dry_run=args.dry_run, as_json=args.json, session_id=args.session_id, decision=args.decision, actor=args.actor)
-        if args.command == "configure-rustdesk-audit":
-            return _manage_rustdesk_audit(root, action="configure", dry_run=args.dry_run, as_json=args.json)
-        if args.command == "start-rustdesk-audit":
-            return _manage_rustdesk_audit(root, action="start", dry_run=args.dry_run, as_json=args.json, session_id=args.session_id, operator=args.operator, device_id=args.device_id, reason=args.reason, source=args.source, started_at=args.started_at)
-        if args.command == "end-rustdesk-audit":
-            return _manage_rustdesk_audit(root, action="end", dry_run=args.dry_run, as_json=args.json, session_id=args.session_id, status=args.status, ended_at=args.ended_at)
-        if args.command == "configure-rustdesk-kiosk-validation":
-            return _manage_rustdesk_kiosk_validation(root, action="configure", dry_run=args.dry_run, as_json=args.json)
-        if args.command == "validate-rustdesk-kiosk":
-            return _manage_rustdesk_kiosk_validation(root, action="validate", evidence=args.evidence, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-security-policy":
             return _configure_security_policy(root, dry_run=args.dry_run, as_json=args.json)
         if args.command == "configure-account-permissions":
@@ -2766,7 +2537,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         HookError,
         HardwareInventoryError,
         EmmcSupportError,
-        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, RustDeskPackageError, RustDeskBrandingError, RustDeskConfigurationError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, LocalIntegrationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
+        IntelGraphicsError, GraphicalStackError, CompositorError, SessionManagerError, KioskUserError, ThinClientLauncherError, SessionSupervisorError, DisplayLayoutError, GraphicalSessionValidationError, KioskRestrictionError, ShortcutLockdownError, TerminalLockdownError, TtyControlError, KioskFilesystemError, LocalDeviceControlError, PowerActionControlError, XaacThinClientPackageError, XaacAgentPackageError, SecurityPolicyError, AccountPermissionsError, SystemdHardeningError, AppArmorError, KernelHardeningError, FileIntegrityError, PackageSigningError, SecureBootTpmError, UpdateModelError, RecoveryModelError, ApplicationRecoveryError, PackageRepairError, LocalRecoveryError, RecoveryPartitionError, FactoryResetError, UsbRecoveryError, PxeRecoveryError, IsoBuilderError, ImgBuilderError, PxeBuilderError, InstallerBuilderError, MassCloningError, ImageTestSuiteError, HardwareFinalTestsError, PerformanceStabilityError, DocumentationError, ProductionPackagingError, ReleaseCandidateError, FinalReleaseError, XaacAptRepositoryError, UpdateServiceError, UpdateVerificationError, TransactionalUpdateError, PackageRollbackError, UpdateRingsError, UpdateSourcesError, DeviceIdentityError, FirstBootError, LocalIntegrationError, PolicyApplicationError, DeviceInventoryError, XmsEnrollmentError, NetworkManagerError, IpAddressingError, NetworkServicesError, VlanConfigurationError, Ieee8021xError, LocalAdminError, EthernetSupportError, AudioSupportError, UsbPeripheralError, PowerThermalError, ResourceOptimizationError,
         KernelInitramfsError,
         LocalizationError,
         FirewallConfigurationError,
@@ -2783,11 +2554,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         WorkspaceLockedError,
         OSError,
         ValueError,
-        RustDeskServiceError,
-        RustDeskActivationError,
-        RustDeskConsentError,
-        RustDeskSessionAuditError,
-        RustDeskKioskValidationError,
     ) as exc:
         if args.json:
             print(json.dumps({"status": "error", "message": str(exc)}, ensure_ascii=False))

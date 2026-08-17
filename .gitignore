@@ -1,15 +1,9 @@
 .venv/
 .idea/
-*.iml
 __pycache__/
-*.py[cod]
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
 .coverage
 htmlcov/
 .build/
-build/
 dist/
-*.egg-info/
-*.log
+*.pyc

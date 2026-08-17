@@ -87,9 +87,9 @@ def load_account_permissions(path: Path) -> dict[str, Any]:
             raise AccountPermissionsError(f"Política de login insegura: {name}")
         if account["kind"] in {"kiosk", "service"} and account["shell"] != "/usr/sbin/nologin":
             raise AccountPermissionsError(f"Compte no interactiu amb shell insegura: {name}")
-    required = {"root", "xaac-admin", "xaac-kiosk", "xaac-agent", "xaac-rustdesk"}
+    required = {"root", "xaac-admin", "xaac-kiosk", "xaac-agent"}
     if account_names != required:
-        raise AccountPermissionsError("La política ha de definir exactament els cinc comptes obligatoris")
+        raise AccountPermissionsError("La política ha de definir exactament els quatre comptes obligatoris")
 
     rule_ids: set[str] = set()
     for rule in rules:

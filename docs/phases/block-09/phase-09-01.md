@@ -11,7 +11,7 @@ El perfil `config/security-policy.yaml` defineix de manera declarativa i version
 - els objectius de confidencialitat, integritat, disponibilitat i responsabilitat;
 - els actius protegits i la seua criticitat;
 - els actors i el nivell de confiança;
-- les superfícies d'atac locals, de xarxa, suport remot, cadena de subministrament i accés físic;
+- les superfícies d'atac locals, de xarxa, cadena de subministrament i accés físic;
 - les amenaces amb probabilitat, impacte, controls i risc residual;
 - el catàleg de controls, propietaris i fases responsables;
 - els riscos explícitament acceptats, amb justificació, responsable i revisió prevista.

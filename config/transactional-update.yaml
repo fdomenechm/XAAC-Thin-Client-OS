@@ -14,14 +14,17 @@ installation:
 services:
   restart_only_changed: true
   allowed_units:
-    - xaac-thin-client.service
-    - xaac-agent.service
-    - rustdesk-xaac.service
+  - xaac-thin-client.service
+  - xaac-agent.service
 validation:
   required: true
   fail_closed: true
   timeout_seconds: 300
-  checks: [packages, services, client_session, agent_health]
+  checks:
+  - packages
+  - services
+  - client_session
+  - agent_health
 confirmation:
   explicit: true
   remove_recovery_point_on_success: true

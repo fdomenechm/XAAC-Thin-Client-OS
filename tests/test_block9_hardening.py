@@ -166,9 +166,7 @@ def test_phase_93_does_not_apply_stale_systemd_or_apparmor_names() -> None:
 
     units = {item["unit"] for item in systemd["services"]}
     names = {item["name"] for item in apparmor["profiles"]}
-    assert "xaac-rustdesk.service" not in units
     assert "xaac-thin-client.service" not in units
     assert "xaac-session-supervisor.service" not in units
     assert "usr.sbin.xaac-agent" not in names
     assert "usr.bin.xaac-thin-client" not in names
-    assert "usr.bin.xaac-rustdesk" not in names

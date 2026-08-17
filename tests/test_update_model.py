@@ -27,7 +27,7 @@ def altered(tmp_path: Path, old: str, new: str) -> Path:
 
 def test_loads_complete_update_model() -> None:
     model = load_update_model(ROOT / "config/update-model.yaml")
-    assert len(model["components"]) == 4
+    assert len(model["components"]) == 3
     assert [channel["id"] for channel in model["channels"]] == ["laboratory", "pilot", "production"]
     assert model["states"]["initial"] == "idle"
 
@@ -38,7 +38,7 @@ def test_manifest_is_stable(tmp_path: Path) -> None:
         "schema_version": 1,
         "model_id": "xaac-update-model-1",
         "hardware_profile": "wyse3040",
-        "component_count": 4,
+        "component_count": 3,
         "channel_count": 3,
         "initial_state": "idle",
     }
@@ -82,19 +82,19 @@ def test_rejects_unknown_promotion_channel(tmp_path: Path) -> None:
 
 
 def test_rejects_invalid_maintenance_time(tmp_path: Path) -> None:
-    path = altered(tmp_path, 'start: "02:00"', 'start: "25:00"')
+    path = altered(tmp_path, 'start: 02:00', 'start: 25:00')
     with pytest.raises(UpdateModelError, match="Hora"):
         load_update_model(path)
 
 
 def test_rejects_unknown_atomic_component(tmp_path: Path) -> None:
-    path = altered(tmp_path, "[xaac-thin-client, xaac-agent]", "[xaac-thin-client, missing]")
+    path = altered(tmp_path, "  - - xaac-thin-client\n    - xaac-agent", "  - - xaac-thin-client\n    - missing")
     with pytest.raises(UpdateModelError, match="atòmic"):
         load_update_model(path)
 
 
 def test_rejects_unreachable_state(tmp_path: Path) -> None:
-    path = altered(tmp_path, "    cancelled: [idle]", "    cancelled: [idle]\n    orphaned: [idle]")
+    path = altered(tmp_path, "    cancelled:\n    - idle", "    cancelled:\n    - idle\n    orphaned:\n    - idle")
     with pytest.raises(UpdateModelError, match="inaccessibles"):
         load_update_model(path)
 

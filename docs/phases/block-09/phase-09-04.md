@@ -4,9 +4,9 @@ Aquesta fase incorpora confinament Mandatory Access Control per als processos pr
 
 ## Política
 
-`config/apparmor.yaml` defineix perfils per a XAAC Agent, XAAC Thin Client i XAAC Remote Support. Cada perfil declara executable, abstraccions, rutes de lectura i escriptura, xarxa, capabilities, senyals i mode d'aplicació.
+`config/apparmor.yaml` defineix perfils per a XAAC Agent, XAAC Thin Client i XAAC Thin Client VPN. Cada perfil declara executable, abstraccions, rutes de lectura i escriptura, xarxa, capabilities, senyals i mode d'aplicació.
 
-XAAC Agent i XAAC Thin Client s'instal·len en mode `enforce`. RustDesk queda inicialment en mode `complain` per permetre l'ajust amb evidència de sessions reals abans de passar-lo a `enforce`.
+
 
 ## Aplicació
 

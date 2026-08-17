@@ -9,9 +9,6 @@ packages:
   xaac-agent:
     architecture: amd64
     source: packaging/xaac-agent
-  xaac-rustdesk:
-    architecture: amd64
-    source: packaging/xaac-rustdesk
   xaac-thin-client-os:
     architecture: all
     source: packaging/xaac-thin-client-os

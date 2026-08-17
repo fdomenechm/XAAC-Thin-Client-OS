@@ -5,9 +5,7 @@
 Aquest document descriu el bloc de consolidació visual posterior a les integracions
 validades de XAAC Thin Client, XAAC Thin Client VPN i XAAC Thin Client Agent.
 
-> `docs/phases/block-08/` pertany a l'històric del calendari original i conserva
-> les antigues fases de RustDesk. El present Bloc 8 és el bloc de consolidació del
-> producte actual i no reobre ni modifica aquella integració històrica.
+
 
 ## Objectiu
 

@@ -22,11 +22,8 @@ def test_block8_final_visual_contract_is_documented() -> None:
     assert "XAAC Thin Client VPN" in text
 
 
-def test_historical_block8_is_explicitly_separated() -> None:
-    text = (ROOT / "docs/phases/block-08/README.md").read_text()
-
-    assert "calendari històric original" in text
-    assert "APPLIANCE_EXPERIENCE.md" in text
+def test_obsolete_historical_block8_is_removed() -> None:
+    assert not (ROOT / "docs/phases/block-08").exists()
 
 
 def test_block8_validator_reports_final_closure() -> None:

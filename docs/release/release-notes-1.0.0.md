@@ -3,7 +3,7 @@
 XAAC Thin Client OS 1.0.0 completa el primer cicle estable del projecte. Inclou el
 constructor Debian 13, suport específic per al Dell Wyse 3040, sessió segura de
 quiosc, experiència visual d'appliance de punta a punta, gestió mitjançant XAAC Agent,
-suport remot controlat, hardening, actualització, recuperació i constructors de producció.
+administració remota restringida mitjançant OpenSSH, hardening, actualització, recuperació i constructors de producció.
 
 ## Abast funcional
 

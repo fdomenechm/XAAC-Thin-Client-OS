@@ -6,9 +6,8 @@ inventory:
   include_peripherals: true
   maximum_packages: 4096
 xaac_packages:
-  - xaac-thinclient
-  - xaac-agent
-  - xaac-rustdesk
+- xaac-thinclient
+- xaac-agent
 paths:
   output: /var/lib/xaac-agent/inventory/inventory.json
   state: /var/lib/xaac-agent/inventory/state.json

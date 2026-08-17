@@ -27,7 +27,7 @@ def altered(tmp_path: Path, old: str, new: str) -> Path:
 
 def test_loads_complete_package_repair_policy() -> None:
     profile = load_package_repair(ROOT / "config/package-repair.yaml")
-    assert profile["packages"]["managed"] == ["xaac-thin-client", "xaac-agent", "rustdesk-xaac"]
+    assert profile["packages"]["managed"] == ["xaac-thin-client", "xaac-agent"]
     assert set(profile["final_validation"]["commands"]) == {"dpkg-audit", "apt-check", "package-files", "xaac-services"}
 
 
@@ -37,7 +37,7 @@ def test_manifest_is_stable(tmp_path: Path) -> None:
         "schema_version": 1,
         "repair_id": "xaac-package-repair-1",
         "hardware_profile": "wyse3040",
-        "managed_packages": ("xaac-thin-client", "xaac-agent", "rustdesk-xaac"),
+        "managed_packages": ("xaac-thin-client", "xaac-agent"),
         "validation_count": 4,
         "max_attempts": 2,
     }
@@ -76,13 +76,13 @@ def test_rejects_unsigned_repository(tmp_path: Path) -> None:
 
 
 def test_rejects_duplicate_managed_package(tmp_path: Path) -> None:
-    path = altered(tmp_path, "    - rustdesk-xaac", "    - xaac-agent")
+    path = altered(tmp_path, "  - xaac-agent", "  - xaac-thin-client")
     with pytest.raises(PackageRepairError, match="gestionats"):
         load_package_repair(path)
 
 
 def test_rejects_incomplete_final_validation(tmp_path: Path) -> None:
-    path = altered(tmp_path, "    - xaac-services\n", "")
+    path = altered(tmp_path, "  - xaac-services\n", "")
     with pytest.raises(PackageRepairError, match="incompleta"):
         load_package_repair(path)
 

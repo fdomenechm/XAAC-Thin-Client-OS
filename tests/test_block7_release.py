@@ -127,11 +127,15 @@ def test_os_tree_does_not_contain_agent_source_finalizer() -> None:
 
 
 def test_production_iso_wrapper_requires_canonical_release_before_system_tools() -> None:
-    text = (ROOT / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
-    release_gate = text.index('"$PROJECT_ROOT/scripts/validate-block7-release.sh"')
-    integration_gate = text.index('"$PROJECT_ROOT/scripts/validate-block7-integration.sh"')
-    deps = text.index('for command in debootstrap')
-    assert release_gate < integration_gate < deps
+    wrapper = (ROOT / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
+    final_gate = wrapper.index('"$PROJECT_ROOT/scripts/validate-block9-release.sh"')
+    deps = wrapper.index('for command in debootstrap')
+    assert final_gate < deps
+
+    gate = (ROOT / "scripts/validate-block9-release.sh").read_text(encoding="utf-8")
+    release_gate = gate.index('"$PROJECT_ROOT/scripts/validate-block7-release.sh"')
+    integration_gate = gate.index('"$PROJECT_ROOT/scripts/validate-block7-integration.sh"')
+    assert release_gate < integration_gate
 
 
 def test_os_build_dependencies_do_not_include_agent_build_toolchain() -> None:

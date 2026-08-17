@@ -17,7 +17,7 @@ from xaac_thin_client_os.cli import build_parser
 
 def test_profile_defines_required_accounts(project_root: Path) -> None:
     profile = load_account_permissions(project_root / "config/account-permissions.yaml")
-    assert {item["name"] for item in profile["accounts"]} == {"root", "xaac-admin", "xaac-kiosk", "xaac-agent", "xaac-rustdesk"}
+    assert {item["name"] for item in profile["accounts"]} == {"root", "xaac-admin", "xaac-kiosk", "xaac-agent"}
     assert all(item["locked"] for item in profile["accounts"])
 
 
@@ -26,7 +26,6 @@ def test_noninteractive_accounts_use_nologin(project_root: Path) -> None:
     accounts = {item["name"]: item for item in profile["accounts"]}
     assert accounts["xaac-kiosk"]["shell"] == "/usr/sbin/nologin"
     assert accounts["xaac-agent"]["interactive_login"] == "denied"
-    assert accounts["xaac-rustdesk"]["interactive_login"] == "denied"
 
 
 def test_plan_rejects_unsafe_root(project_root: Path) -> None:

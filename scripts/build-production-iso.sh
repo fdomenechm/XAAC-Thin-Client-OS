@@ -28,8 +28,10 @@ if [[ "$BUILDER_MODULE_PATH" != "$EXPECTED_BUILDER_MODULE" ]]; then
 fi
 printf '[XAAC] Constructor: %s\n' "$BUILDER_MODULE_PATH"
 
-"$PROJECT_ROOT/scripts/validate-block7-release.sh"
-"$PROJECT_ROOT/scripts/validate-block7-integration.sh"
+if [[ ${XAAC_RELEASE_GATE_PASSED:-0} != 1 ]]; then
+    "$PROJECT_ROOT/scripts/validate-block9-release.sh"
+    export XAAC_RELEASE_GATE_PASSED=1
+fi
 
 for command in debootstrap mksquashfs grub-mkrescue xorriso sha256sum mount umount chroot sync unshare; do
     command -v "$command" >/dev/null 2>&1 || {
@@ -44,7 +46,7 @@ if [[ ${EUID} -ne 0 ]]; then
         printf 'Error: la construcció requereix root o sudo.\n' >&2
         exit 3
     }
-    exec sudo --preserve-env=PYTHON "$0" "$@"
+    exec sudo --preserve-env=PYTHON,XAAC_RELEASE_GATE_PASSED "$0" "$@"
 fi
 
 # Run the complete build in a private mount namespace. This prevents mount

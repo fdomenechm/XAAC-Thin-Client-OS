@@ -4,7 +4,7 @@
 Mínim privilegi, separació de comptes, configuració fail-closed, artefactes signats i traçabilitat.
 
 ## Comptes
-`root` queda reservat; `xaac-admin` administra; `xaac-kiosk`, `xaac-agent` i `xaac-rustdesk` no disposen de login interactiu.
+`root` queda reservat; `xaac-admin` administra; `xaac-kiosk` i `xaac-agent` no disposen de login interactiu.
 
 ## Serveis
 Manteniu el hardening systemd, AppArmor, sysctl, nftables i les restriccions de dispositius. Qualsevol relaxació ha de quedar documentada i revisada.

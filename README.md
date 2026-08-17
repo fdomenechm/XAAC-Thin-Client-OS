@@ -2,8 +2,8 @@
 
 **XAAC Thin Client OS 1.0.0** és una distribució especialitzada basada en Debian 13,
 optimitzada per al Dell Wyse 3040 amb 2 GB de RAM i 8 GB d'eMMC. Proporciona una
-sessió gràfica segura en mode quiosc per executar XAAC Thin Client, XAAC Thin Client
-Agent i el client personalitzat XAAC Remote Support basat en RustDesk.
+sessió gràfica segura en mode quiosc per executar XAAC Thin Client i XAAC Thin Client
+Agent, amb administració remota restringida mitjançant OpenSSH.
 
 ## Estat del projecte
 
@@ -23,7 +23,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Experiència d'appliance XAAC de punta a punta: arrencada silenciosa, transicions controlades, fons antracita de sessió, feedback d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
-- Integració amb XAAC Thin Client, XAAC Agent i XAAC Remote Support.
+- Integració amb XAAC Thin Client i XAAC Thin Client Agent.
 - XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-8`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
 - Administració i enrolament XMS de l'Agent mitjançant `xaac-agent-admin`, amb token bootstrap d'un sol ús i sense secrets en arguments de procés.
 - Contracte local OS ↔ Agent `xaac-local-integration/v1`, amb estat `xaac-state/v2`, events del supervisor i permisos direccionals via `xaac-ipc`.
@@ -147,7 +147,13 @@ Instal·la primer les dependències:
 sudo ./scripts/install-build-dependencies.sh
 ```
 
-Construcció completa i neta:
+Gate final de hardening/release (també s'executa automàticament abans del build):
+
+```bash
+./scripts/validate-block9-release.sh
+```
+
+Construcció completa i neta de la candidata de validació 9.4:
 
 ```bash
 ./scripts/build-production-iso.sh --clean

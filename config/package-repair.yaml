@@ -3,9 +3,8 @@ repair_id: xaac-package-repair-1
 hardware_profile: wyse3040
 packages:
   managed:
-    - xaac-thin-client
-    - xaac-agent
-    - rustdesk-xaac
+  - xaac-thin-client
+  - xaac-agent
   require_installed: true
   allow_additional_dependencies: true
 verification:
@@ -26,27 +25,27 @@ configuration:
   backup_directory: /var/lib/xaac-recovery/package-config-backups
   staging_directory: /var/lib/xaac-recovery/package-repair-staging
   protected_paths:
-    - /etc/xaac/device-identity.json
-    - /etc/xaac/agent/enrollment.json
-    - /etc/xaac/policy/current.json
+  - /etc/xaac/device-identity.json
+  - /etc/xaac/agent/enrollment.json
+  - /etc/xaac/policy/current.json
 final_validation:
   commands:
-    - dpkg-audit
-    - apt-check
-    - package-files
-    - xaac-services
+  - dpkg-audit
+  - apt-check
+  - package-files
+  - xaac-services
   require_all: true
 diagnostics:
   output_directory: /var/lib/xaac-recovery/diagnostics/package-repair
   preserve_on_success: true
 notifications:
   destinations:
-    - agent
-    - xms
+  - agent
+  - xms
   notify_on:
-    - repair_started
-    - repair_completed
-    - repair_failed
+  - repair_started
+  - repair_completed
+  - repair_failed
 safety:
   automatic_factory_reset: false
   destructive_actions_require_confirmation: true

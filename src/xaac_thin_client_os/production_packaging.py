@@ -10,7 +10,7 @@ class ProductionPackagingError(RuntimeError):
     """Raised when packaging or publication configuration is unsafe."""
 
 REQUIRED_CHANNELS=("laboratory","pilot","production")
-REQUIRED_PACKAGES=("xaac-thin-client","xaac-agent","xaac-rustdesk","xaac-thin-client-os")
+REQUIRED_PACKAGES=("xaac-thin-client","xaac-agent","xaac-thin-client-os")
 
 def _relative(value: object, field: str) -> str:
     if not isinstance(value,str) or not value or value.startswith('/'):

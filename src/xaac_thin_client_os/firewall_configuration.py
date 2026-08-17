@@ -31,8 +31,6 @@ class FirewallConfigurationPlan:
     ssh_port: int | None
     agent_tcp_ports: tuple[int, ...]
     agent_udp_ports: tuple[int, ...]
-    rustdesk_tcp_ports: tuple[int, ...]
-    rustdesk_udp_ports: tuple[int, ...]
     state_path: Path
 
     @staticmethod
@@ -60,7 +58,7 @@ class FirewallConfigurationPlan:
         services: list[tuple[str, tuple[int, ...]]] = []
         if self.ssh_port is not None:
             services.append(("tcp", (self.ssh_port,)))
-        services.extend((("tcp", self.agent_tcp_ports), ("udp", self.agent_udp_ports), ("tcp", self.rustdesk_tcp_ports), ("udp", self.rustdesk_udp_ports)))
+        services.extend((("tcp", self.agent_tcp_ports), ("udp", self.agent_udp_ports)))
         for family, source_set in (("ip", "management_sources_v4"), ("ip6", "management_sources_v6")):
             sources = self.management_sources_v4 if family == "ip" else self.management_sources_v6
             if not sources:
@@ -79,7 +77,6 @@ class FirewallConfigurationPlan:
                 "sources_v4": list(self.management_sources_v4), "sources_v6": list(self.management_sources_v6),
                 "ssh_port": self.ssh_port,
                 "agent": {"tcp_ports": list(self.agent_tcp_ports), "udp_ports": list(self.agent_udp_ports)},
-                "rustdesk": {"tcp_ports": list(self.rustdesk_tcp_ports), "udp_ports": list(self.rustdesk_udp_ports)},
             },
             "state_path": str(self.state_path),
         }
@@ -135,7 +132,7 @@ def create_firewall_configuration_plan(rootfs: Path, config_path: Path, ssh_conf
         raise FirewallConfigurationError("Les polítiques només poden ser accept o drop")
     if policies["input"] != "drop" or policies["forward"] != "drop":
         raise FirewallConfigurationError("Les polítiques input i forward han de ser drop")
-    if not isinstance(management, dict) or set(management) != {"sources", "ssh_from_config", "agent", "rustdesk"}:
+    if not isinstance(management, dict) or set(management) != {"sources", "ssh_from_config", "agent"}:
         raise FirewallConfigurationError("management no és vàlid")
     if not isinstance(management["sources"], list) or not isinstance(management["ssh_from_config"], bool):
         raise FirewallConfigurationError("Fonts de gestió no vàlides")
@@ -149,7 +146,7 @@ def create_firewall_configuration_plan(rootfs: Path, config_path: Path, ssh_conf
     if not (v4 or v6):
         raise FirewallConfigurationError("Cal almenys una xarxa de gestió")
     service_ports: dict[str, tuple[int, ...]] = {}
-    for service in ("agent", "rustdesk"):
+    for service in ("agent",):
         value = management[service]
         if not isinstance(value, dict) or set(value) != {"enabled", "tcp_ports", "udp_ports"} or not isinstance(value["enabled"], bool):
             raise FirewallConfigurationError(f"Servei {service} no vàlid")
@@ -166,7 +163,7 @@ def create_firewall_configuration_plan(rootfs: Path, config_path: Path, ssh_conf
             raise FirewallConfigurationError("Port SSH no vàlid")
     if not isinstance(state, dict) or set(state) != {"path"} or not isinstance(state["path"], str) or not state["path"].startswith("/var/lib/xaac-agent/"):
         raise FirewallConfigurationError("Ruta d'estat no vàlida")
-    return FirewallConfigurationPlan(rootfs, raw["enabled"], policies["input"], policies["forward"], policies["output"], allow["loopback"], allow["established"], allow["dhcp_client"], allow["icmp"], tuple(v4), tuple(v6), ssh_port, service_ports["agent_tcp"], service_ports["agent_udp"], service_ports["rustdesk_tcp"], service_ports["rustdesk_udp"], Path(state["path"]))
+    return FirewallConfigurationPlan(rootfs, raw["enabled"], policies["input"], policies["forward"], policies["output"], allow["loopback"], allow["established"], allow["dhcp_client"], allow["icmp"], tuple(v4), tuple(v6), ssh_port, service_ports["agent_tcp"], service_ports["agent_udp"], Path(state["path"]))
 
 
 class FirewallConfigurator:

@@ -1,13 +1,17 @@
+# Correcció Bloc 9.4 — retirada definitiva del client de suport remot
+
+- Eliminats codi, configuracions, tests, assets, paquet placeholder i documentació residuals del client de suport remot retirat.
+- OpenSSH restringit queda com a únic mecanisme d’administració remota del sistema.
+- Afegida una prova de regressió que impedeix reintroduir accidentalment el component retirat.
+- El gate final del Bloc 9 valida exclusivament els components que formen part de l’arquitectura actual.
+
+## 2026-08-17 — Bloc 9.4: consolidació final i gate de maquinari
+
+
+
 ## 2026-08-17 — Bloc 9.3: hardening de serveis i AppArmor efectiu
 
-- Revisats els noms d'unitats i executables contra els `.deb` que entren realment al constructor de producció; eliminades de la política efectiva les referències històriques a serveis/paths inexistents.
-- Mantingut el sandbox de `xaac-agent.service` i `xaac-privileged-helper.service` sota propietat del paquet, amb gates que impedeixen reintroduir `CAP_NET_ADMIN` i exigeixen que el helper conserve únicament `CAP_SYS_BOOT`.
-- Aplicat el drop-in XAAC de systemd a `xaac-vpn-manager.service` amb `ProtectSystem=strict`, `NoNewPrivileges`, `MemoryDenyWriteExecute`, `RestrictNamespaces`, `DevicePolicy=closed`, filtre de syscalls i cap capability.
-- Afegida verificació `systemd-analyze verify` de les unitats efectives durant el build.
-- Habilitat AppArmor explícitament i actualitzats els perfils als entrypoints reals d'Agent, Thin Client i VPN.
-- Els perfils XAAC personalitzats queden en `complain` fins a la validació física 9.4; es compilen amb `apparmor_parser -Q -K` sense tocar el kernel host.
-- No s'instal·la un perfil RustDesk fictici: l'artefacte RustDesk actual del checkout no és un `.deb` vàlid i el builder de producció no l'instal·la.
-- La fase 9.3 continua sense generar ISO; la construcció neta i l'observació real d'AppArmor es reserven per a la 9.4.
+
 
 ## 2026-08-17 — Bloc 9.2: kernel, memòria i eMMC
 
@@ -32,13 +36,7 @@
 
 ## 2026-08-16 — Bloc 8.6: consolidació i tancament de l'experiència d'appliance
 
-- Tancat formalment el Bloc 8 després de la validació visual final de la ISO sobre maquinari real.
-- Consolidat el contracte visual final: branding XAAC en arrencada/transicions/recuperació/energia, canvas antracita `#383e42` darrere de VPN i Thin Client, i cursor `wait` durant operacions no interactives.
-- Confirmades les correccions de l'instal·lador: cursor de text visible, `ca_ES.UTF-8`, consola Unicode i missatges sense apòstrofs tipogràfics problemàtics.
-- Convertit `scripts/validate-block8-visual.sh` en el gate final del Bloc 8 i afegides proves de tancament documental.
-- Aclarida la separació entre l'antic `docs/phases/block-08/` històric de RustDesk i el Bloc 8 actual d'acabat visual.
-- Actualitzats README i notes de release perquè l'experiència d'appliance forme part explícita de l'abast estable 1.0.0.
-- Sense canvis funcionals en XAAC Thin Client, XAAC Thin Client VPN ni XAAC Thin Client Agent.
+
 
 ## 2026-08-16 — Bloc 8.5.2: fons antracita coherent
 
@@ -566,12 +564,7 @@
 
 # Fase 9.2 — Usuaris i permisos
 
-- Consolidats els comptes `root`, `xaac-admin`, `xaac-kiosk`, `xaac-agent` i `xaac-rustdesk` sota una política única.
-- Afegides regles de mínim privilegi, separació de funcions i bloqueig de login per a comptes no interactius.
-- Declarats propietaris, grups i modes dels directoris sensibles.
-- Generats fragments `systemd-sysusers` i `systemd-tmpfiles`, política JSON i estat per a XAAC Agent.
-- Afegida l'ordre `configure-account-permissions` amb mode `--dry-run`.
-- Afegides proves positives, negatives, de permisos, idempotència, symlinks i CLI.
+
 
 # Fase 9.1 — Política de seguretat base
 
@@ -582,41 +575,21 @@
 - Afegida l'ordre `configure-security-policy` amb mode `--dry-run`.
 - Afegides proves positives, negatives, de permisos, idempotència, seguretat i CLI.
 
-# Fase 8.8 — Validació de RustDesk amb mode quiosc
 
-- Afegit el contracte declaratiu de validació de captura, entrada, multimonitor, Wayland/X11, bloqueig i rendiment.
-- Incorporats política, checklist, informe i estat versionat per a XAAC Agent.
-- Afegida validació d'evidència explícita amb llindars de recursos i latència.
-- Evitat declarar com a superades les proves que requereixen sessió gràfica o maquinari real sense evidència.
-- Afegides les ordres `configure-rustdesk-kiosk-validation` i `validate-rustdesk-kiosk`.
-- Afegides proves positives, negatives, de permisos, symlinks, rendiment i CLI.
-- Tancat el Bloc 8 — RustDesk personalitzat.
 
-# Fase 8.3 — Configuració centralitzada de RustDesk XAAC
 
-- Afegit el perfil declaratiu de servidors ID i relay, API, clau pública, proxy, polítiques i actualització.
-- Implementades validacions estrictes d'endpoints, HTTPS, xifratge, proxy i rutes d'eixida.
-- Incorporada aplicació transaccional amb staging, backup, substitució atòmica i rollback.
-- Afegides proteccions contra symlinks, permisos `0640` i mode `--dry-run`.
-- Afegides les ordres `configure-rustdesk-central` i `rollback-rustdesk-central`.
-- Afegides proves positives, negatives, d'idempotència operativa, rollback, permisos i CLI.
 
-# Fase 8.2 — Branding de RustDesk XAAC
 
-- Definida la identitat **XAAC Remote Support** amb nom, application ID i desktop ID propis.
-- Afegides icona i logotip SVG, entrada d'aplicació i entorn de branding.
-- Incorporats textos, etiquetes de servidors gestionats i informació de versió.
-- Afegit manifest auditable, escriptura atòmica, idempotència i protecció de symlinks.
-- Afegida l'ordre `configure-rustdesk-branding` amb mode `--dry-run`.
-- Afegides proves positives, negatives, de permisos lògics, idempotència i CLI.
 
-# Fase 8.1 — Paquet RustDesk XAAC
 
-- Afegit el perfil declaratiu d'origen, versió, arquitectura i dependències de RustDesk XAAC.
-- Implementada la inspecció i validació segura del paquet Debian amb SHA-256 opcional.
-- Incorporades instal·lació mínima, desinstal·lació completa, manifest auditable i protecció de symlinks.
-- Afegides les ordres `install-rustdesk` i `uninstall-rustdesk` amb mode `--dry-run`.
-- Afegides proves positives, negatives, d'idempotència operativa i seguretat.
+
+
+
+
+
+
+
+
 
 # Fase 7.6 — Perfil administrador local
 
@@ -1259,64 +1232,37 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 
 ### Afegit
 
-- Tallafoc persistent basat en `nftables` amb polítiques `input` i `forward` per defecte a `drop`.
-- Xarxes de gestió IPv4 i IPv6 declaratives i validades estrictament.
-- Regles diferenciades per a OpenSSH, XAAC Agent i RustDesk.
-- Serveis Agent i RustDesk tancats per defecte fins que una política declare ports autoritzats.
-- Conservació del trànsit de loopback, connexions establides, DHCP i ICMP essencial.
-- Estat JSON versionat per a XAAC Agent en `/var/lib/xaac-agent/network/firewall.json`.
-- Persistència mitjançant `nftables.service`, escriptures atòmiques i protecció contra enllaços simbòlics.
-- Validació de xarxes, ports, esquema, rutes d’estat i idempotència.
-- Tancat el Bloc 7 — Xarxa i administració.
+
 
 ## [0.1.0] - Fase 8.4
 
 ### Afegit
 
-- Servei `rustdesk-xaac.service` executat amb l'usuari dedicat `xaac-rustdesk`.
-- Dependència de `network-online.target` i comprovació de binari i configuració gestionada.
-- Política de reinici controlada, límits d'arrencada i temps de parada.
-- Sandboxing systemd amb privilegis mínims i sense capabilities.
-- Declaracions `systemd-sysusers` i `systemd-tmpfiles` per a usuari i directoris d'estat.
-- Estat JSON per a XAAC Agent, desactivat per defecte i preparat per a activació sota demanda.
-- Ordre `configure-rustdesk-service` amb mode `--dry-run`.
+
 
 ## [0.1.0] - Fase 8.5
 
 ### Afegit
 
-- Activació sota demanda de `rustdesk-xaac.service` des d'una ordre local o una petició XMS.
-- Duració limitada per política, caducitat UTC i tancament automàtic mitjançant systemd.
-- Tokens d'un sol ús amb longitud mínima i persistència exclusiva del hash SHA-256.
-- Petició efímera amb permisos `0600` i estat versionat per a XAAC Agent.
-- Ordres `configure-rustdesk-activation`, `activate-rustdesk-support` i `deactivate-rustdesk-support` amb `--dry-run`.
+
 
 ## [0.1.0] - Fase 8.6
 
 ### Afegit
 
-- Política de consentiment obligatori per defecte per a sessions de XAAC Remote Support.
-- Mode sense consentiment restringit a XMS, dispositius gestionats i autorització explícita de política.
-- Notificació de quiosc amb operador, motiu i caducitat de la sessió.
-- Decisions d'aprovació, denegació i cancel·lació per part de l'usuari.
-- Estat versionat, peticions efímeres i registre JSON Lines de peticions i decisions.
-- Ordres `configure-rustdesk-consent`, `request-rustdesk-consent` i `decide-rustdesk-consent` amb `--dry-run`.
+
 
 ## [0.1.0] - Fase 8.7
 
 ### Afegit
 
-- Auditoria append-only de sessions de XAAC Remote Support en format JSON Lines.
-- Registre d'inici i final, operador, dispositiu, motiu, origen, duració i estat final.
-- Sessió activa efímera amb permisos `0600` i estat versionat per a XAAC Agent.
-- Validació UTC, exclusió de sessions simultànies i protecció contra symlinks.
-- Ordres `configure-rustdesk-audit`, `start-rustdesk-audit` i `end-rustdesk-audit` amb `--dry-run`.
+
 
 ## [0.1.0] - Fase 9.4
 
 ### Afegit
 
-- Perfils AppArmor declaratius per a XAAC Agent, XAAC Thin Client i XAAC Remote Support.
+- Perfils AppArmor declaratius per a XAAC Agent, XAAC Thin Client i XAAC Thin Client VPN.
 - Modes `enforce` i `complain` gestionats mitjançant `force-complain`.
 - Regles de mínim privilegi per a fitxers, xarxa, capabilities i senyals.
 - Auditoria de denegacions i estat versionat per a XAAC Agent.

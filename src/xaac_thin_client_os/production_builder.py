@@ -1138,8 +1138,7 @@ class ProductionIsoBuilder:
                 "test \"$(readlink /etc/apparmor.d/force-complain/usr.bin.xaac-thinclient)\" = '../usr.bin.xaac-thinclient'; "
                 "test \"$(readlink /etc/apparmor.d/force-complain/usr.bin.xaac-thin-client-vpn)\" = '../usr.bin.xaac-thin-client-vpn'; "
                 "! test -e /etc/apparmor.d/usr.sbin.xaac-agent; "
-                "! test -e /etc/apparmor.d/usr.bin.xaac-thin-client; "
-                "! test -e /etc/apparmor.d/usr.bin.xaac-rustdesk",
+                "! test -e /etc/apparmor.d/usr.bin.xaac-thin-client",
             ],
             phase="configure-verify-service-hardening",
         )
@@ -1160,6 +1159,34 @@ class ProductionIsoBuilder:
                 "/etc/apparmor.d/usr.bin.xaac-thin-client-vpn",
             ],
             phase="configure-verify-apparmor-syntax",
+        )
+
+    def _install_block9_target_validation(self) -> None:
+        """Install the read-only Block 9.4 target validation gate.
+
+        The validator is deliberately a small POSIX shell script.  It collects
+        evidence from the installed Wyse without changing policy, enabling
+        services or loading AppArmor profiles.  Keeping it in /usr/local/sbin
+        makes the final physical validation reproducible while limiting normal
+        kiosk exposure.
+        """
+        source = self.paths.project_root / "assets/runtime/xaac-block9-validate"
+        if not source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac-block9-validate")
+        target = self._inside("/usr/local/sbin/xaac-block9-validate")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        target.chmod(0o750)
+        if self.dry_run:
+            return
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "test -x /usr/local/sbin/xaac-block9-validate; "
+                "sh -n /usr/local/sbin/xaac-block9-validate; "
+                "test \"$(stat -c '%U:%G:%a' /usr/local/sbin/xaac-block9-validate)\" = 'root:root:750'",
+            ],
+            phase="configure-verify-block9-target-validator",
         )
 
     def _configure_openvpn3_network(self) -> None:
@@ -2135,6 +2162,7 @@ exit 0
             self._configure_production_kernel_resources()
             self._configure_production_network_hardening()
             self._configure_production_service_hardening()
+            self._install_block9_target_validation()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
@@ -2287,9 +2315,48 @@ exit 0
         with iso.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)
+        iso_sha256 = digest.hexdigest()
         checksum = iso.with_suffix(iso.suffix + ".sha256")
-        self._atomic_write(checksum, f"{digest.hexdigest()}  {iso.name}\n")
+        self._atomic_write(checksum, f"{iso_sha256}  {iso.name}\n")
         self.runner.run(["sha256sum", "-c", checksum.name], phase="verify-sha256", cwd=iso.parent)
+
+        squashfs = self.paths.build_root / "rootfs.squashfs"
+        squashfs_sha256 = None
+        squashfs_size = None
+        if squashfs.is_file():
+            squashfs_digest = hashlib.sha256()
+            with squashfs.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    squashfs_digest.update(chunk)
+            squashfs_sha256 = squashfs_digest.hexdigest()
+            squashfs_size = squashfs.stat().st_size
+
+        manifest = {
+            "schema": "xaac-block9-release-manifest/v1",
+            "product": "XAAC Thin Client OS",
+            "version": self.settings.version,
+            "profile": self.settings.profile,
+            "channel": self.settings.channel,
+            "architecture": self.settings.architecture,
+            "iso": {
+                "name": iso.name,
+                "size_bytes": iso.stat().st_size,
+                "sha256": iso_sha256,
+            },
+            "squashfs": {
+                "size_bytes": squashfs_size,
+                "sha256": squashfs_sha256,
+            },
+            "validation": {
+                "target_command": "sudo /usr/local/sbin/xaac-block9-validate",
+                "apparmor_mode": "complain-review-required",
+            },
+        }
+        manifest_path = iso.with_suffix(iso.suffix + ".release.json")
+        self._atomic_write(
+            manifest_path,
+            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        )
         self._save_state("verify")
 
     def run(self, phases: Iterable[str]) -> Path:

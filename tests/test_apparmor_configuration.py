@@ -83,7 +83,6 @@ def test_stale_historical_runtime_names_are_not_profiled(tmp_path: Path) -> None
     AppArmorInstaller().install(plan)
     assert not plan.profile_path("usr.sbin.xaac-agent").exists()
     assert not plan.profile_path("usr.bin.xaac-thin-client").exists()
-    assert not plan.profile_path("usr.bin.xaac-rustdesk").exists()
 
 
 def test_install_idempotent(tmp_path: Path) -> None:

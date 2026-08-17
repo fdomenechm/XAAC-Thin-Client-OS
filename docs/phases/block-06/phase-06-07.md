@@ -6,13 +6,7 @@ Aquesta fase incorpora un inventari local, determinista i auditable perquè XAAC
 
 L'informe `xaac-device-inventory` v1 inclou:
 
-- maquinari bàsic i identificadors DMI;
-- sistema operatiu, hostname i machine-id;
-- paquets Debian instal·lats;
-- perifèrics USB amb VID/PID;
-- versions de XAAC Thin Client, XAAC Agent i RustDesk;
-- estat de configuració de l'Agent, identitat i política activa;
-- digest SHA-256 del document.
+
 
 ## Ordres
 

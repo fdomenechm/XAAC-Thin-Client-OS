@@ -13,7 +13,6 @@ management:
   sources: [10.0.0.0/8, '2001:db8::/32']
   ssh_from_config: true
   agent: {enabled: true, tcp_ports: [7443], udp_ports: []}
-  rustdesk: {enabled: true, tcp_ports: [21115, 21116], udp_ports: [21116]}
 state: {path: /var/lib/xaac-agent/network/firewall.json}
 """, encoding="utf-8")
     return path
@@ -34,15 +33,12 @@ def test_plan_renders_default_drop_and_management_services(tmp_path: Path) -> No
     assert "ct state established,related accept" in text
     assert "tcp dport 2222" in text
     assert "tcp dport 7443" in text
-    assert "tcp dport { 21115, 21116 }" in text
-    assert "udp dport 21116" in text
     assert "management_sources_v4" in text and "management_sources_v6" in text
 
 
-def test_manifest_exposes_agent_rustdesk_and_state(tmp_path: Path) -> None:
+def test_manifest_exposes_agent_and_state(tmp_path: Path) -> None:
     manifest = _plan(tmp_path).to_manifest()
     assert manifest["management"]["agent"]["tcp_ports"] == [7443]
-    assert manifest["management"]["rustdesk"]["udp_ports"] == [21116]
     assert manifest["state_path"].endswith("firewall.json")
 
 
