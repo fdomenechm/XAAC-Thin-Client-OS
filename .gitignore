@@ -7,3 +7,5 @@ htmlcov/
 .build/
 dist/
 *.pyc
+
+*.egg-info/

@@ -26,6 +26,10 @@ if [[ ! -d "$VENV_DIR" ]]; then
     "$PYTHON_BIN" -m venv "$VENV_DIR"
 fi
 
+# Editable installs generate metadata under src/. Remove stale metadata first so
+# package manifests always reflect the current checkout.
+find "$PROJECT_ROOT/src" -maxdepth 1 -type d -name '*.egg-info' -exec rm -rf -- {} +
+
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
 "$VENV_DIR/bin/python" -m pip install -e '.[dev]'
 printf 'Entorn preparat: %s/%s\n' "$PROJECT_ROOT" "$VENV_DIR"

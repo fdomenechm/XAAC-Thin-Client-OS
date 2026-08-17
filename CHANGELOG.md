@@ -1,3 +1,10 @@
+# Correcció Bloc 9.4 — metadades generades del paquet
+
+- La prova de retirada de components obsolets deixa d'escanejar artefactes generats com `*.egg-info`, `.venv`, `.build`, caches i directoris de distribució.
+- `scripts/create-venv.sh` elimina `src/*.egg-info` abans de `pip install -e` perquè els manifests editables es regeneren sempre des del checkout actual.
+- `.gitignore` exclou explícitament `*.egg-info/`.
+- El gate pre-ISO deixa de dependre de metadades residuals creades per una instal·lació editable anterior.
+
 # Correcció Bloc 9.4 — intèrpret Python del gate pre-ISO
 
 - Els tests que validen la sintaxi dels scripts Python generats utilitzen ara `sys.executable` en lloc de l'ordre genèrica `python`.
