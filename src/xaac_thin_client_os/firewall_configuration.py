@@ -116,7 +116,7 @@ def _ports(value: object, label: str) -> tuple[int, ...]:
 
 def create_firewall_configuration_plan(rootfs: Path, config_path: Path, ssh_config_path: Path) -> FirewallConfigurationPlan:
     rootfs = rootfs.resolve()
-    if rootfs == Path("/") or rootfs.name != "rootfs" or rootfs.parent.parent.name != "runs":
+    if rootfs == Path("/") or rootfs.parent == Path("/") or rootfs.name != "rootfs":
         raise FirewallConfigurationError("Ruta rootfs insegura")
     raw = _load(config_path)
     if raw.get("schema_version") != 2 or set(raw) != {"schema_version", "enabled", "policy", "allow", "management", "state"}:

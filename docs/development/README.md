@@ -7,6 +7,7 @@
 - [Construcció](../getting-started/build.md)
 - [Referència tècnica](../reference/README.md)
 - [Bloc 8 — Acabat visual i experiència d'appliance](APPLIANCE_EXPERIENCE.md)
+- [Bloc 9 — Hardening i optimització final](HARDENING_OPTIMIZATION.md)
 - [Històric de fases](../phases/README.md)
 
 ## Convencions

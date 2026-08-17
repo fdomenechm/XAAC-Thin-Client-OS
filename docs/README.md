@@ -26,6 +26,7 @@ separada dels manuals operatius.
 - [Arquitectura](architecture/README.md)
 - [Guia de desenvolupament](development/README.md)
 - [Experiència visual d'appliance](development/APPLIANCE_EXPERIENCE.md)
+- [Bloc 9 — Hardening i optimització final](development/HARDENING_OPTIMIZATION.md)
 - [Referència de CLI i configuració](reference/README.md)
 - [Release 1.0.0](release/README.md)
 

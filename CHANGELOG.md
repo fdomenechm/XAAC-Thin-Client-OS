@@ -1,3 +1,13 @@
+## 2026-08-17 — Bloc 9.1: línia base efectiva de xarxa
+
+- Integrada la política canònica `config/ssh.yaml` en el constructor ISO de producció.
+- SSH queda deshabilitat per defecte; es conserva l'activació temporal controlada amb clau pública mitjançant `xaac-ssh-access`.
+- Integrada `config/firewall.yaml` en el rootfs de producció amb nftables habilitat i política `drop` per a entrada i forwarding.
+- Afegides validacions de build amb `sshd -t`, `nft -c` i comprovacions de l'estat systemd abans de continuar la construcció.
+- Adaptats els configuradors SSH/nftables perquè accepten de manera segura `.build/production/rootfs` a més dels rootfs històrics de `runs/`.
+- Afegit `scripts/validate-block9-hardening.sh`, documentació del Bloc 9 actual i regressions específiques.
+- La fase 9.1 es valida sense generar ISO; la construcció completa queda ajornada fins a la consolidació 9.4.
+
 ## 2026-08-16 — Bloc 8.6: consolidació i tancament de l'experiència d'appliance
 
 - Tancat formalment el Bloc 8 després de la validació visual final de la ISO sobre maquinari real.

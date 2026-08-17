@@ -1,5 +1,9 @@
 # Bloc 9
 
+> **Nota:** aquest directori conserva el **Bloc 9 del calendari històric original**.
+> El **Bloc 9 actual — Hardening i optimització final** està documentat a
+> [`docs/development/HARDENING_OPTIMIZATION.md`](../../development/HARDENING_OPTIMIZATION.md).
+
 Documents històrics del desenvolupament:
 
 - [Fase 9.1 — Política de seguretat base](phase-09-01.md)

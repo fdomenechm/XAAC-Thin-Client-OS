@@ -72,6 +72,7 @@ El punt d'entrada oficial és [`docs/README.md`](docs/README.md).
 - [Arquitectura](docs/architecture/README.md)
 - [Desenvolupament](docs/development/README.md)
 - [Experiència visual d'appliance](docs/development/APPLIANCE_EXPERIENCE.md)
+- [Bloc 9 — Hardening i optimització final](docs/development/HARDENING_OPTIMIZATION.md)
 - [Referència tècnica](docs/reference/README.md)
 - [Release 1.0.0](docs/release/README.md)
 - [Històric de fases](docs/phases/README.md)

@@ -154,7 +154,7 @@ class SshConfigurationResult:
 
 def create_ssh_configuration_plan(rootfs: Path, config_path: Path) -> SshConfigurationPlan:
     rootfs = rootfs.resolve()
-    if rootfs == Path("/") or rootfs.name != "rootfs" or rootfs.parent.parent.name != "runs":
+    if rootfs == Path("/") or rootfs.parent == Path("/") or rootfs.name != "rootfs":
         raise SshConfigurationError("Ruta rootfs insegura")
     try:
         raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))

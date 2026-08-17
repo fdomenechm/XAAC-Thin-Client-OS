@@ -209,6 +209,16 @@ from xaac_thin_client_os.block7_release import (
     Block7ReleaseError,
     validate_block7_release_provenance,
 )
+from xaac_thin_client_os.ssh_configuration import (
+    SshConfigurationError,
+    SshConfigurator,
+    create_ssh_configuration_plan,
+)
+from xaac_thin_client_os.firewall_configuration import (
+    FirewallConfigurationError,
+    FirewallConfigurator,
+    create_firewall_configuration_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -917,6 +927,59 @@ class ProductionIsoBuilder:
         self._chroot(
             ["systemctl", "enable", "xaac-boot-handoff.service"],
             phase="configure-boot-handoff",
+        )
+
+    def _configure_production_network_hardening(self) -> None:
+        """Apply the canonical SSH and nftables policies to the production rootfs.
+
+        The production ISO builder is intentionally independent from the legacy
+        image pipeline, so these policies must be applied explicitly here.  SSH
+        stays disabled at boot when config/ssh.yaml says so; the temporary access
+        helper can still start it on demand.  nftables is enabled with the
+        default-deny input/forward policy from config/firewall.yaml.
+        """
+        try:
+            ssh_plan = create_ssh_configuration_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/ssh.yaml",
+            )
+            SshConfigurator().execute(
+                ssh_plan,
+                self.paths.logs / "configure-ssh-hardening.log",
+                dry_run=self.dry_run,
+            )
+            firewall_plan = create_firewall_configuration_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/firewall.yaml",
+                self.paths.project_root / "config/ssh.yaml",
+            )
+            FirewallConfigurator().execute(
+                firewall_plan,
+                self.paths.logs / "configure-firewall-hardening.log",
+                dry_run=self.dry_run,
+            )
+        except (SshConfigurationError, FirewallConfigurationError) as exc:
+            raise ProductionBuildError(
+                f"No s'ha pogut aplicar el hardening de xarxa de producció: {exc}"
+            ) from exc
+
+        if self.dry_run:
+            return
+
+        self._chroot(["sshd", "-t"], phase="configure-verify-sshd")
+        self._chroot(["nft", "-c", "-f", "/etc/nftables.conf"], phase="configure-verify-nftables")
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "test -f /etc/ssh/sshd_config.d/20-xaac-hardening.conf; "
+                "grep -Fx 'PasswordAuthentication no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'PermitRootLogin no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
+                "test -x /usr/local/sbin/xaac-ssh-access; "
+                "! systemctl is-enabled --quiet ssh.service; "
+                "systemctl is-enabled --quiet nftables.service; "
+                "grep -F 'policy drop' /etc/nftables.conf >/dev/null",
+            ],
+            phase="configure-verify-network-hardening",
         )
 
     def _configure_openvpn3_network(self) -> None:
@@ -1889,6 +1952,7 @@ exit 0
                 ],
                 phase="configure-vpn-config-permissions",
             )
+            self._configure_production_network_hardening()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
@@ -1910,8 +1974,6 @@ exit 0
                 "systemctl --global disable xaac-thinclient.service >/dev/null 2>&1 || true",
             ], phase="configure-disable-generic-xaac-autostart")
             self._chroot(["systemctl", "enable", "NetworkManager.service"], phase="configure-networkmanager")
-            self._chroot(["systemctl", "enable", "ssh.service"], phase="configure-ssh")
-            self._chroot(["systemctl", "enable", "nftables.service"], phase="configure-firewall")
             self._chroot(["systemctl", "enable", "greetd.service"], phase="configure-greetd")
             self._chroot(["systemctl", "set-default", "graphical.target"], phase="configure-graphical-target")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
