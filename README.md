@@ -20,7 +20,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 ## Característiques principals
 
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
-- Experiència d'appliance XAAC de punta a punta: arrencada silenciosa, transicions controlades, fons antracita de sessió, feedback d'activitat i apagada/reinici amb branding propi.
+- Experiència d'appliance XAAC de punta a punta: arrencada silenciosa amb splash a pantalla completa, transicions controlades, fons granit de sessió, feedback animat d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
 - Integració amb XAAC Thin Client i XAAC Thin Client Agent.

@@ -70,8 +70,8 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     visual = raw["visual_handoff"]
     if set(visual) != {"background_color", "background_image", "background_command", "ready_timeout_seconds", "use_layer_shell"}:
         raise SessionSupervisorError("Contracte visual de transició incomplet")
-    if visual.get("background_color") != "#383e42" or visual.get("use_layer_shell") is not True:
-        raise SessionSupervisorError("La transició visual XAAC ha d'usar fons antracita i layer-shell")
+    if visual.get("background_color") != "#596166" or visual.get("use_layer_shell") is not True:
+        raise SessionSupervisorError("La transició visual XAAC ha d'usar fons granit i layer-shell")
     _safe_absolute(visual.get("background_image"), "background_image")
     _safe_absolute(visual.get("background_command"), "background_command")
     ready_timeout = visual.get("ready_timeout_seconds")
@@ -490,6 +490,7 @@ class StartupApp(Gtk.Application):
         css = Gtk.CssProvider()
         css.load_from_data((
             "window { background: " + BACKGROUND + "; }"
+            ".xaac-startup-spinner { color: #596166; min-width: 30px; min-height: 30px; }"
         ).encode("utf-8"))
         Gtk.StyleContext.add_provider_for_display(
             window.get_display(),
@@ -498,14 +499,26 @@ class StartupApp(Gtk.Application):
         )
 
         picture = Gtk.Picture.new_for_filename(IMAGE)
-        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_content_fit(Gtk.ContentFit.COVER)
         picture.set_hexpand(True)
         picture.set_vexpand(True)
 
-        window.set_child(picture)
+        overlay = Gtk.Overlay()
+        overlay.set_child(picture)
+        spinner = Gtk.Spinner()
+        spinner.add_css_class("xaac-startup-spinner")
+        spinner.set_halign(Gtk.Align.CENTER)
+        spinner.set_valign(Gtk.Align.END)
+        spinner.set_margin_bottom(44)
+        spinner.set_size_request(30, 30)
+        spinner.start()
+        overlay.add_overlay(spinner)
+
+        window.set_child(overlay)
         window.set_cursor_from_name("__BUSY_CURSOR__")
         window.connect("map", self._mapped)
         window.present()
+        window.set_cursor_from_name("__BUSY_CURSOR__")
         GLib.timeout_add_seconds(timeout, self.quit)
 
 
@@ -793,7 +806,7 @@ raise SystemExit(app.run(sys.argv[:1]))
 # Managed by XAAC Thin Client OS — Block 8.5 — branded handoff, neutral stable session
 runtime_dir=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
 mkdir -p "$runtime_dir"
-{visual["background_command"]} -i {visual["background_image"]} -m fit -c '{visual["background_color"]}' >/dev/null 2>&1 &
+{visual["background_command"]} -i {visual["background_image"]} -m fill -c '{visual["background_color"]}' >/dev/null 2>&1 &
 printf '%s\\n' "$!" > "$runtime_dir/xaac-handoff-background.pid"
 {cfg["supervisor_command"]} &
 '''

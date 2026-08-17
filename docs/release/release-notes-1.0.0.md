@@ -14,7 +14,7 @@ administració remota restringida mitjançant OpenSSH, hardening, actualització
 - recuperació local, partició, factory reset, USB i PXE;
 - packaging Debian i repositoris de producció;
 - validació automatitzada i proves finals de maquinari.
-- experiència d'appliance XAAC validada en maquinari real, amb arrencada/transicions pròpies, canvas antracita i feedback visual d'activitat;
+- experiència d'appliance XAAC validada en maquinari real, amb arrencada/transicions pròpies, canvas granit i feedback visual d'activitat;
 
 ## Consideracions
 

@@ -1,3 +1,12 @@
+# Correcció Bloc 8.7 — continuïtat visual després del Bloc 9
+
+- Forçat `i915` dins l'`initramfs` per avançar el KMS i reduir l'interval negre abans de Plymouth en el Dell Wyse 3040.
+- El handoff usa `plymouth quit --retain-splash` i evita repintar `tty1` en el camí Wayland abans que `labwc` dibuixe el primer frame.
+- Plymouth i la pantalla GTK d'inici passen d'escalat `contain/fit` a `cover/fill`, eliminant bandes en relacions d'aspecte diferents de 16:9.
+- Afegit indicador animat de tres punts a Plymouth i `Gtk.Spinner` a l'overlay d'inici; el cursor `wait` continua actiu durant el treball.
+- El canvas neutre passa de l'antracita `#383e42` al gris granit `#596166`.
+- Afegides regressions de Fase 8.7 al gate visual sense modificar el hardening del Bloc 9.
+
 # Correcció Bloc 9.4 — metadades generades del paquet
 
 - La prova de retirada de components obsolets deixa d'escanejar artefactes generats com `*.egg-info`, `.venv`, `.build`, caches i directoris de distribució.

@@ -932,6 +932,7 @@ class ProductionIsoBuilder:
             "[Service]\n"
             "Type=oneshot\n"
             "ExecStart=/usr/local/libexec/xaac-prepare-kiosk-vt\n"
+            "ExecStartPost=-/usr/bin/plymouth quit --retain-splash\n"
             "RemainAfterExit=yes\n\n"
             "[Install]\n"
             "WantedBy=graphical.target\n",
@@ -941,8 +942,7 @@ class ProductionIsoBuilder:
             "[Unit]\n"
             "ConditionKernelCommandLine=!xaac.mode=installer\n"
             "Wants=xaac-boot-handoff.service\n"
-            "After=xaac-boot-handoff.service\n\n"
-            "[Service]\nExecStartPre=/usr/local/libexec/xaac-prepare-kiosk-vt\n",
+            "After=xaac-boot-handoff.service\n",
         )
         self._chroot(
             ["systemctl", "enable", "xaac-boot-handoff.service"],
@@ -1297,7 +1297,7 @@ ready_file=$runtime_dir/xaac-power-transition.ready
 pid_file=/run/xaac-power-transition.pid
 screen=/usr/local/libexec/xaac-power-transition
 
-# Prepare tty1 as an XAAC-neutral anthracite canvas in case the compositor vanishes
+# Prepare tty1 as an XAAC-neutral granite fallback canvas in case the compositor vanishes
 # before Plymouth takes ownership of the framebuffer.
 printf '\033[?25l\033[37;100m\033[2J\033[H\033[3J' > /dev/tty1 2>/dev/null || true
 rm -f "$ready_file" "$pid_file"
@@ -1461,9 +1461,27 @@ exit 0
             raise ProductionBuildError("Falta assets/branding/XAAC_TC_OS.png")
         kernel_cmdline = " ".join(self.settings.kernel_parameters)
 
+        # Load Intel KMS from the initramfs so Plymouth can acquire DRM as early
+        # as possible on the Wyse 3040.  This shortens the unavoidable blank
+        # interval between firmware/GRUB and the first branded userspace frame.
+        initramfs_modules = self._inside("/etc/initramfs-tools/modules")
+        existing_modules = initramfs_modules.read_text(encoding="utf-8") if initramfs_modules.exists() else ""
+        if "i915" not in {line.strip() for line in existing_modules.splitlines()}:
+            early_modules = existing_modules.rstrip() + ("\n" if existing_modules.strip() else "") + "i915\n"
+            self._atomic_write(initramfs_modules, early_modules)
+        self._atomic_write(
+            self._inside("/etc/modules-load.d/xaac-intel-graphics.conf"),
+            "# XAAC Thin Client OS - Intel graphics / early KMS\ni915\n",
+        )
+
         theme_dir = self._inside("/usr/share/plymouth/themes/xaac")
         theme_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, theme_dir / "XAAC_TC_OS.png")
+        for index in range(3):
+            spinner_source = self.paths.project_root / f"assets/branding/XAAC_loading_{index}.png"
+            if not spinner_source.is_file():
+                raise ProductionBuildError(f"Falta {spinner_source.relative_to(self.paths.project_root)}")
+            shutil.copy2(spinner_source, theme_dir / spinner_source.name)
         self._atomic_write(
             theme_dir / "xaac.plymouth",
             "[Plymouth Theme]\n"
@@ -1476,8 +1494,8 @@ exit 0
         )
         self._atomic_write(
             theme_dir / "xaac.script",
-            "Window.SetBackgroundTopColor(1.0, 1.0, 1.0);\n"
-            "Window.SetBackgroundBottomColor(1.0, 1.0, 1.0);\n\n"
+            "Window.SetBackgroundTopColor(0.35, 0.38, 0.40);\n"
+            "Window.SetBackgroundBottomColor(0.35, 0.38, 0.40);\n\n"
             "screen_width = Window.GetWidth();\n"
             "screen_height = Window.GetHeight();\n"
             "image = Image(\"XAAC_TC_OS.png\");\n"
@@ -1486,7 +1504,7 @@ exit 0
             "scale_x = screen_width / image_width;\n"
             "scale_y = screen_height / image_height;\n"
             "scale = scale_x;\n"
-            "if (scale_y < scale_x)\n"
+            "if (scale_y > scale_x)\n"
             "  scale = scale_y;\n"
             "scaled_width = image_width * scale;\n"
             "scaled_height = image_height * scale;\n"
@@ -1494,7 +1512,29 @@ exit 0
             "sprite = Sprite(image);\n"
             "sprite.SetX((screen_width - scaled_width) / 2);\n"
             "sprite.SetY((screen_height - scaled_height) / 2);\n"
-            "sprite.SetZ(10000);\n",
+            "sprite.SetZ(10000);\n\n"
+            "spinner_image_0 = Image(\"XAAC_loading_0.png\");\n"
+            "spinner_image_1 = Image(\"XAAC_loading_1.png\");\n"
+            "spinner_image_2 = Image(\"XAAC_loading_2.png\");\n"
+            "spinner = Sprite(spinner_image_0);\n"
+            "spinner.SetX((screen_width - spinner_image_0.GetWidth()) / 2);\n"
+            "spinner.SetY(screen_height - spinner_image_0.GetHeight() - 40);\n"
+            "spinner.SetZ(10001);\n"
+            "spinner_frame = 0;\n"
+            "spinner_tick = 0;\n"
+            "fun refresh_callback() {\n"
+            "  spinner_tick++;\n"
+            "  if (spinner_tick >= 6) {\n"
+            "    spinner_tick = 0;\n"
+            "    spinner_frame++;\n"
+            "    if (spinner_frame >= 3) spinner_frame = 0;\n"
+            "    if (spinner_frame == 0) spinner.SetImage(spinner_image_0);\n"
+            "    if (spinner_frame == 1) spinner.SetImage(spinner_image_1);\n"
+            "    if (spinner_frame == 2) spinner.SetImage(spinner_image_2);\n"
+            "  }\n"
+            "}\n"
+            "Plymouth.SetRefreshRate(20);\n"
+            "Plymouth.SetRefreshFunction(refresh_callback);\n",
         )
 
         self._atomic_write(
@@ -2222,7 +2262,11 @@ exit 0
                     "/bin/sh", "-ec",
                     f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/xaac.plymouth' >/dev/null; "
                     f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/xaac.script' >/dev/null; "
-                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_TC_OS.png' >/dev/null",
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_TC_OS.png' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_loading_0.png' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_loading_1.png' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Fx 'usr/share/plymouth/themes/xaac/XAAC_loading_2.png' >/dev/null; "
+                    f"lsinitramfs /boot/initrd.img-{version} | grep -Eq '/i915\\.ko(\\.(xz|zst|gz))?$'",
                 ],
                 phase="boot-verify-xaac-plymouth",
             )

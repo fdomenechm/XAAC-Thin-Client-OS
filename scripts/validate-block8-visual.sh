@@ -33,8 +33,9 @@ export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
     tests/test_block8_visual_power.py \
     tests/test_block8_visual_feedback.py \
     tests/test_block8_visual_polish_851.py \
+    tests/test_block8_visual_continuity_87.py \
     tests/test_block8_closure.py \
     tests/test_kiosk_modal_power_runtime.py \
     tests/test_tty_cursor_visibility.py
 
-printf '%s\n' "Bloc 8 tancat (Fase 8.6): validació visual i consolidació superades."
+printf '%s\n' "Bloc 8 tancat (Fase 8.7): validació visual i consolidació superades."

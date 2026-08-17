@@ -20,7 +20,7 @@ def test_visual_handoff_profile_is_xaac_branded(project_root: Path) -> None:
     profile = load_session_supervisor_profile(project_root / "config/session-supervisor.yaml")
     visual = profile["visual_handoff"]
     assert visual == {
-        "background_color": "#383e42",
+        "background_color": "#596166",
         "background_image": "/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png",
         "background_command": "/usr/bin/swaybg",
         "ready_timeout_seconds": 5,
@@ -52,12 +52,12 @@ def test_wayland_handoff_maps_overlay_before_client(tmp_path: Path, project_root
 def test_labwc_background_precedes_supervisor(tmp_path: Path, project_root: Path) -> None:
     files = _supervisor_files(tmp_path, project_root)
     autostart = files["/etc/xaac/labwc/autostart"]
-    background = "/usr/bin/swaybg -i /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png -m fit -c '#383e42'"
+    background = "/usr/bin/swaybg -i /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png -m fill -c '#596166'"
     assert background in autostart
     assert autostart.index("/usr/bin/swaybg") < autostart.index("/usr/local/libexec/xaac-session-supervisor")
 
 
-def test_tty_and_x11_fallback_are_anthracite_not_generic_black(tmp_path: Path, project_root: Path) -> None:
+def test_tty_and_x11_fallback_are_granite_not_generic_black(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_manager_plan(
         tmp_path / "build/rootfs", project_root / "config/session-manager.yaml"
     )
@@ -68,14 +68,15 @@ def test_tty_and_x11_fallback_are_anthracite_not_generic_black(tmp_path: Path, p
     assert "\\033[37;100m" in tty
     assert "\\033[?25l" in tty
     assert "/usr/local/libexec/xaac-prepare-kiosk-vt || true" in session
-    assert "/usr/bin/xsetroot -solid '#383e42'" in x11
+    assert "/usr/bin/xsetroot -solid '#596166'" in x11
 
 
 def test_production_builder_installs_visual_handoff_dependencies(project_root: Path) -> None:
     source = (project_root / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
     for package in ("swaybg", "libgtk4-layer-shell0", "gir1.2-gtk4layershell-1.0", "x11-xserver-utils"):
         assert f'"{package}"' in source
-    assert "ExecStartPre=/usr/local/libexec/xaac-prepare-kiosk-vt" in source
+    assert "ExecStartPost=-/usr/bin/plymouth quit --retain-splash" in source
+    assert "ExecStartPre=/usr/local/libexec/xaac-prepare-kiosk-vt" not in source
 
 
 def test_generated_phase82_scripts_have_valid_syntax(tmp_path: Path, project_root: Path) -> None:

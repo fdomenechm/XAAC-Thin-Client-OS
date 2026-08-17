@@ -1,6 +1,6 @@
 # Bloc 8 — Acabat visual i experiència d'appliance
 
-**Estat:** **TANCAT** — validat en ISO i maquinari real el 2026-08-16.
+**Estat:** **TANCAT** — Fase 8.7 correctiva validada estàticament el 2026-08-17; pendent només de comprovació visual en la següent ISO.
 
 Aquest document descriu el bloc de consolidació visual posterior a les integracions
 validades de XAAC Thin Client, XAAC Thin Client VPN i XAAC Thin Client Agent.
@@ -164,26 +164,57 @@ considerar-se tancats només amb tests estàtics:
 
 ## Fase 8.6 — Consolidació i tancament
 
-La validació final de la ISO en el Dell Wyse 3040 confirma el comportament visual
-consolidat de les fases 8.1–8.5.2. No s'han requerit canvis funcionals en XAAC
-Thin Client, XAAC Thin Client VPN ni XAAC Thin Client Agent.
+La validació inicial de la ISO en el Dell Wyse 3040 va confirmar el comportament
+funcional consolidat de les fases 8.1–8.5.2. No es van requerir canvis funcionals
+en XAAC Thin Client, XAAC Thin Client VPN ni XAAC Thin Client Agent.
 
-El contracte visual estable del producte queda fixat així:
+Una validació posterior, després del Bloc 9, va revelar una regressió purament
+visual en la continuïtat de l'arrencada: interval negre abans del splash, bandes
+superior/inferior en pantalles amb relació d'aspecte diferent de 16:9 i canvassos
+de transició massa foscos. Això dona lloc a la correcció 8.7 següent.
+
+## Fase 8.7 — Correcció de continuïtat visual
+
+La Fase 8.7 manté intactes el hardening i els contractes funcionals del Bloc 9 i
+corregeix exclusivament la presentació de l'appliance:
+
+- el controlador Intel `i915` s'inclou explícitament en l'`initramfs` i en
+  `modules-load.d` perquè el KMS estiga disponible tan prompte com siga possible
+  en el Dell Wyse 3040;
+- `xaac-boot-handoff.service` finalitza Plymouth amb `quit --retain-splash`, de
+  manera que l'últim frame XAAC es conserva mentre `greetd` i `labwc` prenen el
+  control de la pantalla, evitant un retorn intermedi a negre;
+- el camí Wayland ja no repinta `tty1` després de retindre Plymouth; la preparació
+  de consola queda només com a fallback abans del camí X11;
+- el splash Plymouth usa escalat tipus **cover** (ompli tota la pantalla i retalla
+  només l'excés fora de l'àrea visible), eliminant les franges superior i inferior
+  en resolucions no exactament 16:9;
+- Plymouth incorpora un indicador animat de tres punts i la pantalla GTK de
+  handoff incorpora un `Gtk.Spinner`, de manera que l'usuari sempre disposa de
+  feedback d'activitat una vegada el sistema ja pot dibuixar gràficament;
+- `swaybg` usa mode `fill` i tant el handoff com el fons estable passen al gris
+  granit `#596166`, més clar que l'antracita anterior però encara neutre;
+- la superfície GTK d'arrencada usa `Gtk.ContentFit.COVER`, conserva el cursor
+  `wait` i manté l'overlay fins que existeix una finestra interactiva real de
+  XAAC Thin Client o XAAC Thin Client VPN.
+
+El contracte visual final del producte queda fixat així:
 
 - arrencada, recuperació i accions d'energia amb identitat XAAC i sense exposar
   GRUB, systemd, greeters o consoles durant el flux normal;
 - instal·lador en català amb cursor de text visible i consola Unicode;
-- transició Plymouth → compositor coberta i sense canvi de mode de vídeo evitable;
-- fons antracita `#383e42` com a canvas estable darrere de XAAC Thin Client VPN i
+- splash XAAC a pantalla completa independentment de la relació d'aspecte;
+- continuïtat Plymouth → compositor basada en `--retain-splash` i early KMS;
+- fons granit `#596166` com a canvas estable darrere de XAAC Thin Client VPN i
   XAAC Thin Client, sense negre residual ni logotip permanent;
-- cursor `wait` mentre el sistema està iniciant, connectant, recuperant o executant
-  una transició d'energia, i cursor normal quan la sessió torna a ser interactiva;
+- indicador d'activitat animat durant Plymouth i durant l'overlay gràfic d'inici,
+  a més del cursor `wait` en els estats de treball;
 - camins de fallada amb superfícies XAAC i codis d'incidència, sense tracebacks ni
   interfícies genèriques de Debian.
 
-`scripts/validate-block8-visual.sh` és el gate ràpid canònic del bloc. La suite
-completa del projecte continua sent el gate de regressió abans d'una release.
+`scripts/validate-block8-visual.sh` és el gate ràpid canònic del bloc i inclou les
+regressions específiques de la Fase 8.7. La suite completa continua sent el gate
+de regressió abans d'una release.
 
-**Bloc 8 tancat.** Qualsevol canvi visual posterior es tractarà com una nova
-necessitat de producte o com una correcció de release, no com una fase pendent
-d'aquest bloc.
+**Bloc 8 tancat.** La correcció 8.7 no altera la funcionalitat ni la política de
+seguretat consolidada al Bloc 9.

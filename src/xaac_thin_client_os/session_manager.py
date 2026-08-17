@@ -130,7 +130,6 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     launcher = (
         "#!/bin/sh\n"
         "set -eu\n"
-        "/usr/local/libexec/xaac-prepare-kiosk-vt || true\n"
         "export XDG_SESSION_TYPE=wayland\n"
         "export XDG_CURRENT_DESKTOP=XAAC\n"
         "export XDG_SESSION_DESKTOP=xaac-kiosk\n"
@@ -142,6 +141,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "    export XDG_SESSION_TYPE=wayland\n"
         "    exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml\n"
         "fi\n"
+        "/usr/local/libexec/xaac-prepare-kiosk-vt || true\n"
         "export XDG_SESSION_TYPE=x11\n"
         "export GDK_BACKEND=x11\n"
         "exec /usr/bin/startx /usr/local/libexec/xaac-x11-session -- -nolisten tcp -nocursor vt1\n"
@@ -149,7 +149,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     x11_session = (
         "#!/bin/sh\n"
         "set -eu\n"
-        "/usr/bin/xsetroot -solid '#383e42' >/dev/null 2>&1 || true\n"
+        "/usr/bin/xsetroot -solid '#596166' >/dev/null 2>&1 || true\n"
         "/usr/bin/openbox --config-file /etc/xaac/openbox/rc.xml &\n"
         "wm_pid=$!\n"
         "trap 'kill \"$wm_pid\" 2>/dev/null || true' EXIT HUP INT TERM\n"
@@ -158,8 +158,8 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
     kiosk_vt_prepare = (
         "#!/bin/sh\n"
         "set -eu\n"
-        "# Paint tty1 dark anthracite before the compositor takes DRM control. This hides\n"
-        "# the console gap between Plymouth/greetd and the first XAAC surface.\n"
+        "# Prepare tty1 as a granite fallback before a non-Wayland session takes DRM control.\n"
+        "# Plymouth retain-splash normally covers this handoff; tty1 is only the fallback.\n"
         "[ -w /dev/tty1 ] || exit 0\n"
         "printf '\\033[?25l\\033[37;100m\\033[2J\\033[H\\033[3J' > /dev/tty1\n"
     )
