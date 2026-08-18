@@ -16,4 +16,4 @@ No ometeu la verificació. Reviseu staging, espai, signatura, hashes, dependènc
 Verifiqueu signatura i versió del mitjà, partició de recuperació, alimentació, disc de destinació i resum JSON. Escaleu a USB o PXE només amb autorització.
 
 ## Informació per a suport
-Adjunteu versió, perfil de maquinari, manifest, identificador del dispositiu, serveis fallits, fragments rellevants del journal i passos exactes per reproduir la incidència. No adjunteu secrets.
+Executeu `sudo xaac-maintenance diagnostics` i adjunteu el bundle generat junt amb els passos exactes per reproduir la incidència. No copieu manualment fitxers de secrets, perfils NetworkManager, claus privades ni credencials VPN.

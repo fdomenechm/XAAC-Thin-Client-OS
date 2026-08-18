@@ -5,6 +5,7 @@
 - [Xarxa](network.md)
 - [Seguretat](security.md)
 - [Actualitzacions](updates.md)
+- [Manteniment i diagnòstic](maintenance.md)
 - [Recuperació](recovery.md)
 - [Resolució de problemes](troubleshooting.md)
 - [Desenvolupament](development.md)

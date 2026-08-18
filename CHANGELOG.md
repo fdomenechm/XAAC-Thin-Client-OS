@@ -1677,3 +1677,13 @@ El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
 - Es força `serverDecoration=yes`, es manté el centrat automàtic i es desactiven keybindings/mousebindings de gestió.
 - La construcció instal·la el tema oficial complet `ZorinBlue-Light` i la seua base `Zorin`, fixats a la versió 4.0.8, en lloc d'un subconjunt parcial.
 - Es conserva Adwaita/hicolor únicament com a fallback i es regeneren les caches GTK.
+
+## 2026-08-17 — Bloc 10.3: manteniment i diagnòstic
+
+- Afegida la CLI administrativa única `xaac-maintenance` amb `status`, `health`, `network`, `storage`, `services`, `logs`, `cleanup` i `diagnostics`.
+- Integrada la política 10.3 en el constructor de producció sense afegir cap daemon ni canal remot nou.
+- Afegida detecció d'estat de RAM/zram, eMMC, xarxa, serveis, actualitzacions i errors rellevants.
+- Corregit el menú de `xaac-admin` perquè use l'arquitectura real del Thin Client i deixe d'assumir `xaac-thin-client.service`.
+- Els bundles de diagnòstic són root-only, acotats de mida i sanititzats per excloure contrasenyes, tokens, OTP, secrets VPN i claus privades.
+- La neteja només aplica retenció del journal, neteja APT i eliminació de bundles antics; no toca configuració ni punts de rollback.
+- Afegit `scripts/validate-block10-phase3.sh` com a gate específic de la fase.

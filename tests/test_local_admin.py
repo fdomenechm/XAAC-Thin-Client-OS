@@ -15,7 +15,7 @@ def test_render_account_and_groups(tmp_path):
 def test_sudo_is_restricted(tmp_path):
  text=plan(tmp_path).files['sudoers']; assert 'ALL=(root) ALL' not in text and 'xaac-admin-menu' in text and 'use_pty' in text
 def test_menu_contains_required_operations(tmp_path):
- text=plan(tmp_path).files['menu']; assert 'networkctl status' in text and 'journalctl' in text and 'passwd' in text
+ text=plan(tmp_path).files['menu']; assert 'xaac-maintenance status' in text and 'xaac-maintenance diagnostics' in text and 'passwd' in text
 def test_first_login_forces_password_change(tmp_path): assert 'passwd xaac-admin' in plan(tmp_path).files['first_login']
 def test_audit_rules(tmp_path): assert 'xaac-admin-command' in plan(tmp_path).files['audit_rules']
 def test_rejects_invalid_username(tmp_path):

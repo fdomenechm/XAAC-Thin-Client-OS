@@ -13,6 +13,14 @@ policy:
   password_file_directory: /etc/xaac/secrets
   sudo_commands:
     - /usr/local/sbin/xaac-admin-menu
+    - /usr/local/sbin/xaac-maintenance status
+    - /usr/local/sbin/xaac-maintenance health
+    - /usr/local/sbin/xaac-maintenance network
+    - /usr/local/sbin/xaac-maintenance storage
+    - /usr/local/sbin/xaac-maintenance services
+    - /usr/local/sbin/xaac-maintenance logs
+    - /usr/local/sbin/xaac-maintenance cleanup
+    - /usr/local/sbin/xaac-maintenance diagnostics
     - /usr/bin/systemctl status *
     - /usr/bin/journalctl *
 paths:

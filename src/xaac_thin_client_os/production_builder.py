@@ -260,6 +260,11 @@ from xaac_thin_client_os.package_rollback import (
     PackageRollbackInstaller,
     create_package_rollback_plan,
 )
+from xaac_thin_client_os.maintenance_diagnostics import (
+    MaintenanceDiagnosticsError,
+    MaintenanceDiagnosticsInstaller,
+    create_maintenance_diagnostics_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -1320,6 +1325,61 @@ class ProductionIsoBuilder:
             phase="configure-update-architecture-10-2",
         )
 
+    def _configure_maintenance_diagnostics(self) -> None:
+        """Install the phase 10.3 maintenance and sanitized diagnostics runtime."""
+        try:
+            plan = create_maintenance_diagnostics_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/maintenance-diagnostics.yaml",
+            )
+            MaintenanceDiagnosticsInstaller().install(plan)
+        except MaintenanceDiagnosticsError as exc:
+            raise ProductionBuildError(
+                f"Manteniment i diagnòstic 10.3 invàlids: {exc}"
+            ) from exc
+
+        admin_source = self.paths.project_root / "assets/runtime/xaac-maintenance"
+        runtime_source = self.paths.project_root / "assets/runtime/xaac_maintenance_runtime.py"
+        if not admin_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac-maintenance")
+        if not runtime_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac_maintenance_runtime.py")
+
+        admin_target = plan.output("admin")
+        runtime_target = plan.output("runtime")
+        admin_target.parent.mkdir(parents=True, exist_ok=True)
+        runtime_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(admin_source, admin_target)
+        shutil.copy2(runtime_source, runtime_target)
+        admin_target.chmod(0o750)
+        runtime_target.chmod(0o640)
+
+        if self.dry_run:
+            return
+        self._chroot(
+            ["systemd-tmpfiles", "--create", "/usr/lib/tmpfiles.d/xaac-maintenance.conf"],
+            phase="configure-maintenance-tmpfiles",
+        )
+        self._chroot(
+            [
+                "/bin/sh",
+                "-ec",
+                "test -r /etc/xaac/maintenance/policy.json; "
+                "test -r /var/lib/xaac-maintenance/state.json; "
+                "test -d /var/lib/xaac-maintenance/diagnostics; "
+                "test -x /usr/local/sbin/xaac-maintenance; "
+                "test -r /usr/local/libexec/xaac_maintenance_runtime.py; "
+                "/usr/bin/python3 -m py_compile "
+                "/usr/local/sbin/xaac-maintenance "
+                "/usr/local/libexec/xaac_maintenance_runtime.py; "
+                "/usr/local/sbin/xaac-maintenance --help >/dev/null; "
+                "test \"$(stat -c '%a' /usr/local/sbin/xaac-maintenance)\" = '750'; "
+                "test \"$(stat -c '%a' /usr/local/libexec/xaac_maintenance_runtime.py)\" = '640'; "
+                "test \"$(stat -c '%a' /var/lib/xaac-maintenance/diagnostics)\" = '700'",
+            ],
+            phase="configure-maintenance-diagnostics-10-3",
+        )
+
     def _configure_openvpn3_network(self) -> None:
         """Persist the OpenVPN 3 DNS backend used by the minimal XAAC OS.
 
@@ -2335,6 +2395,7 @@ exit 0
             self._configure_production_service_hardening()
             self._install_block9_target_validation()
             self._configure_update_architecture()
+            self._configure_maintenance_diagnostics()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()

@@ -6,8 +6,8 @@ L’usuari final només utilitza `xaac-kiosk`. L’administració local es reali
 ## SSH
 OpenSSH ha d’estar restringit a usuaris, claus i adreces IP autoritzades. No s’admet autenticació SSH del compte de quiosc ni accés permanent no justificat.
 
-## Serveis principals
-Reviseu `xaac-thin-client`, `xaac-agent` i el servei d’actualització. Useu `systemctl status` i `journalctl -u` conservant les evidències necessàries.
+## Manteniment i serveis
+Useu `sudo xaac-maintenance status` i `sudo xaac-maintenance health` com a punt d'entrada normal. Per a una incidència, genereu `sudo xaac-maintenance diagnostics`; el bundle resultant està sanititzat i no incorpora secrets.
 
 ## Estat del dispositiu
 La identitat, l’inventari, l’enrolament XMS i la política activa són persistents. No copieu aquests fitxers entre dispositius; per a clonació useu exclusivament el flux de sanejament de la imatge mestra.

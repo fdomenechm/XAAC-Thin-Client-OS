@@ -52,17 +52,26 @@ def create_local_admin_plan(rootfs:Path,profile_path:Path,request:LocalAdminRequ
     group_lines=''.join(f'm {username} {group}\n' for group in account['groups'])
     sysusers=f'# Managed by XAAC Thin Client OS\nu {username} - "XAAC local administrator" {account["home"]} {account["shell"]}\n'+group_lines
     tmpfiles=f'd {account["home"]} 0750 {username} {username} -\nd /var/lib/xaac/admin 0750 root {username} -\n'
+    maintenance_commands=', '.join(
+        f'/usr/local/sbin/xaac-maintenance {command}'
+        for command in ('status','health','network','storage','services','logs','cleanup','diagnostics')
+    )
     sudoers=(f'Defaults:{username} use_pty,log_output,passwd_timeout=1\n'
-             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
+             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, {maintenance_commands}, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
     menu='''#!/bin/sh
 set -eu
-printf '%s\n' 'XAAC Thin Client OS — Administració local' '1) Estat de xarxa' '2) Estat de serveis XAAC' '3) Registres del sistema' '4) Canviar contrasenya' '0) Eixir'
+printf '%s\n' 'XAAC Thin Client OS — Administració local' '1) Estat general' '2) Health-check' '3) Xarxa' '4) Emmagatzematge' '5) Serveis' '6) Logs sanititzats' '7) Generar diagnòstic' '8) Neteja segura' '9) Canviar contrasenya' '0) Eixir'
 read -r choice
 case "$choice" in
-  1) networkctl status --no-pager ;;
-  2) systemctl status xaac-agent.service xaac-thin-client.service --no-pager ;;
-  3) journalctl -b -p warning --no-pager -n 200 ;;
-  4) passwd ;;
+  1) /usr/local/sbin/xaac-maintenance status ;;
+  2) /usr/local/sbin/xaac-maintenance health ;;
+  3) /usr/local/sbin/xaac-maintenance network ;;
+  4) /usr/local/sbin/xaac-maintenance storage ;;
+  5) /usr/local/sbin/xaac-maintenance services ;;
+  6) /usr/local/sbin/xaac-maintenance logs ;;
+  7) /usr/local/sbin/xaac-maintenance diagnostics ;;
+  8) /usr/local/sbin/xaac-maintenance cleanup ;;
+  9) passwd ;;
   0) exit 0 ;;
   *) echo 'Opció invàlida' >&2; exit 2 ;;
 esac
