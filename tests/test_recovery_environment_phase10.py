@@ -68,7 +68,7 @@ def test_installer_creates_minimal_target_and_grub_entry(tmp_path: Path) -> None
     assert "getty@tty1.service" not in target.read_text()
     console_text = console.read_text()
     assert "ConditionKernelCommandLine=systemd.unit=xaac-recovery.target" in console_text
-    assert "--login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux" in console_text
+    assert "--login-program /usr/local/libexec/xaac/recovery-admin-login - linux" in console_text
     assert console_login.read_text() == "#!/bin/sh\nset -eu\nexec /bin/login xaac-admin\n"
     assert "Conflicts=getty@tty1.service" in console_text
     assert "Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service" in target.read_text()

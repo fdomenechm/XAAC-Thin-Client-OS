@@ -42,7 +42,7 @@ El target:
 - no depèn de `graphical.target`;
 - entra en conflicte amb `greetd`, XAAC Thin Client VPN i XAAC Agent;
 - no activa NetworkManager per defecte;
-- proporciona `xaac-recovery-console.service` en `tty1`, independent del `getty@tty1.service` emmascarat pel quiosc, i autentica exclusivament `xaac-admin` mitjançant `/bin/login`;
+- proporciona `xaac-recovery-console.service` en `tty1`, independent del `getty@tty1.service` emmascarat pel quiosc, i autentica exclusivament `xaac-admin` mitjançant `/bin/login`; la unitat entrega `/dev/tty1` a `agetty` a través de `TTYPath=` i aquest reutilitza el descriptor obert (`-`), igual que el getty estàndard de Debian;
 - no habilita cap shell root ni cap bypass d'autenticació.
 
 Després d'iniciar sessió, l'administrador pot executar:

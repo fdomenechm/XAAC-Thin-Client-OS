@@ -127,7 +127,7 @@ def create_tty_control_plan(rootfs: Path, profile_path: Path) -> TtyControlPlan:
     getty = (
         "[Service]\n"
         "ExecStart=\n"
-        f"ExecStart=-/sbin/agetty --noclear --noissue --login-program /usr/local/libexec/xaac/tty-admin-login tty{tty} linux\n"
+        "ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/tty-admin-login - linux\n"
         "TTYReset=yes\nTTYVHangup=yes\nTTYVTDisallocate=yes\n"
     )
     login_wrapper = (

@@ -1,3 +1,12 @@
+# 2026-08-18 — Correcció Recovery 10.5 (2): descriptor tty1 d'`agetty`
+
+- Corregida la segona fallada observada en VM: pantalla negra amb cursor parpellejant després d'activar la consola dedicada de Recovery.
+- `xaac-recovery-console.service` ja assignava `/dev/tty1` a l'entrada/eixida del servei mitjançant `TTYPath=/dev/tty1`; per tant `agetty` no ha de tornar a obrir `tty1` pel seu compte.
+- L'`ExecStart` segueix ara el patró del `getty@.service` estàndard de Debian: `agetty` rep `-` com a línia i reutilitza el descriptor de terminal que systemd ja ha obert.
+- Aplicada la mateixa correcció al getty administratiu de `tty12`, que compartia el mateix patró potencialment defectuós.
+- El hardening es manté intacte: `getty@tty1.service` continua emmascarat durant l'arranc normal i Recovery conserva la seua consola independent autenticada.
+- Regressió completa validada tant com a root com amb usuari no privilegiat.
+
 # 2026-08-18 — Correcció Recovery 10.5: consola tty1 independent
 
 - Corregida la fallada observada en VM on `xaac-recovery.target` arribava a estat actiu però no apareixia cap prompt d'autenticació.

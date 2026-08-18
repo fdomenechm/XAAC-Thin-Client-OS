@@ -98,7 +98,7 @@ check 'recovery console installed' 'test -f /etc/systemd/system/xaac-recovery-co
 check 'recovery console login wrapper installed' 'test -x /usr/local/libexec/xaac/recovery-admin-login'
 check 'recovery target isolates kiosk' "grep -F 'Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service' /etc/systemd/system/xaac-recovery.target"
 check 'recovery target requests dedicated console' "grep -F 'Wants=systemd-user-sessions.service xaac-recovery-console.service' /etc/systemd/system/xaac-recovery.target"
-check 'recovery console uses dedicated login wrapper' "grep -F -- '--login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux' /etc/systemd/system/xaac-recovery-console.service"
+check 'recovery console uses dedicated login wrapper' "grep -F -- '--login-program /usr/local/libexec/xaac/recovery-admin-login - linux' /etc/systemd/system/xaac-recovery-console.service"
 check 'recovery console locks user to xaac-admin' "grep -Fx 'exec /bin/login xaac-admin' /usr/local/libexec/xaac/recovery-admin-login"
 check 'recovery GRUB source' "grep -F 'systemd.unit=xaac-recovery.target' /etc/grub.d/42_xaac_recovery"
 check 'recovery GRUB generated' "grep -F 'XAAC Thin Client OS — Recovery' /boot/grub/grub.cfg"

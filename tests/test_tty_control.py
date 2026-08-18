@@ -29,7 +29,8 @@ def test_plan_generates_logind_getty_login_wrapper_and_masks(tmp_path: Path, pro
     assert "NAutoVTs=0" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     assert "ReserveVT=12" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     override = contents["/etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf"][0]
-    assert "tty-admin-login tty12 linux" in override
+    assert "--login-program /usr/local/libexec/xaac/tty-admin-login - linux" in override
+    assert "tty-admin-login tty12 linux" not in override
     wrapper, mode = contents["/usr/local/libexec/xaac/tty-admin-login"]
     assert "exec /bin/login xaac-admin" in wrapper
     assert mode == 0o755

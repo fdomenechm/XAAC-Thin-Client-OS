@@ -1485,7 +1485,7 @@ class ProductionIsoBuilder:
                 "/etc/systemd/system/xaac-recovery.target >/dev/null; "
                 "grep -F 'Wants=systemd-user-sessions.service xaac-recovery-console.service' "
                 "/etc/systemd/system/xaac-recovery.target >/dev/null; "
-                "grep -F 'ExecStart=-/sbin/agetty --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux' "
+                "grep -F 'ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login - linux' "
                 "/etc/systemd/system/xaac-recovery-console.service >/dev/null; "
                 "grep -Fx 'exec /bin/login xaac-admin' /usr/local/libexec/xaac/recovery-admin-login >/dev/null; "
                 "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-recovery "

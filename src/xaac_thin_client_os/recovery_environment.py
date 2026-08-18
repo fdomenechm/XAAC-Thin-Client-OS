@@ -207,7 +207,7 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=idle
-ExecStart=-/sbin/agetty --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux
+ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login - linux
 Restart=always
 RestartSec=0
 UtmpIdentifier=tty1
