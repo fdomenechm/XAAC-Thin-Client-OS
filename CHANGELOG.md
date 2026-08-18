@@ -1,3 +1,14 @@
+# 2026-08-18 — Fase 10.5: consolidació i gate final del Bloc 10
+
+- Afegit `scripts/validate-block10-release.sh` com a gate pre-ISO únic del Bloc 10, amb una sola regressió completa per evitar repetir subconjunts de tests abans de cada construcció.
+- Afegida una matriu de fallades controlades per espai insuficient, `dpkg` inconsistent, manifest/esquemes invàlids, SHA-256 corrupte, error d'instal·lació, backup corrupte i transacció interrompuda.
+- Integrat `xaac-block10-validate` a la ISO com a gate de només lectura del terminal instal·lat, reutilitzant el gate físic del Bloc 9 i comprovant update, rollback, manteniment, recovery i GRUB.
+- El manifest de release passa a `xaac-block10-release-manifest/v1` i registra explícitament el model transaccional, rollback automàtic, recovery d'arranc, estat del keyring i necessitat de qualificació física.
+- `scripts/build-production-iso.sh` executa el gate del Bloc 10 abans de construir la ISO.
+- Documentat el cicle físic obligatori al Wyse 3040: instal·lació, actualització, rollback, actualització i segona validació amb conservació d'evidències.
+- `factory-reset` continua deshabilitat fail-closed fins disposar d'una imatge factory independent, versionada i signada.
+- La implementació de codi queda tancada; la ISO candidata i la qualificació física no es declaren superades fins executar-les al maquinari real.
+
 # 2026-08-18 — Fase 10.4: recuperació local i reparació
 
 - Afegida la CLI `xaac-recovery` amb `status`, `rollback`, `repair`, restauració només de configuració i activació/desactivació explícita de xarxa.

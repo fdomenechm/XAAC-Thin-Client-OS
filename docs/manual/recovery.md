@@ -53,7 +53,7 @@ Activeu-la només quan siga necessària per al diagnòstic o suport.
 
 ## Factory reset
 
-No està habilitat en la Fase 10.4. Només s'incorporarà quan existisca una imatge factory independent, versionada, signada i validada físicament. No utilitzeu els prototips històrics del repositori com a mecanisme de producció.
+Continua deshabilitat en tancar la Fase 10.5. Només s'incorporarà quan existisca una imatge factory independent, versionada, signada i validada físicament. No utilitzeu els prototips històrics del repositori com a mecanisme de producció.
 
 ## Evidències
 

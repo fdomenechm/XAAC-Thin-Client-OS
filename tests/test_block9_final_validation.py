@@ -18,19 +18,21 @@ def _minimal_project(tmp_path: Path) -> Path:
     return root
 
 
-def test_block94_release_gate_is_the_single_prebuild_gate() -> None:
+def test_block10_release_gate_supersedes_block9_as_the_single_prebuild_gate() -> None:
     build = (ROOT / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
-    gate = (ROOT / "scripts/validate-block9-release.sh").read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/validate-block10-release.sh").read_text(encoding="utf-8")
 
-    assert '"$PROJECT_ROOT/scripts/validate-block9-release.sh"' in build
+    assert '"$PROJECT_ROOT/scripts/validate-block10-release.sh"' in build
+    assert '"$PROJECT_ROOT/scripts/validate-block9-release.sh"' not in build
     assert 'XAAC_RELEASE_GATE_PASSED' in build
     assert '--preserve-env=PYTHON,XAAC_RELEASE_GATE_PASSED' in build
     assert '"$PROJECT_ROOT/scripts/validate-block7-release.sh"' not in build
     assert '"$PROJECT_ROOT/scripts/validate-block7-integration.sh"' not in build
     assert '"$PROJECT_ROOT/scripts/validate-block7-release.sh"' in gate
     assert '"$PROJECT_ROOT/scripts/validate-block7-integration.sh"' in gate
-    assert '"$PROJECT_ROOT/scripts/validate-block8-visual.sh"' in gate
-    assert '"$PROJECT_ROOT/scripts/validate-block9-hardening.sh"' in gate
+    assert "scripts/validate-block8-visual.sh" in gate
+    assert "scripts/validate-block9-hardening.sh" in gate
+    assert 'validate-block10-phase5.sh' in gate
     assert '"$PYTHON" -m pytest -q' in gate
 
 
@@ -121,16 +123,17 @@ def test_phase_verify_writes_traceable_block94_release_manifest(tmp_path: Path) 
     builder.phase_verify()
 
     manifest = json.loads((builder.paths.artifacts / "xaac.iso.release.json").read_text(encoding="utf-8"))
-    assert manifest["schema"] == "xaac-block9-release-manifest/v1"
+    assert manifest["schema"] == "xaac-block10-release-manifest/v1"
     assert manifest["version"] == "1.0.0"
     assert manifest["profile"] == "wyse3040"
     assert manifest["iso"]["name"] == "xaac.iso"
     assert len(manifest["iso"]["sha256"]) == 64
     assert len(manifest["squashfs"]["sha256"]) == 64
-    assert manifest["validation"] == {
-        "target_command": "sudo /usr/local/sbin/xaac-block9-validate",
-        "apparmor_mode": "complain-review-required",
-    }
+    assert manifest["validation"]["target_command"] == "sudo /usr/local/sbin/xaac-block10-validate"
+    assert manifest["validation"]["block9_target_command"] == "sudo /usr/local/sbin/xaac-block9-validate"
+    assert manifest["validation"]["physical_validation_required"] is True
+    assert manifest["validation"]["qualification_cycle"] == ["install", "update", "rollback", "update"]
+    assert manifest["lifecycle"]["factory_reset_enabled"] is False
 
 
 def test_block94_documentation_defines_single_iso_and_physical_gate() -> None:

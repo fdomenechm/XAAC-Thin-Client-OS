@@ -2,7 +2,7 @@
 
 ## Estat actual del Bloc 10
 
-Les Fases 10.1 i 10.2 defineixen i implementen l'actualització transaccional dels tres components XAAC amb verificació criptogràfica, health-check i rollback. La Fase 10.3 afegeix les eines de manteniment i diagnòstic, però no altera el contracte d'actualització.
+Les Fases 10.1–10.5 defineixen i consoliden l'actualització transaccional dels tres components XAAC, el rollback, el manteniment, el recovery i el gate final. La instal·lació només accepta bundles complets i signats, i continua sent fail-closed si no hi ha un keyring públic de releases provisionat.
 
 ## Consultar l'estat i fer preflight
 
@@ -36,3 +36,7 @@ sudo xaac-update-admin rollback --yes
 ```
 
 Restaura l'últim punt de recuperació disponible i valida de nou paquets, configuració i serveis corresponents.
+
+## Validació després d'una release
+
+Després d'instal·lar una ISO candidata, executeu `sudo /usr/local/sbin/xaac-block10-validate`. Per qualificar el mecanisme d'actualització cal un bundle real signat amb versions superiors i completar físicament el cicle actualització → rollback → actualització.

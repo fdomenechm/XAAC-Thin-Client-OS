@@ -1,0 +1,136 @@
+#!/bin/sh
+set -u
+
+REPORT=${1:-/var/log/xaac/block10-validation.txt}
+EVIDENCE=${2:-/var/log/xaac/block10-validation-evidence}
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT HUP INT TERM
+
+if [ "$(id -u)" -ne 0 ]; then
+    printf '%s\n' 'Error: executeu aquesta validació com a root.' >&2
+    exit 2
+fi
+
+install -d -m 0750 "$(dirname "$REPORT")" "$EVIDENCE"
+passed=0
+failed=0
+review=0
+
+record() {
+    status=$1
+    name=$2
+    detail=$3
+    printf '%-8s %-38s %s\n' "$status" "$name" "$detail" >> "$TMP"
+    case $status in
+        PASS) passed=$((passed + 1)) ;;
+        FAIL) failed=$((failed + 1)) ;;
+        REVIEW) review=$((review + 1)) ;;
+    esac
+}
+
+check() {
+    name=$1
+    command=$2
+    if sh -c "$command" >/dev/null 2>&1; then
+        record PASS "$name" "$command"
+    else
+        record FAIL "$name" "$command"
+    fi
+}
+
+printf '%s\n' 'XAAC Thin Client OS — Bloc 10.5 final validation' > "$TMP"
+printf 'date_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$TMP"
+printf 'hostname=%s\n' "$(hostname 2>/dev/null || printf unknown)" >> "$TMP"
+printf 'kernel=%s\n' "$(uname -r 2>/dev/null || printf unknown)" >> "$TMP"
+printf '\n' >> "$TMP"
+
+# Reuse the complete Block 9 target gate rather than duplicating its hardware,
+# resource and hardening checks.  Its evidence remains nested under Block 10.
+if /usr/local/sbin/xaac-block9-validate \
+    "$EVIDENCE/block9-validation.txt" \
+    "$EVIDENCE/block9-evidence" \
+    > "$EVIDENCE/block9-console.txt" 2>&1; then
+    record PASS 'Bloc 9 target gate' "$EVIDENCE/block9-validation.txt"
+else
+    record FAIL 'Bloc 9 target gate' "$EVIDENCE/block9-validation.txt"
+fi
+
+check 'update admin executable' 'test -x /usr/local/sbin/xaac-update-admin'
+check 'update runtime readable' 'test -r /usr/local/libexec/xaac_update_runtime.py'
+check 'update policy v2' "python3 -c 'import json; p=json.load(open(\"/etc/xaac/update/policy.json\")); raise SystemExit(0 if p.get(\"schema_version\")==2 and p.get(\"model_id\")==\"xaac-update-architecture-v1\" else 1)'"
+check 'transaction policy v2' "python3 -c 'import json; p=json.load(open(\"/etc/xaac/update/transactional-installation.json\")); raise SystemExit(0 if p.get(\"schema_version\")==2 and p.get(\"transaction_id\")==\"xaac-transactional-update\" else 1)'"
+check 'current release manifest' "python3 -c 'import json; p=json.load(open(\"/usr/share/xaac/update/current-release.json\")); raise SystemExit(0 if p.get(\"schema\")==\"xaac-update-manifest/v1\" else 1)'"
+check 'rollback package cache 0700' 'test "$(stat -c %a /var/lib/xaac-update/package-cache)" = 700'
+check 'update recovery enabled' 'systemctl is-enabled --quiet xaac-update-recover.service'
+check 'update recovery before kiosk' "systemctl cat xaac-update-recover.service | grep -F 'Before=greetd.service'"
+check 'transaction state present' 'test -r /var/lib/xaac-update/transaction-state.json'
+check 'no incomplete transaction' "! grep -Eq '\"status\"[[:space:]]*:[[:space:]]*\"(installing|validating|rolling_back|rollback_failed)\"' /var/lib/xaac-update/transaction-state.json"
+
+if /usr/local/sbin/xaac-update-admin --json status > "$EVIDENCE/update-status.json" 2> "$EVIDENCE/update-status.err"; then
+    record PASS 'update status runtime' "$EVIDENCE/update-status.json"
+else
+    record FAIL 'update status runtime' "$EVIDENCE/update-status.err"
+fi
+
+keyring=/usr/share/keyrings/xaac-archive-keyring.gpg
+if [ -s "$keyring" ]; then
+    record PASS 'release trust keyring' "$keyring"
+else
+    record REVIEW 'release trust keyring' 'absent: external updates remain fail-closed'
+fi
+
+check 'maintenance executable' 'test -x /usr/local/sbin/xaac-maintenance'
+check 'maintenance state root-only' 'test "$(stat -c %a /var/lib/xaac-maintenance/diagnostics)" = 700'
+if /usr/local/sbin/xaac-maintenance health > "$EVIDENCE/maintenance-health.txt" 2>&1; then
+    record PASS 'maintenance health' "$EVIDENCE/maintenance-health.txt"
+else
+    maintenance_rc=$?
+    if [ "$maintenance_rc" -eq 1 ]; then
+        record REVIEW 'maintenance health' 'degraded; review maintenance-health.txt'
+    else
+        record FAIL 'maintenance health' 'failed; review maintenance-health.txt'
+    fi
+fi
+
+check 'recovery executable' 'test -x /usr/local/sbin/xaac-recovery'
+check 'recovery target installed' 'test -f /etc/systemd/system/xaac-recovery.target'
+check 'recovery target isolates kiosk' "grep -F 'Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service' /etc/systemd/system/xaac-recovery.target"
+check 'recovery GRUB source' "grep -F 'systemd.unit=xaac-recovery.target' /etc/grub.d/42_xaac_recovery"
+check 'recovery GRUB generated' "grep -F 'XAAC Thin Client OS — Recovery' /boot/grub/grub.cfg"
+check 'factory reset disabled' "python3 -c 'import json; p=json.load(open(\"/etc/xaac/recovery/policy.json\")); raise SystemExit(0 if p.get(\"factory_reset\",{}).get(\"enabled\") is False else 1)'"
+if /usr/local/sbin/xaac-recovery status > "$EVIDENCE/recovery-status.txt" 2> "$EVIDENCE/recovery-status.err"; then
+    record PASS 'recovery status runtime' "$EVIDENCE/recovery-status.txt"
+else
+    record FAIL 'recovery status runtime' "$EVIDENCE/recovery-status.err"
+fi
+
+# A fresh installation legitimately has no update history.  These become PASS
+# only after the physical 10.5 update -> rollback -> update qualification cycle.
+audit=/var/log/xaac/update-audit.jsonl
+if [ -r "$audit" ] && grep -q 'transaction_confirmed' "$audit"; then
+    record PASS 'physical update observed' 'transaction_confirmed present in audit'
+else
+    record REVIEW 'physical update observed' 'run the signed qualification update cycle on the Wyse'
+fi
+if [ -r "$audit" ] && grep -Eq 'manual_rollback_completed|transaction_rolled_back|interrupted_transaction_recovered' "$audit"; then
+    record PASS 'physical rollback observed' 'rollback/recovery event present in audit'
+else
+    record REVIEW 'physical rollback observed' 'run and verify rollback on the Wyse'
+fi
+
+systemctl status xaac-update-recover.service --no-pager > "$EVIDENCE/update-recover-service.txt" 2>&1 || true
+systemctl status xaac-recovery.target --no-pager > "$EVIDENCE/recovery-target.txt" 2>&1 || true
+journalctl -u xaac-update-recover.service -b --no-pager > "$EVIDENCE/update-recover-journal.txt" 2>&1 || true
+if [ -r /var/lib/xaac-update/transaction-state.json ]; then
+    cp --no-preserve=mode,ownership /var/lib/xaac-update/transaction-state.json "$EVIDENCE/transaction-state.json" 2>/dev/null || true
+    chmod 0640 "$EVIDENCE/transaction-state.json" 2>/dev/null || true
+fi
+
+printf '\nsummary: passed=%s failed=%s review=%s\n' "$passed" "$failed" "$review" >> "$TMP"
+install -m 0640 "$TMP" "$REPORT"
+cat "$REPORT"
+
+if [ "$failed" -ne 0 ]; then
+    exit 1
+fi
+exit 0

@@ -29,7 +29,7 @@ fi
 printf '[XAAC] Constructor: %s\n' "$BUILDER_MODULE_PATH"
 
 if [[ ${XAAC_RELEASE_GATE_PASSED:-0} != 1 ]]; then
-    "$PROJECT_ROOT/scripts/validate-block9-release.sh"
+    "$PROJECT_ROOT/scripts/validate-block10-release.sh"
     export XAAC_RELEASE_GATE_PASSED=1
 fi
 

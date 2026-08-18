@@ -128,11 +128,11 @@ def test_os_tree_does_not_contain_agent_source_finalizer() -> None:
 
 def test_production_iso_wrapper_requires_canonical_release_before_system_tools() -> None:
     wrapper = (ROOT / "scripts/build-production-iso.sh").read_text(encoding="utf-8")
-    final_gate = wrapper.index('"$PROJECT_ROOT/scripts/validate-block9-release.sh"')
+    final_gate = wrapper.index('"$PROJECT_ROOT/scripts/validate-block10-release.sh"')
     deps = wrapper.index('for command in debootstrap')
     assert final_gate < deps
 
-    gate = (ROOT / "scripts/validate-block9-release.sh").read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/validate-block10-release.sh").read_text(encoding="utf-8")
     release_gate = gate.index('"$PROJECT_ROOT/scripts/validate-block7-release.sh"')
     integration_gate = gate.index('"$PROJECT_ROOT/scripts/validate-block7-integration.sh"')
     assert release_gate < integration_gate

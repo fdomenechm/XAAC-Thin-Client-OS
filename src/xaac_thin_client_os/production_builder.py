@@ -1220,6 +1220,42 @@ class ProductionIsoBuilder:
             phase="configure-verify-block9-target-validator",
         )
 
+    def _install_block10_target_validation(self) -> None:
+        """Install the read-only Block 10.5 target qualification gate.
+
+        The gate composes the already validated Block 9 hardware/hardening gate
+        with update, maintenance and recovery checks.  It never installs an
+        update or performs rollback itself; destructive qualification remains an
+        explicit administrator action on the physical Wyse.
+        """
+        source = self.paths.project_root / "assets/runtime/xaac-block10-validate"
+        if not source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac-block10-validate")
+        target = self._inside("/usr/local/sbin/xaac-block10-validate")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        target.chmod(0o750)
+        if self.dry_run:
+            return
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "test -x /usr/local/sbin/xaac-block10-validate; "
+                "sh -n /usr/local/sbin/xaac-block10-validate; "
+                "grep -F '/usr/local/sbin/xaac-block9-validate' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "grep -F 'xaac-update-admin --json status' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "grep -F 'xaac-maintenance health' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "grep -F 'xaac-recovery status' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "test \"$(stat -c '%U:%G:%a' /usr/local/sbin/xaac-block10-validate)\" "
+                "= 'root:root:750'",
+            ],
+            phase="configure-verify-block10-target-validator",
+        )
+
     def _configure_update_architecture(self) -> None:
         """Install phases 10.1/10.2 update contract, transaction runtime and rollback cache."""
         try:
@@ -2472,6 +2508,7 @@ exit 0
             self._configure_update_architecture()
             self._configure_maintenance_diagnostics()
             self._configure_recovery_environment()
+            self._install_block10_target_validation()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()
@@ -2644,8 +2681,9 @@ exit 0
             squashfs_sha256 = squashfs_digest.hexdigest()
             squashfs_size = squashfs.stat().st_size
 
+        update_keyring = self.paths.rootfs / "usr/share/keyrings/xaac-archive-keyring.gpg"
         manifest = {
-            "schema": "xaac-block9-release-manifest/v1",
+            "schema": "xaac-block10-release-manifest/v1",
             "product": "XAAC Thin Client OS",
             "version": self.settings.version,
             "profile": self.settings.profile,
@@ -2660,9 +2698,23 @@ exit 0
                 "size_bytes": squashfs_size,
                 "sha256": squashfs_sha256,
             },
+            "lifecycle": {
+                "update_model": "xaac-update-manifest/v1",
+                "transactional_update": True,
+                "automatic_rollback": True,
+                "boot_recovery": True,
+                "factory_reset_enabled": False,
+                "release_keyring_provisioned": (
+                    update_keyring.is_file() and update_keyring.stat().st_size > 0
+                ),
+            },
             "validation": {
-                "target_command": "sudo /usr/local/sbin/xaac-block9-validate",
+                "pre_iso_gate": "./scripts/validate-block10-release.sh",
+                "target_command": "sudo /usr/local/sbin/xaac-block10-validate",
+                "block9_target_command": "sudo /usr/local/sbin/xaac-block9-validate",
                 "apparmor_mode": "complain-review-required",
+                "physical_validation_required": True,
+                "qualification_cycle": ["install", "update", "rollback", "update"],
             },
         }
         manifest_path = iso.with_suffix(iso.suffix + ".release.json")
