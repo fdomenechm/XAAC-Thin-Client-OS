@@ -1,0 +1,96 @@
+#!/usr/bin/python3
+"""Administrative maintenance CLI for XAAC Thin Client OS phase 10.3."""
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+RUNTIME_DIR = Path(__file__).resolve().parent.parent / "libexec"
+if str(RUNTIME_DIR) not in sys.path:
+    sys.path.insert(0, str(RUNTIME_DIR))
+
+try:
+    import xaac_maintenance_runtime as runtime
+except ImportError as exc:
+    runtime = None  # type: ignore[assignment]
+    _IMPORT_ERROR = exc
+else:
+    _IMPORT_ERROR = None
+
+
+class MaintenanceAdminError(RuntimeError):
+    pass
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="xaac-maintenance",
+        description="Manteniment i diagnòstic de XAAC Thin Client OS",
+    )
+    parser.add_argument(
+        "command",
+        choices=(
+            "status",
+            "health",
+            "network",
+            "storage",
+            "services",
+            "logs",
+            "cleanup",
+            "diagnostics",
+        ),
+    )
+    return parser
+
+
+def _require_root() -> None:
+    if os.geteuid() != 0:
+        raise MaintenanceAdminError(
+            "Aquesta ordre requereix privilegis d'administrador (sudo)"
+        )
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    if runtime is None:
+        print(f"Error: runtime de manteniment no disponible: {_IMPORT_ERROR}", file=sys.stderr)
+        return 2
+    try:
+        _require_root()
+        policy = runtime.load_policy()
+        if args.command == "status":
+            sys.stdout.write(runtime.status_report(policy))
+            return 0
+        if args.command == "health":
+            text, overall = runtime.health_report(policy)
+            sys.stdout.write(text)
+            return 0 if overall == "ok" else (1 if overall == "degraded" else 2)
+        if args.command == "network":
+            sys.stdout.write(runtime.network_report(policy))
+            return 0
+        if args.command == "storage":
+            sys.stdout.write(runtime.storage_report(policy))
+            return 0
+        if args.command == "services":
+            sys.stdout.write(runtime.services_report(policy))
+            return 0
+        if args.command == "logs":
+            sys.stdout.write(runtime.logs_report(policy))
+            return 0
+        if args.command == "cleanup":
+            sys.stdout.write(runtime.cleanup(policy))
+            return 0
+        if args.command == "diagnostics":
+            bundle = runtime.diagnostics(policy)
+            print(bundle)
+            return 0
+        raise MaintenanceAdminError("Subordre no implementada")
+    except (MaintenanceAdminError, runtime.MaintenanceRuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
