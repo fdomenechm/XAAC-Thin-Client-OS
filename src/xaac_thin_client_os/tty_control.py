@@ -127,7 +127,7 @@ def create_tty_control_plan(rootfs: Path, profile_path: Path) -> TtyControlPlan:
     getty = (
         "[Service]\n"
         "ExecStart=\n"
-        "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux\n"
+        "ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux\n"
         "TTYReset=yes\nTTYVHangup=yes\nTTYVTDisallocate=yes\n"
     )
     securetty = f"tty{tty}\n"

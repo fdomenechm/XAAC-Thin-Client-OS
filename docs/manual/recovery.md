@@ -24,7 +24,7 @@ Aquesta operació restaura conjuntament els paquets XAAC i la configuració guar
 4. Inicieu sessió en `tty1` amb `xaac-admin`.
 5. Executeu `sudo xaac-recovery menu`.
 
-El mode recovery no arranca el quiosc, la VPN ni l'Agent. NetworkManager també roman desactivat fins que l'administrador l'activa explícitament.
+El mode recovery no arranca el quiosc, la VPN ni l'Agent. NetworkManager també roman desactivat fins que l'administrador l'activa explícitament. La consola espera que el mapa de teclat i el subsistema de consola estiguen estabilitzats abans de mostrar el login; el prompt ha d'aparéixer en una pantalla neta i l'entrada de teclat ha de respondre de manera immediata.
 
 ## Reparació
 

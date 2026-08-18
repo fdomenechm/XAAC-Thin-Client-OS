@@ -97,8 +97,8 @@ check 'recovery target installed' 'test -f /etc/systemd/system/xaac-recovery.tar
 check 'recovery console installed' 'test -f /etc/systemd/system/xaac-recovery-console.service'
 check 'recovery console wrapper absent' 'test ! -e /usr/local/libexec/xaac/recovery-admin-login'
 check 'recovery target isolates kiosk' "grep -F 'Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service' /etc/systemd/system/xaac-recovery.target"
-check 'recovery target requests dedicated console' "grep -F 'Wants=systemd-user-sessions.service xaac-recovery-console.service' /etc/systemd/system/xaac-recovery.target"
-check 'recovery console uses standard login flow' "grep -F 'ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux' /etc/systemd/system/xaac-recovery-console.service && ! grep -F -- '--login-program' /etc/systemd/system/xaac-recovery-console.service >/dev/null"
+check 'recovery target requests stable console stack' "grep -F 'Wants=systemd-user-sessions.service keyboard-setup.service console-setup.service xaac-recovery-console.service' /etc/systemd/system/xaac-recovery.target"
+check 'recovery console uses stable standard login flow' "grep -F \"ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux\" /etc/systemd/system/xaac-recovery-console.service && ! grep -F -- '--noreset' /etc/systemd/system/xaac-recovery-console.service >/dev/null && ! grep -F -- '--noclear' /etc/systemd/system/xaac-recovery-console.service >/dev/null && grep -F 'ExecStartPre=-/bin/setupcon --keyboard-only --force' /etc/systemd/system/xaac-recovery-console.service >/dev/null && grep -F \"ExecStartPre=-/bin/sh -c 'stty sane < /dev/tty1'\" /etc/systemd/system/xaac-recovery-console.service >/dev/null && ! grep -F -- '--login-program' /etc/systemd/system/xaac-recovery-console.service >/dev/null"
 check 'root account locked' "passwd -S root 2>/dev/null | grep -Eq '^root[[:space:]]+L[[:space:]]'"
 check 'kiosk account locked' "passwd -S xaac-kiosk 2>/dev/null | grep -Eq '^xaac-kiosk[[:space:]]+L[[:space:]]'"
 check 'kiosk shell non-interactive' "test \"$(getent passwd xaac-kiosk | cut -d: -f7)\" = /usr/sbin/nologin"

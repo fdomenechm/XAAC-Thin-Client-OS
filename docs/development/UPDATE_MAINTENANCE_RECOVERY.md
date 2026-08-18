@@ -64,7 +64,7 @@ Els bundles de diagnòstic no copien perfils NetworkManager, secrets XAAC, token
 
 ## Fase 10.4 — Recovery local
 
-L'entrada instal·lada **XAAC Thin Client OS — Recovery** és accessible amb `Esc` durant la finestra curta de GRUB. Arranca `xaac-recovery.target`, no el quiosc, la VPN o l'Agent, i deixa la xarxa desactivada per defecte.
+L'entrada instal·lada **XAAC Thin Client OS — Recovery** és accessible amb `Esc` durant la finestra curta de GRUB. Arranca `xaac-recovery.target`, no el quiosc, la VPN o l'Agent, i deixa la xarxa desactivada per defecte. Aquest boot és textual i silenciós: desactiva Plymouth, oculta l'estat de systemd i no entrega `tty1` a `agetty` fins que `keyboard-setup` i `console-setup` han acabat.
 
 Des de la consola dedicada de Recovery en `tty1`, després d'autenticar-se com `xaac-admin`:
 

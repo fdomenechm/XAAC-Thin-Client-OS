@@ -29,7 +29,9 @@ def test_plan_generates_logind_standard_getty_and_masks(tmp_path: Path, project_
     assert "NAutoVTs=0" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     assert "ReserveVT=12" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     override = contents["/etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf"][0]
-    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in override
+    assert "ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux" in override
+    assert "--noreset" not in override
+    assert "--noclear" not in override
     assert "--login-program" not in override
     assert "getty@tty1.service" in plan.mask_units
     assert "autovt@tty11.service" in plan.mask_units

@@ -1,3 +1,14 @@
+# 2026-08-18 — Correcció Recovery 10.5 (4): estabilització completa de tty1 i teclat
+
+- Revisat de punta a punta el camí de consola del Recovery després de reproduir en VM entrada de teclat lenta, pulsacions perdudes, retorns de carro inesperats i el prompt de login al peu de la pantalla.
+- Recovery espera explícitament `keyboard-setup.service` i `console-setup.service` abans d'exposar `tty1`, i reaplica el mapa de teclat amb `setupcon --keyboard-only --force`.
+- Eliminats `--noreset` i `--noclear` d'`agetty`: la consola torna a modes `termios` sans i el prompt es presenta sobre una pantalla neta.
+- Afegits `stty sane`, activació explícita de VT1, reinicialització/neteja del terminal i un `RestartSec=1` per evitar bucles agressius de getty.
+- L'entrada GRUB de Recovery usa ara `quiet loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 plymouth.enable=0`; els missatges d'arranc i Plymouth no competeixen amb el login.
+- L'`agetty` de Recovery i el TTY12 administratiu segueixen el patró segur `-o '-p -- \\u'` i el descriptor ja obert per systemd.
+- El constructor verifica la sintaxi real de la unitat amb `systemd-analyze verify` abans d'acceptar la imatge.
+- Afegides regressions específiques contra qualsevol reintroducció de `--noreset`, `--noclear`, `systemd.show_status=1` o exposició del login abans de configurar la consola.
+
 # 2026-08-18 — Correcció Recovery 10.5 (3): reintent d'autenticació
 
 - Eliminat el wrapper que executava `login xaac-admin` amb l'usuari fixat.

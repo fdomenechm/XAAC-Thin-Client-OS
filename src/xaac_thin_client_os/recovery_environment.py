@@ -192,23 +192,32 @@ class RecoveryEnvironmentInstaller:
         target = """[Unit]
 Description=XAAC Thin Client OS Recovery Mode
 Requires=local-fs.target
-Wants=systemd-user-sessions.service xaac-recovery-console.service
-After=local-fs.target systemd-user-sessions.service
+Wants=systemd-user-sessions.service keyboard-setup.service console-setup.service xaac-recovery-console.service
+After=local-fs.target systemd-user-sessions.service keyboard-setup.service console-setup.service
 Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service
 AllowIsolate=yes
 """
         console = """[Unit]
 Description=XAAC Recovery authenticated console on tty1
 ConditionKernelCommandLine=systemd.unit=xaac-recovery.target
-ConditionPathExists=/dev/tty0
-After=systemd-user-sessions.service
-Conflicts=getty@tty1.service
+ConditionPathExists=/dev/tty1
+Requires=systemd-user-sessions.service
+Wants=keyboard-setup.service console-setup.service
+After=systemd-user-sessions.service keyboard-setup.service console-setup.service plymouth-quit-wait.service
+Conflicts=getty@tty1.service greetd.service
 
 [Service]
 Type=idle
-ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux
+# Recovery owns tty1 only after the console stack is stable.
+# agetty restores sane termios after the graphical boot path.
+ExecStartPre=-/usr/bin/plymouth quit
+ExecStartPre=-/bin/setupcon --keyboard-only --force
+ExecStartPre=-/bin/chvt 1
+ExecStartPre=-/bin/sh -c 'stty sane < /dev/tty1'
+ExecStartPre=-/bin/sh -c 'printf "\\033c\\033[2J\\033[H\\033[?25h" > /dev/tty1'
+ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux
 Restart=always
-RestartSec=0
+RestartSec=1
 UtmpIdentifier=tty1
 StandardInput=tty
 StandardOutput=tty
@@ -230,7 +239,7 @@ menuentry '{entry_name}' --class xaac --class recovery {{
     insmod part_gpt
     insmod ext2
     search --no-floppy --label --set=root {root_label}
-    linux /boot/vmlinuz root=LABEL={root_label} ro systemd.unit=xaac-recovery.target systemd.show_status=1
+    linux /boot/vmlinuz root=LABEL={root_label} ro quiet loglevel=3 systemd.unit=xaac-recovery.target systemd.show_status=0 rd.systemd.show_status=0 plymouth.enable=0
     initrd /boot/initrd.img
 }}
 XAAC_RECOVERY_ENTRY

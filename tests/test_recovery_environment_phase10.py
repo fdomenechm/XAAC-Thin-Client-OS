@@ -68,7 +68,12 @@ def test_installer_creates_minimal_target_and_grub_entry(tmp_path: Path) -> None
     assert "getty@tty1.service" not in target.read_text()
     console_text = console.read_text()
     assert "ConditionKernelCommandLine=systemd.unit=xaac-recovery.target" in console_text
-    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in console_text
+    assert "ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux" in console_text
+    assert "--noreset" not in console_text
+    assert "--noclear" not in console_text
+    assert "ExecStartPre=-/bin/setupcon --keyboard-only --force" in console_text
+    assert "ExecStartPre=-/bin/sh -c 'stty sane < /dev/tty1'" in console_text
+    assert "RestartSec=1" in console_text
     assert "--login-program" not in console_text
     assert "Conflicts=getty@tty1.service" in console_text
     assert "Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service" in target.read_text()
@@ -151,7 +156,9 @@ def test_recovery_console_is_independent_from_masked_normal_tty1(tmp_path: Path)
     assert "getty@tty1.service" not in target.read_text(encoding="utf-8")
     assert "xaac-recovery-console.service" in target.read_text(encoding="utf-8")
     assert "Conflicts=getty@tty1.service" in console.read_text(encoding="utf-8")
-    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in console.read_text(encoding="utf-8")
+    assert "ExecStart=-/sbin/agetty -o '-p -- \\\\u' --noissue - linux" in console.read_text(encoding="utf-8")
+    assert "--noreset" not in console.read_text(encoding="utf-8")
+    assert "--noclear" not in console.read_text(encoding="utf-8")
     assert "--login-program" not in console.read_text(encoding="utf-8")
 
 
@@ -164,4 +171,43 @@ def test_recovery_console_does_not_hardcode_username_in_login_program(tmp_path: 
     text = console.read_text(encoding="utf-8")
     assert "--login-program" not in text
     assert "login xaac-admin" not in text
-    assert "agetty --noreset --noclear --noissue - linux" in text
+    assert "agetty -o '-p -- \\\\u' --noissue - linux" in text
+    assert "--noreset" not in text
+    assert "--noclear" not in text
+
+
+def test_recovery_console_stabilizes_keyboard_and_vt_before_login(tmp_path: Path) -> None:
+    """No boot/console actor may alter tty1 after the login prompt is exposed."""
+    plan = create_recovery_environment_plan(
+        _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
+    )
+    _, _, target, console, grub_entry, *_ = RecoveryEnvironmentInstaller().install(plan)
+    target_text = target.read_text(encoding="utf-8")
+    console_text = console.read_text(encoding="utf-8")
+    grub_text = grub_entry.read_text(encoding="utf-8")
+
+    assert "keyboard-setup.service console-setup.service" in target_text
+    assert "After=systemd-user-sessions.service keyboard-setup.service console-setup.service plymouth-quit-wait.service" in console_text
+    assert "ExecStartPre=-/usr/bin/plymouth quit" in console_text
+    assert "ExecStartPre=-/bin/setupcon --keyboard-only --force" in console_text
+    assert "ExecStartPre=-/bin/chvt 1" in console_text
+    assert "stty sane < /dev/tty1" in console_text
+    assert 'printf "\\033c\\033[2J\\033[H\\033[?25h" > /dev/tty1' in console_text
+    assert "systemd.show_status=0" in grub_text
+    assert "rd.systemd.show_status=0" in grub_text
+    assert "plymouth.enable=0" in grub_text
+    assert "systemd.show_status=1" not in grub_text
+
+
+def test_recovery_console_does_not_preserve_stale_termios_or_boot_screen(tmp_path: Path) -> None:
+    plan = create_recovery_environment_plan(
+        _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
+    )
+    _, _, _, console, *_ = RecoveryEnvironmentInstaller().install(plan)
+    text = console.read_text(encoding="utf-8")
+    assert "--noreset" not in text
+    assert "--noclear" not in text
+    assert "TTYReset=yes" in text
+    assert "TTYVHangup=yes" in text
+    assert "TTYVTDisallocate=yes" in text
+    assert "RestartSec=1" in text

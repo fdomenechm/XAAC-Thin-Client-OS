@@ -56,7 +56,11 @@ def test_phase_10_4_gate_exists_and_is_posix_shell() -> None:
 def test_recovery_login_flow_does_not_fix_username_and_non_admin_accounts_stay_locked() -> None:
     recovery = (ROOT / "src/xaac_thin_client_os/recovery_environment.py").read_text(encoding="utf-8")
     builder = (ROOT / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
-    assert "agetty --noreset --noclear --noissue - linux" in recovery
+    assert "agetty -o '-p -- \\\\\\\\u' --noissue - linux" in recovery
+    assert "--noreset" not in recovery
+    assert "--noclear" not in recovery
+    assert "systemd.show_status=0" in recovery
+    assert "plymouth.enable=0" in recovery
     assert "--login-program" not in recovery
     assert "exec /bin/login xaac-admin" not in recovery
     assert '["passwd", "--lock", "root"]' in builder
