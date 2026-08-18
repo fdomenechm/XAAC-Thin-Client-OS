@@ -23,7 +23,6 @@ _REQUIRED_OUTPUTS = {
     "runtime",
     "target",
     "console",
-    "console_login",
     "grub_entry",
     "grub_defaults",
     "tmpfiles",
@@ -177,7 +176,7 @@ class RecoveryEnvironmentInstaller:
     def install(
         self, plan: RecoveryEnvironmentPlan, *, dry_run: bool = False
     ) -> tuple[Path, ...]:
-        order = ("policy", "state", "target", "console", "console_login", "grub_entry", "grub_defaults", "tmpfiles")
+        order = ("policy", "state", "target", "console", "grub_entry", "grub_defaults", "tmpfiles")
         targets = tuple(plan.output(key) for key in order)
         if dry_run:
             return targets
@@ -207,7 +206,7 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=idle
-ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login - linux
+ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux
 Restart=always
 RestartSec=0
 UtmpIdentifier=tty1
@@ -221,10 +220,6 @@ TTYVTDisallocate=yes
 IgnoreSIGPIPE=no
 SendSIGHUP=yes
 
-"""
-        console_login = """#!/bin/sh
-set -eu
-exec /bin/login xaac-admin
 """
         entry_name = plan.profile["boot"]["grub_entry"]
         root_label = plan.profile["boot"]["root_label"]
@@ -256,12 +251,11 @@ XAAC_RECOVERY_ENTRY
             json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             target,
             console,
-            console_login,
             grub_entry,
             grub_defaults,
             tmpfiles,
         )
-        modes = (0o640, 0o640, 0o644, 0o644, 0o755, 0o750, 0o644, 0o644)
+        modes = (0o640, 0o640, 0o644, 0o644, 0o750, 0o644, 0o644)
         for path, content, mode in zip(targets, contents, modes, strict=True):
             self._write(path, content, mode)
         return targets

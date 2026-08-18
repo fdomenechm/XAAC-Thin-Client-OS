@@ -59,7 +59,7 @@ def test_installer_creates_minimal_target_and_grub_entry(tmp_path: Path) -> None
     plan = create_recovery_environment_plan(
         _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
     )
-    policy, state, target, console, console_login, grub_entry, grub_defaults, tmpfiles = (
+    policy, state, target, console, grub_entry, grub_defaults, tmpfiles = (
         RecoveryEnvironmentInstaller().install(plan)
     )
     assert json.loads(policy.read_text())["safety"]["fail_closed"] is True
@@ -68,8 +68,8 @@ def test_installer_creates_minimal_target_and_grub_entry(tmp_path: Path) -> None
     assert "getty@tty1.service" not in target.read_text()
     console_text = console.read_text()
     assert "ConditionKernelCommandLine=systemd.unit=xaac-recovery.target" in console_text
-    assert "--login-program /usr/local/libexec/xaac/recovery-admin-login - linux" in console_text
-    assert console_login.read_text() == "#!/bin/sh\nset -eu\nexec /bin/login xaac-admin\n"
+    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in console_text
+    assert "--login-program" not in console_text
     assert "Conflicts=getty@tty1.service" in console_text
     assert "Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service" in target.read_text()
     assert "systemd.unit=xaac-recovery.target" in grub_entry.read_text()
@@ -77,12 +77,11 @@ def test_installer_creates_minimal_target_and_grub_entry(tmp_path: Path) -> None
     assert "GRUB_TIMEOUT=1" in grub_defaults.read_text()
     assert "GRUB_TIMEOUT_STYLE=hidden" in grub_defaults.read_text()
     assert "d /var/log/xaac-recovery 0750 root root" in tmpfiles.read_text()
-    assert [path.stat().st_mode & 0o777 for path in (policy, state, target, console, console_login, grub_entry, grub_defaults, tmpfiles)] == [
+    assert [path.stat().st_mode & 0o777 for path in (policy, state, target, console, grub_entry, grub_defaults, tmpfiles)] == [
         0o640,
         0o640,
         0o644,
         0o644,
-        0o755,
         0o750,
         0o644,
         0o644,
@@ -105,7 +104,7 @@ def test_dry_run_does_not_write(tmp_path: Path) -> None:
         _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
     )
     paths = RecoveryEnvironmentInstaller().install(plan, dry_run=True)
-    assert len(paths) == 8
+    assert len(paths) == 7
     assert not any(path.exists() for path in paths)
 
 
@@ -144,7 +143,7 @@ def test_recovery_console_is_independent_from_masked_normal_tty1(tmp_path: Path)
     plan = create_recovery_environment_plan(
         _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
     )
-    _, _, target, console, console_login, *_ = RecoveryEnvironmentInstaller().install(plan)
+    _, _, target, console, *_ = RecoveryEnvironmentInstaller().install(plan)
     production_source = (ROOT / "src/xaac_thin_client_os/production_builder.py").read_text(
         encoding="utf-8"
     )
@@ -152,4 +151,17 @@ def test_recovery_console_is_independent_from_masked_normal_tty1(tmp_path: Path)
     assert "getty@tty1.service" not in target.read_text(encoding="utf-8")
     assert "xaac-recovery-console.service" in target.read_text(encoding="utf-8")
     assert "Conflicts=getty@tty1.service" in console.read_text(encoding="utf-8")
-    assert "exec /bin/login xaac-admin" in console_login.read_text(encoding="utf-8")
+    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in console.read_text(encoding="utf-8")
+    assert "--login-program" not in console.read_text(encoding="utf-8")
+
+
+def test_recovery_console_does_not_hardcode_username_in_login_program(tmp_path: Path) -> None:
+    """A failed password must return to a normal username prompt."""
+    plan = create_recovery_environment_plan(
+        _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
+    )
+    _, _, _, console, *_ = RecoveryEnvironmentInstaller().install(plan)
+    text = console.read_text(encoding="utf-8")
+    assert "--login-program" not in text
+    assert "login xaac-admin" not in text
+    assert "agetty --noreset --noclear --noissue - linux" in text

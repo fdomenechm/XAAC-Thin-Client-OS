@@ -86,7 +86,7 @@ def load_tty_control_profile(path: Path) -> dict[str, Any]:
         raise TtyControlError("La drecera reservada no correspon al TTY administratiu")
 
     files = raw["files"]
-    if not isinstance(files, dict) or set(files) != {"logind", "getty_override", "login_wrapper", "securetty", "policy"}:
+    if not isinstance(files, dict) or set(files) != {"logind", "getty_override", "securetty", "policy"}:
         raise TtyControlError("Destinacions de fitxers TTY invàlides")
     for name, value in files.items():
         _safe_absolute(value, name)
@@ -127,13 +127,8 @@ def create_tty_control_plan(rootfs: Path, profile_path: Path) -> TtyControlPlan:
     getty = (
         "[Service]\n"
         "ExecStart=\n"
-        "ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/tty-admin-login - linux\n"
+        "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux\n"
         "TTYReset=yes\nTTYVHangup=yes\nTTYVTDisallocate=yes\n"
-    )
-    login_wrapper = (
-        "#!/bin/sh\n"
-        "set -eu\n"
-        f"exec /bin/login {admin['allowed_user']}\n"
     )
     securetty = f"tty{tty}\n"
     effective = {key: value for key, value in profile.items() if key != "files"}
@@ -141,7 +136,6 @@ def create_tty_control_plan(rootfs: Path, profile_path: Path) -> TtyControlPlan:
     files = (
         (_safe_absolute(destinations["logind"], "logind"), logind, 0o644),
         (_safe_absolute(destinations["getty_override"], "getty_override"), getty, 0o644),
-        (_safe_absolute(destinations["login_wrapper"], "login_wrapper"), login_wrapper, 0o755),
         (_safe_absolute(destinations["securetty"], "securetty"), securetty, 0o600),
         (_safe_absolute(destinations["policy"], "policy"), json.dumps(effective, ensure_ascii=False, indent=2, sort_keys=True) + "\n", 0o640),
     )

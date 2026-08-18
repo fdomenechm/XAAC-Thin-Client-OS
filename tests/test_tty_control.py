@@ -23,17 +23,14 @@ def test_profile_covers_phase_5_4_controls(project_root: Path) -> None:
     assert profile["switching"]["reserved_shortcut"] == "Ctrl+Alt+F12"
 
 
-def test_plan_generates_logind_getty_login_wrapper_and_masks(tmp_path: Path, project_root: Path) -> None:
+def test_plan_generates_logind_standard_getty_and_masks(tmp_path: Path, project_root: Path) -> None:
     plan = create_tty_control_plan(tmp_path / "build/rootfs", project_root / "config/tty-control.yaml")
     contents = {str(path): (content, mode) for path, content, mode in plan.files}
     assert "NAutoVTs=0" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     assert "ReserveVT=12" in contents["/etc/systemd/logind.conf.d/30-xaac-tty-control.conf"][0]
     override = contents["/etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf"][0]
-    assert "--login-program /usr/local/libexec/xaac/tty-admin-login - linux" in override
-    assert "tty-admin-login tty12 linux" not in override
-    wrapper, mode = contents["/usr/local/libexec/xaac/tty-admin-login"]
-    assert "exec /bin/login xaac-admin" in wrapper
-    assert mode == 0o755
+    assert "ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux" in override
+    assert "--login-program" not in override
     assert "getty@tty1.service" in plan.mask_units
     assert "autovt@tty11.service" in plan.mask_units
     assert "getty@tty12.service" not in plan.mask_units
@@ -53,8 +50,6 @@ def test_execute_is_idempotent_and_creates_systemd_links(tmp_path: Path, project
     assert mask.is_symlink() and os.readlink(mask) == "/dev/null"
     wants = plan.rootfs / "etc/systemd/system/getty.target.wants/getty@tty12.service"
     assert wants.is_symlink() and os.readlink(wants) == "/lib/systemd/system/getty@.service"
-    wrapper = plan.rootfs / "usr/local/libexec/xaac/tty-admin-login"
-    assert (wrapper.stat().st_mode & 0o777) == 0o755
     securetty = plan.rootfs / "etc/securetty.d/xaac-admin.conf"
     assert (securetty.stat().st_mode & 0o777) == 0o600
     assert not list(plan.rootfs.rglob("*.tmp"))
@@ -101,3 +96,12 @@ def test_cli_exposes_tty_control_command() -> None:
     args = build_parser().parse_args(["configure-tty-control", "--dry-run"])
     assert args.command == "configure-tty-control"
     assert args.dry_run
+
+
+def test_administrative_tty_uses_normal_login_retry_flow(tmp_path: Path, project_root: Path) -> None:
+    plan = create_tty_control_plan(tmp_path / "build/rootfs", project_root / "config/tty-control.yaml")
+    contents = {str(path): content for path, content, _ in plan.files}
+    override = contents["/etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf"]
+    assert "--login-program" not in override
+    assert "login xaac-admin" not in override
+    assert "/usr/local/libexec/xaac/tty-admin-login" not in contents

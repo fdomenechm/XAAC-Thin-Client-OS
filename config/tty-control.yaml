@@ -28,6 +28,5 @@ switching:
 files:
   logind: /etc/systemd/logind.conf.d/30-xaac-tty-control.conf
   getty_override: /etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf
-  login_wrapper: /usr/local/libexec/xaac/tty-admin-login
   securetty: /etc/securetty.d/xaac-admin.conf
   policy: /etc/xaac/kiosk/tty-control.json

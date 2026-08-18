@@ -1,3 +1,10 @@
+# 2026-08-18 — Correcció Recovery 10.5 (3): reintent d'autenticació
+
+- Eliminat el wrapper que executava `login xaac-admin` amb l'usuari fixat.
+- Recovery i TTY12 usen ara el flux estàndard `agetty -> /bin/login`, de manera que després d'una contrasenya errònia es torna a demanar correctament el nom d'usuari.
+- `root` queda bloquejat explícitament; `xaac-kiosk` continua bloquejat i amb `/usr/sbin/nologin`; `xaac-admin` és l'únic compte administratiu interactiu provisionat.
+- Afegides regressions específiques contra el patró de login amb usuari fixat.
+
 # 2026-08-18 — Correcció Recovery 10.5 (2): descriptor tty1 d'`agetty`
 
 - Corregida la segona fallada observada en VM: pantalla negra amb cursor parpellejant després d'activar la consola dedicada de Recovery.

@@ -51,3 +51,14 @@ def test_phase_10_4_gate_exists_and_is_posix_shell() -> None:
     assert "pipefail" not in text
     assert "test_block10_phase4.py" in text
     assert "test_recovery_runtime_phase10.py" in text
+
+
+def test_recovery_login_flow_does_not_fix_username_and_non_admin_accounts_stay_locked() -> None:
+    recovery = (ROOT / "src/xaac_thin_client_os/recovery_environment.py").read_text(encoding="utf-8")
+    builder = (ROOT / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "agetty --noreset --noclear --noissue - linux" in recovery
+    assert "--login-program" not in recovery
+    assert "exec /bin/login xaac-admin" not in recovery
+    assert '["passwd", "--lock", "root"]' in builder
+    assert '["passwd", "--lock", "xaac-kiosk"]' in builder
+    assert '["usermod", "--shell", "/usr/sbin/nologin", "xaac-kiosk"]' in builder

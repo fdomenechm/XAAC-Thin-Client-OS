@@ -1476,7 +1476,7 @@ class ProductionIsoBuilder:
                 "test -r /usr/local/libexec/xaac_recovery_runtime.py; "
                 "test -f /etc/systemd/system/xaac-recovery.target; "
                 "test -f /etc/systemd/system/xaac-recovery-console.service; "
-                "test -x /usr/local/libexec/xaac/recovery-admin-login; "
+                "test ! -e /usr/local/libexec/xaac/recovery-admin-login; "
                 "test -x /etc/grub.d/42_xaac_recovery; "
                 "test -f /etc/default/grub.d/99-xaac-recovery.cfg; "
                 "grep -Fx 'GRUB_TIMEOUT=1' /etc/default/grub.d/99-xaac-recovery.cfg >/dev/null; "
@@ -1485,9 +1485,9 @@ class ProductionIsoBuilder:
                 "/etc/systemd/system/xaac-recovery.target >/dev/null; "
                 "grep -F 'Wants=systemd-user-sessions.service xaac-recovery-console.service' "
                 "/etc/systemd/system/xaac-recovery.target >/dev/null; "
-                "grep -F 'ExecStart=-/sbin/agetty --noreset --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login - linux' "
+                "grep -F 'ExecStart=-/sbin/agetty --noreset --noclear --noissue - linux' "
                 "/etc/systemd/system/xaac-recovery-console.service >/dev/null; "
-                "grep -Fx 'exec /bin/login xaac-admin' /usr/local/libexec/xaac/recovery-admin-login >/dev/null; "
+                "! grep -F -- '--login-program' /etc/systemd/system/xaac-recovery-console.service >/dev/null; "
                 "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-recovery "
                 "/usr/local/libexec/xaac_recovery_runtime.py; "
                 "/bin/sh -n /etc/grub.d/42_xaac_recovery; "
@@ -2239,6 +2239,12 @@ exit 0
             '[ "$passwd_status" = P ] || { printf \'%s\\n\' \'No ha sigut possible activar la contrasenya de xaac-admin.\'; exit 1; }\n'
             '[ "$shadow_password" = "$admin_hash" ] || { printf \'%s\\n\' \'El hash de xaac-admin no ha quedat escrit al sistema de destinació.\'; exit 1; }\n'
             '[ "$admin_shell" = /bin/bash ] || { printf \'%s\\n\' \'La shell de xaac-admin no és interactiva.\'; exit 1; }\n'
+            "root_status=$(chroot \"$mount_root\" passwd -S root 2>/dev/null | awk '{print $2}')\n"
+            "kiosk_status=$(chroot \"$mount_root\" passwd -S xaac-kiosk 2>/dev/null | awk '{print $2}')\n"
+            'kiosk_shell=$(chroot "$mount_root" getent passwd xaac-kiosk 2>/dev/null | cut -d: -f7)\n'
+            "[ \"$root_status\" = L ] || { printf '%s\\n' 'El compte root ha de romandre bloquejat.'; exit 1; }\n"
+            "[ \"$kiosk_status\" = L ] || { printf '%s\\n' 'El compte xaac-kiosk ha de romandre bloquejat.'; exit 1; }\n"
+            "[ \"$kiosk_shell\" = /usr/sbin/nologin ] || { printf '%s\\n' 'xaac-kiosk no pot tindre shell interactiva.'; exit 1; }\n"
             'printf \'%s\\n\' "$admin_password" | chroot "$mount_root" pamtester login xaac-admin authenticate >/dev/null 2>&1 || { printf \'%s\\n\' \'PAM ha rebutjat la contrasenya de xaac-admin.\'; exit 1; }\n'
             'chroot "$mount_root" mkdir -p /var/lib/xaac/admin\n'
             'chroot "$mount_root" install -o root -g xaac-admin -m 0640 /dev/null /var/lib/xaac/admin/password-changed\n'
@@ -2386,6 +2392,7 @@ exit 0
             # greetd launches the dedicated session directly; the kiosk account
             # must never expose an interactive login shell.
             self._chroot(["usermod", "--shell", "/usr/sbin/nologin", "xaac-kiosk"], phase="configure-shell-kiosk")
+            self._chroot(["passwd", "--lock", "root"], phase="configure-lock-root")
             self._chroot(["passwd", "--lock", "xaac-admin"], phase="configure-lock-admin")
             self._chroot(["passwd", "--lock", "xaac-kiosk"], phase="configure-lock-kiosk")
             self._configure_freerdp_certificate_store()
