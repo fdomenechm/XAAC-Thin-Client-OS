@@ -24,10 +24,12 @@ POLICY_PATH = Path("/etc/xaac/maintenance/policy.json")
 STATE_PATH = Path("/var/lib/xaac-maintenance/state.json")
 DIAGNOSTICS_ROOT = Path("/var/lib/xaac-maintenance/diagnostics")
 CURRENT_RELEASE_PATH = Path("/usr/share/xaac/update/current-release.json")
+REBOOT_REQUIRED_PATH = Path("/var/run/reboot-required")
 UPDATE_STATE_PATHS = (
     Path("/var/lib/xaac-update/state.json"),
     Path("/var/lib/xaac-update/transaction-state.json"),
     Path("/var/lib/xaac-update/rollback-state.json"),
+    Path("/var/lib/xaac-update/base-os-state.json"),
 )
 
 _COMPONENT_PACKAGES = (
@@ -291,12 +293,19 @@ def status_report(policy: dict[str, Any]) -> str:
         except MaintenanceRuntimeError:
             current = {}
     tx: dict[str, Any] = {}
+    base_os: dict[str, Any] = {}
     tx_path = Path("/var/lib/xaac-update/transaction-state.json")
     if tx_path.is_file():
         try:
             tx = _load_json(tx_path, "l'estat d'actualització")
         except MaintenanceRuntimeError:
             tx = {}
+    base_path = Path("/var/lib/xaac-update/base-os-state.json")
+    if base_path.is_file():
+        try:
+            base_os = _load_json(base_path, "l'estat d'actualització del sistema base")
+        except MaintenanceRuntimeError:
+            base_os = {}
 
     lines = [
         "XAAC Thin Client OS — Estat",
@@ -327,7 +336,9 @@ def status_report(policy: dict[str, Any]) -> str:
             f"  AppArmor: {_unit_info('apparmor.service')['active']}",
             f"  SSH: {_unit_info('ssh.service')['active']}",
             "",
-            f"Actualització: {tx.get('status', 'sense estat')}",
+            f"Actualització components XAAC: {tx.get('status', 'sense estat')}",
+            f"Actualització Debian: {base_os.get('status', 'sense estat')}",
+            f"Reinici Debian pendent: {'sí' if REBOOT_REQUIRED_PATH.exists() else 'no'}",
             f"Última transacció completada: {tx.get('completed_at') or 'cap'}",
             f"Últim error important: {_last_error()}",
         ]

@@ -14,8 +14,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 RUNTIME_DIR = Path(__file__).resolve().parent
-if str(RUNTIME_DIR) not in sys.path:
-    sys.path.insert(0, str(RUNTIME_DIR))
+LIBEXEC_DIR = Path("/usr/local/libexec")
+for candidate in (RUNTIME_DIR, LIBEXEC_DIR):
+    if str(candidate) not in sys.path:
+        sys.path.insert(0, str(candidate))
 try:
     import xaac_update_runtime as update_runtime
 except ImportError as exc:
@@ -23,6 +25,14 @@ except ImportError as exc:
     _RUNTIME_IMPORT_ERROR = exc
 else:
     _RUNTIME_IMPORT_ERROR = None
+
+try:
+    import xaac_base_os_update_runtime as base_os_runtime
+except ImportError as exc:
+    base_os_runtime = None  # type: ignore[assignment]
+    _BASE_OS_RUNTIME_IMPORT_ERROR = exc
+else:
+    _BASE_OS_RUNTIME_IMPORT_ERROR = None
 
 POLICY_PATH = Path("/etc/xaac/update/policy.json")
 STATE_PATH = Path("/var/lib/xaac-update/state.json")
@@ -402,6 +412,20 @@ def _record_check(policy: dict[str, Any], payload: dict[str, object]) -> None:
 
 
 def _print_human(payload: dict[str, object]) -> None:
+    if payload.get("phase") == "10.6":
+        if "packages" in payload:
+            print(f"Sistema base Debian 13: {payload.get('status')}")
+            print(f"Paquets a modificar: {payload.get('changed_packages', 0)}")
+            print(f"Dependències noves: {payload.get('new_packages', 0)}")
+            print("Reinici recomanat: sí" if payload.get("reboot_recommended") else "Reinici recomanat: no")
+            return
+        if "suite" in payload:
+            print(f"{payload.get('os')} — Debian {payload.get('debian_version')} ({payload.get('architecture')})")
+            print(f"Suite APT controlada: {payload.get('suite')}")
+            print("Actualitzacions automàtiques: deshabilitades")
+            print("full-upgrade/dist-upgrade: BLOQUEJATS")
+            print("Reinici pendent: sí" if payload.get("reboot_required") else "Reinici pendent: no")
+            return
     if payload.get("phase") == "10.2" and "os" in payload:
         os_info = payload["os"]
         assert isinstance(os_info, dict)
@@ -438,6 +462,10 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--yes", action="store_true", help="Confirma explícitament la instal·lació")
     rollback = subparsers.add_parser("rollback", help="Restaura l'últim punt de recuperació funcional")
     rollback.add_argument("--yes", action="store_true", help="Confirma explícitament el rollback")
+    subparsers.add_parser("os-status", help="Mostra l'estat de l'actualització controlada de Debian 13")
+    subparsers.add_parser("os-check", help="Actualitza índexs i simula l'upgrade segur de Debian 13")
+    os_update = subparsers.add_parser("os-update", help="Aplica l'upgrade controlat del sistema base Debian 13")
+    os_update.add_argument("--yes", action="store_true", help="Confirma explícitament l'actualització del sistema base")
     return parser
 
 
@@ -481,6 +509,26 @@ def main(argv: list[str] | None = None) -> int:
                 raise UpdateAdminError(f"Runtime transaccional no disponible: {_RUNTIME_IMPORT_ERROR}")
             payload = update_runtime.manual_rollback(audit=_audit_event)
             ok = payload.get("status") == "rolled_back"
+        elif args.command == "os-status":
+            _require_root()
+            if base_os_runtime is None:
+                raise UpdateAdminError(f"Runtime del sistema base no disponible: {_BASE_OS_RUNTIME_IMPORT_ERROR}")
+            payload = base_os_runtime.status(base_os_runtime.load_policy())
+            ok = True
+        elif args.command == "os-check":
+            _require_root()
+            if base_os_runtime is None:
+                raise UpdateAdminError(f"Runtime del sistema base no disponible: {_BASE_OS_RUNTIME_IMPORT_ERROR}")
+            payload = base_os_runtime.check_updates(base_os_runtime.load_policy(), refresh=True)
+            ok = True
+        elif args.command == "os-update":
+            if not args.yes:
+                raise UpdateAdminError("Cal confirmar explícitament l'actualització del sistema base amb --yes")
+            _require_root()
+            if base_os_runtime is None:
+                raise UpdateAdminError(f"Runtime del sistema base no disponible: {_BASE_OS_RUNTIME_IMPORT_ERROR}")
+            payload = base_os_runtime.apply_update(base_os_runtime.load_policy())
+            ok = payload.get("status") in {"completed", "current"}
         else:
             raise UpdateAdminError("Ordre administrativa no suportada")
     except UpdateAdminError as exc:

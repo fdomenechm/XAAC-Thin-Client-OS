@@ -1,6 +1,6 @@
 # Bloc 10 — Actualització, manteniment i recuperació
 
-**Estat:** Fases 10.1–10.5 implementades a nivell de codi. Pendent únicament la construcció de la ISO candidata i la qualificació física final en un Dell Wyse 3040.
+**Estat:** Fases 10.1–10.6 implementades a nivell de codi. Pendent únicament la construcció de la ISO candidata i la qualificació física final en un Dell Wyse 3040.
 
 ## Objectiu
 
@@ -88,7 +88,7 @@ El punt únic de validació passa a ser:
 ./scripts/validate-block10-release.sh
 ```
 
-Aquest gate executa una única regressió completa de `pytest` —que inclou els tests dels Blocs 7, 8 i 9 i de les cinc fases del Bloc 10—, executa les comprovacions canòniques de paquet/proveniència del Bloc 7, valida la sintaxi dels gates focalitzats i comprova els tres `.deb` de producció amb `dpkg-deb`. Així s'evita repetir diverses vegades els mateixos subconjunts de tests abans d'una construcció que ja costa desenes de minuts.
+Aquest gate executa una única regressió completa de `pytest` —que inclou els tests dels Blocs 7, 8 i 9 i de les sis fases del Bloc 10—, executa les comprovacions canòniques de paquet/proveniència del Bloc 7, valida la sintaxi dels gates focalitzats i comprova els tres `.deb` de producció amb `dpkg-deb`. Així s'evita repetir diverses vegades els mateixos subconjunts de tests abans d'una construcció que ja costa desenes de minuts.
 
 `scripts/build-production-iso.sh` executa automàticament eixe gate abans d'elevar privilegis. Per tant, la construcció final és:
 
@@ -146,3 +146,17 @@ La candidata no queda qualificada només perquè `pytest` i el gate de només le
 **No es pot donar per validada físicament** la seqüència d'actualització/rollback des de l'entorn de desenvolupament ni substituir-la per una simulació. La validació física correspon al terminal Wyse real i a un bundle de release signat amb la clau de qualificació/producció autoritzada.
 
 Quan el segon `xaac-block10-validate` no continga `FAIL`, s'hagen revisat els `REVIEW` i el cicle físic haja acabat en la nova versió funcional, el Bloc 10 es pot marcar com a tancat.
+
+## Fase 10.6 — Actualització controlada de Debian 13
+
+La plataforma Debian subjacent té un canal separat dels bundles XAAC. `xaac-update-admin os-status`, `os-check` i `os-update --yes` només operen sobre Debian 13/trixie i validen estrictament les fonts `trixie`, `trixie-updates` i `trixie-security` amb el keyring oficial de Debian.
+
+El runtime no conté `dist-upgrade` ni `full-upgrade`. Rebutja eliminacions, downgrades i qualsevol intent d'APT de modificar els tres paquets XAAC. L'operació descarrega tot el pla abans d'instal·lar i després utilitza `--no-download`; per tant una pèrdua de xarxa durant la fase `dpkg` no obliga a canviar el conjunt aprovat.
+
+El rollback massiu automàtic de Debian queda expressament deshabilitat perquè els maintainer scripts no garanteixen downgrades segurs. Abans de l'operació es conserva un checkpoint de diagnòstic root-only i, si `dpkg --configure -a` no deixa el sistema coherent, l'estat passa a `failed_requires_recovery` per continuar des del Recovery de la 10.4.
+
+Gate focalitzat:
+
+```sh
+./scripts/validate-block10-phase6.sh
+```

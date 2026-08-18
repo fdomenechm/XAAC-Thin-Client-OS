@@ -45,7 +45,8 @@ for gate in \
     scripts/validate-block10-phase2.sh \
     scripts/validate-block10-phase3.sh \
     scripts/validate-block10-phase4.sh \
-    scripts/validate-block10-phase5.sh
+    scripts/validate-block10-phase5.sh \
+    scripts/validate-block10-phase6.sh
 do
     if [ ! -x "$gate" ]; then
         printf 'Error: gate absent o no executable: %s\n' "$gate" >&2
@@ -59,6 +60,7 @@ sh -n assets/runtime/xaac-block10-validate
 "$PYTHON" -m py_compile \
     assets/runtime/xaac-update-admin \
     assets/runtime/xaac_update_runtime.py \
+    assets/runtime/xaac_base_os_update_runtime.py \
     assets/runtime/xaac-maintenance \
     assets/runtime/xaac_maintenance_runtime.py \
     assets/runtime/xaac-recovery \
@@ -86,4 +88,4 @@ else
     printf '%s\n' '[XAAC] AVÍS: keyring públic de releases absent; les actualitzacions externes quedaran bloquejades fail-closed.'
 fi
 
-printf '%s\n' 'Bloc 10.5 pre-ISO: gate tècnic superat. Encara cal la validació física documentada al Wyse 3040.'
+printf '%s\n' 'Bloc 10.6 pre-ISO: gate tècnic superat. Encara cal la validació física documentada al Wyse 3040.'

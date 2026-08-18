@@ -30,6 +30,7 @@ POLICY_PATH = Path("/etc/xaac/recovery/policy.json")
 STATE_PATH = Path("/var/lib/xaac-recovery/state.json")
 AUDIT_PATH = Path("/var/log/xaac-recovery/recovery.jsonl")
 CMDLINE_PATH = Path("/proc/cmdline")
+REBOOT_REQUIRED_PATH = Path("/var/run/reboot-required")
 RECOVERY_TARGET_TOKEN = "systemd.unit=xaac-recovery.target"
 
 
@@ -222,12 +223,19 @@ def status_report(policy: dict[str, Any]) -> str:
     latest = _latest_recovery_summary()
     unit = str(policy["network"]["manager_unit"])
     tx_state: dict[str, Any] | None = None
+    base_os_state: dict[str, Any] | None = None
     tx_path = Path("/var/lib/xaac-update/transaction-state.json")
     if tx_path.is_file() and not tx_path.is_symlink():
         try:
             tx_state = _load_json(tx_path, "l'estat de transacció")
         except RecoveryRuntimeError:
             tx_state = {"status": "corrupt"}
+    base_path = Path("/var/lib/xaac-update/base-os-state.json")
+    if base_path.is_file() and not base_path.is_symlink():
+        try:
+            base_os_state = _load_json(base_path, "l'estat d'actualització del sistema base")
+        except RecoveryRuntimeError:
+            base_os_state = {"status": "corrupt"}
     lines = [
         "XAAC Thin Client OS — Recovery status",
         f"Mode recovery: {'sí' if in_recovery_mode() else 'no'}",
@@ -239,7 +247,11 @@ def status_report(policy: dict[str, Any]) -> str:
     if dpkg_detail:
         lines.append("Detall dpkg: " + dpkg_detail.replace("\n", " | ")[:1200])
     if tx_state is not None:
-        lines.append(f"Actualització: {tx_state.get('status', 'desconegut')}")
+        lines.append(f"Actualització components XAAC: {tx_state.get('status', 'desconegut')}")
+    if base_os_state is not None:
+        lines.append(f"Actualització sistema base: {base_os_state.get('status', 'desconegut')}")
+        if REBOOT_REQUIRED_PATH.exists():
+            lines.append("Sistema base: reinici pendent")
     if latest is None:
         lines.append("Últim punt de recuperació: no disponible")
     else:

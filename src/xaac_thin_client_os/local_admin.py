@@ -56,6 +56,11 @@ def create_local_admin_plan(rootfs:Path,profile_path:Path,request:LocalAdminRequ
         f'/usr/local/sbin/xaac-maintenance {command}'
         for command in ('status','health','network','storage','services','logs','cleanup','diagnostics')
     )
+    update_commands=', '.join((
+        '/usr/local/sbin/xaac-update-admin os-status',
+        '/usr/local/sbin/xaac-update-admin os-check',
+        '/usr/local/sbin/xaac-update-admin os-update --yes',
+    ))
     recovery_commands=', '.join((
         '/usr/local/sbin/xaac-recovery status',
         '/usr/local/sbin/xaac-recovery menu',
@@ -66,10 +71,10 @@ def create_local_admin_plan(rootfs:Path,profile_path:Path,request:LocalAdminRequ
         '/usr/local/sbin/xaac-recovery network-off --yes',
     ))
     sudoers=(f'Defaults:{username} use_pty,log_output,passwd_timeout=1\n'
-             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, {maintenance_commands}, {recovery_commands}, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
+             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, {maintenance_commands}, {update_commands}, {recovery_commands}, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
     menu='''#!/bin/sh
 set -eu
-printf '%s\n' 'XAAC Thin Client OS — Administració local' '1) Estat general' '2) Health-check' '3) Xarxa' '4) Emmagatzematge' '5) Serveis' '6) Logs sanititzats' '7) Generar diagnòstic' '8) Neteja segura' '9) Canviar contrasenya' '0) Eixir'
+printf '%s\n' 'XAAC Thin Client OS — Administració local' '1) Estat general' '2) Health-check' '3) Xarxa' '4) Emmagatzematge' '5) Serveis' '6) Logs sanititzats' '7) Generar diagnòstic' '8) Neteja segura' '9) Estat actualitzacions Debian' '10) Comprovar actualitzacions Debian' '11) Actualitzar Debian 13' '12) Canviar contrasenya' '0) Eixir'
 read -r choice
 case "$choice" in
   1) /usr/local/sbin/xaac-maintenance status ;;
@@ -80,7 +85,10 @@ case "$choice" in
   6) /usr/local/sbin/xaac-maintenance logs ;;
   7) /usr/local/sbin/xaac-maintenance diagnostics ;;
   8) /usr/local/sbin/xaac-maintenance cleanup ;;
-  9) passwd ;;
+  9) /usr/local/sbin/xaac-update-admin os-status ;;
+  10) /usr/local/sbin/xaac-update-admin os-check ;;
+  11) printf '%s' 'Escriviu UPDATE per confirmar actualització controlada de Debian 13: '; read -r confirm; [ "$confirm" = UPDATE ] || { echo 'Cancel·lat'; exit 0; }; /usr/local/sbin/xaac-update-admin os-update --yes ;;
+  12) passwd ;;
   0) exit 0 ;;
   *) echo 'Opció invàlida' >&2; exit 2 ;;
 esac

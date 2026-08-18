@@ -265,6 +265,11 @@ from xaac_thin_client_os.maintenance_diagnostics import (
     MaintenanceDiagnosticsInstaller,
     create_maintenance_diagnostics_plan,
 )
+from xaac_thin_client_os.base_os_update import (
+    BaseOsUpdateError,
+    BaseOsUpdateInstaller,
+    create_base_os_update_plan,
+)
 from xaac_thin_client_os.recovery_environment import (
     RecoveryEnvironmentError,
     RecoveryEnvironmentInstaller,
@@ -907,10 +912,11 @@ class ProductionIsoBuilder:
         components = " ".join(self.settings.components)
         suite = self.settings.suite
         mirror = self.settings.mirror.rstrip("/")
+        keyring = "/usr/share/keyrings/debian-archive-keyring.gpg"
         sources = (
-            f"deb {mirror} {suite} {components}\n"
-            f"deb {mirror} {suite}-updates {components}\n"
-            f"deb https://security.debian.org/debian-security {suite}-security {components}\n"
+            f"deb [signed-by={keyring}] {mirror} {suite} {components}\n"
+            f"deb [signed-by={keyring}] {mirror} {suite}-updates {components}\n"
+            f"deb [signed-by={keyring}] https://security.debian.org/debian-security {suite}-security {components}\n"
         )
         self._atomic_write(self._inside("/etc/apt/sources.list"), sources)
 
@@ -1221,7 +1227,7 @@ class ProductionIsoBuilder:
         )
 
     def _install_block10_target_validation(self) -> None:
-        """Install the read-only Block 10.5 target qualification gate.
+        """Install the read-only Block 10.6 target qualification gate.
 
         The gate composes the already validated Block 9 hardware/hardening gate
         with update, maintenance and recovery checks.  It never installs an
@@ -1245,6 +1251,10 @@ class ProductionIsoBuilder:
                 "grep -F '/usr/local/sbin/xaac-block9-validate' "
                 "/usr/local/sbin/xaac-block10-validate >/dev/null; "
                 "grep -F 'xaac-update-admin --json status' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "grep -F 'xaac-update-admin --json os-status' "
+                "/usr/local/sbin/xaac-block10-validate >/dev/null; "
+                "grep -F 'base OS update policy v1' "
                 "/usr/local/sbin/xaac-block10-validate >/dev/null; "
                 "grep -F 'xaac-maintenance health' "
                 "/usr/local/sbin/xaac-block10-validate >/dev/null; "
@@ -1364,6 +1374,51 @@ class ProductionIsoBuilder:
                 "test \"$(stat -c '%a' /var/lib/xaac-update/package-cache)\" = '700'",
             ],
             phase="configure-update-architecture-10-2",
+        )
+
+    def _configure_base_os_updates(self) -> None:
+        """Install the controlled Debian 13 base-system updater (phase 10.6)."""
+        try:
+            plan = create_base_os_update_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/base-os-update.yaml",
+            )
+            BaseOsUpdateInstaller().install(plan)
+        except BaseOsUpdateError as exc:
+            raise ProductionBuildError(
+                f"Actualització controlada del sistema base 10.6 invàlida: {exc}"
+            ) from exc
+
+        runtime_source = self.paths.project_root / "assets/runtime/xaac_base_os_update_runtime.py"
+        if not runtime_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac_base_os_update_runtime.py")
+        runtime_target = plan.output("runtime")
+        runtime_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(runtime_source, runtime_target)
+        runtime_target.chmod(0o640)
+
+        if self.dry_run:
+            return
+        self._chroot(
+            [
+                "/bin/sh",
+                "-ec",
+                "test -r /etc/xaac/update/base-os-policy.json; "
+                "test -r /var/lib/xaac-update/base-os-state.json; "
+                "test -d /var/lib/xaac-update/base-os-checkpoint; "
+                "test \"$(stat -c '%a' /var/lib/xaac-update/base-os-checkpoint)\" = '700'; "
+                "test -r /etc/apt/preferences.d/99xaac-base-os-protected; "
+                "test -r /etc/apt/apt.conf.d/99xaac-base-os-update; "
+                "test -r /usr/local/libexec/xaac_base_os_update_runtime.py; "
+                "/usr/bin/python3 -m py_compile /usr/local/libexec/xaac_base_os_update_runtime.py; "
+                "/usr/local/sbin/xaac-update-admin --help | grep -F 'os-update' >/dev/null; "
+                "grep -F 'Pin-Priority: -1' /etc/apt/preferences.d/99xaac-base-os-protected >/dev/null; "
+                "grep -F 'AllowUnauthenticated \"false\"' /etc/apt/apt.conf.d/99xaac-base-os-update >/dev/null; "
+                "test -s /usr/share/keyrings/debian-archive-keyring.gpg; "
+                "test \"$(systemctl is-enabled apt-daily.timer 2>/dev/null || true)\" = masked; "
+                "test \"$(systemctl is-enabled apt-daily-upgrade.timer 2>/dev/null || true)\" = masked",
+            ],
+            phase="configure-base-os-update-10-6",
         )
 
     def _configure_maintenance_diagnostics(self) -> None:
@@ -2525,6 +2580,7 @@ exit 0
             self._configure_production_service_hardening()
             self._install_block9_target_validation()
             self._configure_update_architecture()
+            self._configure_base_os_updates()
             self._configure_maintenance_diagnostics()
             self._configure_recovery_environment()
             self._install_block10_target_validation()
@@ -2721,6 +2777,10 @@ exit 0
                 "update_model": "xaac-update-manifest/v1",
                 "transactional_update": True,
                 "automatic_rollback": True,
+                "controlled_base_os_update": True,
+                "base_os_suite": "trixie",
+                "automatic_base_os_update": False,
+                "base_os_full_upgrade_allowed": False,
                 "boot_recovery": True,
                 "factory_reset_enabled": False,
                 "release_keyring_provisioned": (

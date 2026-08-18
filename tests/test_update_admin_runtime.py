@@ -77,3 +77,25 @@ def test_root_privileges_are_required_after_confirmation(monkeypatch, tmp_path: 
     assert namespace["main"](["rollback", "--yes"]) == 2
     rollback_error = capsys.readouterr().err
     assert "sudo" in rollback_error
+
+
+def test_os_update_requires_confirmation_before_root_privileges(monkeypatch, capsys) -> None:
+    namespace = runpy.run_path(str(SCRIPT))
+    monkeypatch.setattr(namespace["os"], "geteuid", lambda: 1000)
+
+    assert namespace["main"](["os-update"]) == 2
+    first = capsys.readouterr().err
+    assert "--yes" in first
+    assert "sudo" not in first
+
+    assert namespace["main"](["os-update", "--yes"]) == 2
+    second = capsys.readouterr().err
+    assert "sudo" in second
+
+
+def test_update_admin_exposes_phase_10_6_commands() -> None:
+    result = subprocess.run([str(SCRIPT), "--help"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "os-status" in result.stdout
+    assert "os-check" in result.stdout
+    assert "os-update" in result.stdout

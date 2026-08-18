@@ -1,3 +1,12 @@
+# 2026-08-18 — Fase 10.6: actualització controlada del sistema base
+
+- Afegida l'actualització suportada de Debian 13/trixie amb `xaac-update-admin os-status`, `os-check` i `os-update --yes`.
+- Les fonts APT queden limitades a `trixie`, `trixie-updates` i `trixie-security`, totes amb `Signed-By` del keyring oficial de Debian.
+- El runtime només usa `apt-get upgrade --with-new-pkgs --no-remove`; no implementa `dist-upgrade` ni `full-upgrade`, i bloqueja removals, downgrades i modificacions dels paquets XAAC.
+- `os-update` descarrega primer, reverifica el pla i instal·la amb `--no-download`; preserva conffiles locals i no reinicia automàticament.
+- Afegit checkpoint root-only i estat `failed_requires_recovery` per a fallades que requerisquen `xaac-recovery repair`.
+- Afegits `config/base-os-update.yaml`, `xaac_base_os_update_runtime.py`, el gate `validate-block10-phase6.sh` i les comprovacions corresponents al validador final del Bloc 10.
+
 # 2026-08-18 — Correcció Recovery 10.5 (4): estabilització completa de tty1 i teclat
 
 - Revisat de punta a punta el camí de consola del Recovery després de reproduir en VM entrada de teclat lenta, pulsacions perdudes, retorns de carro inesperats i el prompt de login al peu de la pantalla.

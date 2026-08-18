@@ -13,6 +13,7 @@ base:
 - squashfs-tools
 - parted
 - ca-certificates
+- debian-archive-keyring
 - gpgv
 - procps
 - apt

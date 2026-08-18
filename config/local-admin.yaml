@@ -21,6 +21,9 @@ policy:
     - /usr/local/sbin/xaac-maintenance logs
     - /usr/local/sbin/xaac-maintenance cleanup
     - /usr/local/sbin/xaac-maintenance diagnostics
+    - /usr/local/sbin/xaac-update-admin os-status
+    - /usr/local/sbin/xaac-update-admin os-check
+    - /usr/local/sbin/xaac-update-admin os-update --yes
     - /usr/local/sbin/xaac-recovery status
     - /usr/local/sbin/xaac-recovery menu
     - /usr/local/sbin/xaac-recovery rollback --yes

@@ -3,6 +3,16 @@ repositories:
     uri: https://deb.debian.org/debian
     suites:
       - trixie
+      - trixie-updates
+    components:
+      - main
+      - non-free-firmware
+    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+    enabled: true
+  - name: debian-security
+    uri: https://security.debian.org/debian-security
+    suites:
+      - trixie-security
     components:
       - main
       - non-free-firmware

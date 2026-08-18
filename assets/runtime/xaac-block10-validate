@@ -38,7 +38,7 @@ check() {
     fi
 }
 
-printf '%s\n' 'XAAC Thin Client OS — Bloc 10.5 final validation' > "$TMP"
+printf '%s\n' 'XAAC Thin Client OS — Bloc 10.6 final validation' > "$TMP"
 printf 'date_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$TMP"
 printf 'hostname=%s\n' "$(hostname 2>/dev/null || printf unknown)" >> "$TMP"
 printf 'kernel=%s\n' "$(uname -r 2>/dev/null || printf unknown)" >> "$TMP"
@@ -65,11 +65,23 @@ check 'update recovery enabled' 'systemctl is-enabled --quiet xaac-update-recove
 check 'update recovery before kiosk' "systemctl cat xaac-update-recover.service | grep -F 'Before=greetd.service'"
 check 'transaction state present' 'test -r /var/lib/xaac-update/transaction-state.json'
 check 'no incomplete transaction' "! grep -Eq '\"status\"[[:space:]]*:[[:space:]]*\"(installing|validating|rolling_back|rollback_failed)\"' /var/lib/xaac-update/transaction-state.json"
+check 'base OS update runtime readable' 'test -r /usr/local/libexec/xaac_base_os_update_runtime.py'
+check 'base OS update policy v1' "python3 -c 'import json; p=json.load(open(\"/etc/xaac/update/base-os-policy.json\")); raise SystemExit(0 if p.get(\"schema_version\")==1 and p.get(\"update_id\")==\"xaac-base-os-update\" and p.get(\"platform\",{}).get(\"suite\")==\"trixie\" else 1)'"
+check 'base OS state present' 'test -r /var/lib/xaac-update/base-os-state.json'
+check 'XAAC packages pinned out of APT' "grep -F 'Pin-Priority: -1' /etc/apt/preferences.d/99xaac-base-os-protected >/dev/null"
+check 'APT unauthenticated disabled' "grep -F 'AllowUnauthenticated \"false\"' /etc/apt/apt.conf.d/99xaac-base-os-update >/dev/null"
+check 'Debian security source configured' "grep -F 'trixie-security' /etc/apt/sources.list >/dev/null && grep -F 'signed-by=/usr/share/keyrings/debian-archive-keyring.gpg' /etc/apt/sources.list >/dev/null"
+check 'no failed base OS update' "! grep -Eq '\"status\"[[:space:]]*:[[:space:]]*\"failed_requires_recovery\"' /var/lib/xaac-update/base-os-state.json"
 
 if /usr/local/sbin/xaac-update-admin --json status > "$EVIDENCE/update-status.json" 2> "$EVIDENCE/update-status.err"; then
     record PASS 'update status runtime' "$EVIDENCE/update-status.json"
 else
     record FAIL 'update status runtime' "$EVIDENCE/update-status.err"
+fi
+if /usr/local/sbin/xaac-update-admin --json os-status > "$EVIDENCE/base-os-update-status.json" 2> "$EVIDENCE/base-os-update-status.err"; then
+    record PASS 'base OS update status runtime' "$EVIDENCE/base-os-update-status.json"
+else
+    record FAIL 'base OS update status runtime' "$EVIDENCE/base-os-update-status.err"
 fi
 
 keyring=/usr/share/keyrings/xaac-archive-keyring.gpg
@@ -123,6 +135,12 @@ if [ -r "$audit" ] && grep -Eq 'manual_rollback_completed|transaction_rolled_bac
     record PASS 'physical rollback observed' 'rollback/recovery event present in audit'
 else
     record REVIEW 'physical rollback observed' 'run and verify rollback on the Wyse'
+fi
+base_audit=/var/log/xaac/base-os-update-audit.jsonl
+if [ -r "$base_audit" ] && grep -q 'base_os_update_completed' "$base_audit"; then
+    record PASS 'physical Debian update observed' 'base_os_update_completed present in audit'
+else
+    record REVIEW 'physical Debian update observed' 'run os-check/os-update on a qualified Debian 13 update set'
 fi
 
 systemctl status xaac-update-recover.service --no-pager > "$EVIDENCE/update-recover-service.txt" 2>&1 || true
