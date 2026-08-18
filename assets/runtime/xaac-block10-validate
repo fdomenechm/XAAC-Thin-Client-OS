@@ -94,7 +94,12 @@ fi
 
 check 'recovery executable' 'test -x /usr/local/sbin/xaac-recovery'
 check 'recovery target installed' 'test -f /etc/systemd/system/xaac-recovery.target'
+check 'recovery console installed' 'test -f /etc/systemd/system/xaac-recovery-console.service'
+check 'recovery console login wrapper installed' 'test -x /usr/local/libexec/xaac/recovery-admin-login'
 check 'recovery target isolates kiosk' "grep -F 'Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service' /etc/systemd/system/xaac-recovery.target"
+check 'recovery target requests dedicated console' "grep -F 'Wants=systemd-user-sessions.service xaac-recovery-console.service' /etc/systemd/system/xaac-recovery.target"
+check 'recovery console uses dedicated login wrapper' "grep -F -- '--login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux' /etc/systemd/system/xaac-recovery-console.service"
+check 'recovery console locks user to xaac-admin' "grep -Fx 'exec /bin/login xaac-admin' /usr/local/libexec/xaac/recovery-admin-login"
 check 'recovery GRUB source' "grep -F 'systemd.unit=xaac-recovery.target' /etc/grub.d/42_xaac_recovery"
 check 'recovery GRUB generated' "grep -F 'XAAC Thin Client OS — Recovery' /boot/grub/grub.cfg"
 check 'factory reset disabled' "python3 -c 'import json; p=json.load(open(\"/etc/xaac/recovery/policy.json\")); raise SystemExit(0 if p.get(\"factory_reset\",{}).get(\"enabled\") is False else 1)'"
@@ -120,6 +125,7 @@ fi
 
 systemctl status xaac-update-recover.service --no-pager > "$EVIDENCE/update-recover-service.txt" 2>&1 || true
 systemctl status xaac-recovery.target --no-pager > "$EVIDENCE/recovery-target.txt" 2>&1 || true
+systemctl status xaac-recovery-console.service --no-pager > "$EVIDENCE/recovery-console.txt" 2>&1 || true
 journalctl -u xaac-update-recover.service -b --no-pager > "$EVIDENCE/update-recover-journal.txt" 2>&1 || true
 if [ -r /var/lib/xaac-update/transaction-state.json ]; then
     cp --no-preserve=mode,ownership /var/lib/xaac-update/transaction-state.json "$EVIDENCE/transaction-state.json" 2>/dev/null || true

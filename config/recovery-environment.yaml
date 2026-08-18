@@ -44,6 +44,8 @@ outputs:
   admin: /usr/local/sbin/xaac-recovery
   runtime: /usr/local/libexec/xaac_recovery_runtime.py
   target: /etc/systemd/system/xaac-recovery.target
+  console: /etc/systemd/system/xaac-recovery-console.service
+  console_login: /usr/local/libexec/xaac/recovery-admin-login
   grub_entry: /etc/grub.d/42_xaac_recovery
   grub_defaults: /etc/default/grub.d/99-xaac-recovery.cfg
   tmpfiles: /usr/lib/tmpfiles.d/xaac-recovery.conf

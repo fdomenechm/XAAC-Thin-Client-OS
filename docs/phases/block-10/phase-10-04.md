@@ -42,7 +42,7 @@ El target:
 - no depèn de `graphical.target`;
 - entra en conflicte amb `greetd`, XAAC Thin Client VPN i XAAC Agent;
 - no activa NetworkManager per defecte;
-- proporciona `getty@tty1` per autenticar `xaac-admin` amb la política PAM normal;
+- proporciona `xaac-recovery-console.service` en `tty1`, independent del `getty@tty1.service` emmascarat pel quiosc, i autentica exclusivament `xaac-admin` mitjançant `/bin/login`;
 - no habilita cap shell root ni cap bypass d'autenticació.
 
 Després d'iniciar sessió, l'administrador pot executar:

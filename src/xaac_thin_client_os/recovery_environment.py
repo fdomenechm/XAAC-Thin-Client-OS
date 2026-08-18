@@ -22,6 +22,8 @@ _REQUIRED_OUTPUTS = {
     "admin",
     "runtime",
     "target",
+    "console",
+    "console_login",
     "grub_entry",
     "grub_defaults",
     "tmpfiles",
@@ -175,7 +177,7 @@ class RecoveryEnvironmentInstaller:
     def install(
         self, plan: RecoveryEnvironmentPlan, *, dry_run: bool = False
     ) -> tuple[Path, ...]:
-        order = ("policy", "state", "target", "grub_entry", "grub_defaults", "tmpfiles")
+        order = ("policy", "state", "target", "console", "console_login", "grub_entry", "grub_defaults", "tmpfiles")
         targets = tuple(plan.output(key) for key in order)
         if dry_run:
             return targets
@@ -191,10 +193,38 @@ class RecoveryEnvironmentInstaller:
         target = """[Unit]
 Description=XAAC Thin Client OS Recovery Mode
 Requires=local-fs.target
-Wants=systemd-user-sessions.service getty@tty1.service
+Wants=systemd-user-sessions.service xaac-recovery-console.service
 After=local-fs.target systemd-user-sessions.service
 Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service
 AllowIsolate=yes
+"""
+        console = """[Unit]
+Description=XAAC Recovery authenticated console on tty1
+ConditionKernelCommandLine=systemd.unit=xaac-recovery.target
+ConditionPathExists=/dev/tty0
+After=systemd-user-sessions.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=idle
+ExecStart=-/sbin/agetty --noclear --noissue --login-program /usr/local/libexec/xaac/recovery-admin-login tty1 linux
+Restart=always
+RestartSec=0
+UtmpIdentifier=tty1
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+IgnoreSIGPIPE=no
+SendSIGHUP=yes
+
+"""
+        console_login = """#!/bin/sh
+set -eu
+exec /bin/login xaac-admin
 """
         entry_name = plan.profile["boot"]["grub_entry"]
         root_label = plan.profile["boot"]["root_label"]
@@ -225,11 +255,13 @@ XAAC_RECOVERY_ENTRY
             json.dumps(policy, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             target,
+            console,
+            console_login,
             grub_entry,
             grub_defaults,
             tmpfiles,
         )
-        modes = (0o640, 0o640, 0o644, 0o750, 0o644, 0o644)
+        modes = (0o640, 0o640, 0o644, 0o644, 0o755, 0o750, 0o644, 0o644)
         for path, content, mode in zip(targets, contents, modes, strict=True):
             self._write(path, content, mode)
         return targets

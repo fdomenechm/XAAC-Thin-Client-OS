@@ -66,7 +66,7 @@ Els bundles de diagnòstic no copien perfils NetworkManager, secrets XAAC, token
 
 L'entrada instal·lada **XAAC Thin Client OS — Recovery** és accessible amb `Esc` durant la finestra curta de GRUB. Arranca `xaac-recovery.target`, no el quiosc, la VPN o l'Agent, i deixa la xarxa desactivada per defecte.
 
-Des de `tty1`, després d'autenticar-se com `xaac-admin`:
+Des de la consola dedicada de Recovery en `tty1`, després d'autenticar-se com `xaac-admin`:
 
 ```sh
 sudo xaac-recovery menu

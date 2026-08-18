@@ -1,3 +1,12 @@
+# 2026-08-18 — Correcció Recovery 10.5: consola tty1 independent
+
+- Corregida la fallada observada en VM on `xaac-recovery.target` arribava a estat actiu però no apareixia cap prompt d'autenticació.
+- La causa era que el sistema instal·lat emmascara deliberadament `getty@tty1.service`, mentre que el target de Recovery intentava arrancar eixa mateixa unitat.
+- Afegida `xaac-recovery-console.service`, una consola exclusiva de Recovery que usa directament `agetty` sobre `tty1` i no depèn del getty normal emmascarat.
+- Afegit `/usr/local/libexec/xaac/recovery-admin-login`, que fixa l'autenticació a `xaac-admin` mitjançant `/bin/login` sense bypass de contrasenya ni shell root.
+- El gate del Bloc 10 comprova ara la presència i configuració de la consola dedicada.
+- Afegida una regressió que manté explícitament el getty normal de `tty1` emmascarat al quiosc i impedeix que Recovery torne a dependre d'ell.
+
 # 2026-08-18 — Fase 10.5: consolidació i gate final del Bloc 10
 
 - Afegit `scripts/validate-block10-release.sh` com a gate pre-ISO únic del Bloc 10, amb una sola regressió completa per evitar repetir subconjunts de tests abans de cada construcció.
