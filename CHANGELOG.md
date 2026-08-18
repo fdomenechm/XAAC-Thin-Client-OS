@@ -1,3 +1,14 @@
+# 2026-08-18 — Fase 10.4: recuperació local i reparació
+
+- Afegida la CLI `xaac-recovery` amb `status`, `rollback`, `repair`, restauració només de configuració i activació/desactivació explícita de xarxa.
+- Integrat `xaac-recovery.target` com a entorn mínim de boot sense quiosc, VPN ni Agent, amb autenticació normal de `xaac-admin` en `tty1`.
+- Afegida l'entrada GRUB `XAAC Thin Client OS — Recovery`; el menú continua ocult i disposa d'un timeout d'un segon per permetre l'accés amb `Esc`.
+- Reutilitzat el runtime transaccional 10.2 per a rollback i restauració de configuració amb els mateixos hashes, locks i punts de recuperació.
+- `repair` queda restringit al boot de recovery i repara `dpkg`, initramfs i `grub.cfg` sense descarregar paquets implícitament ni executar fsck sobre l'arrel muntada.
+- Afegida auditoria root-only de recovery i política de xarxa desactivada per defecte.
+- Factory reset continua deshabilitat fail-closed fins disposar d'una imatge factory independent, versionada i signada.
+- La validació física de GRUB/recovery queda reservada a la Fase 10.5; no es genera ISO en la 10.4.
+
 # 2026-08-17 — Correcció Fase 10.2: confirmació abans de privilegis
 
 - `xaac-update-admin update` i `rollback` validen ara `--yes` abans d'exigir `sudo`, de manera que la CLI manté el mateix contracte quan s'executa des d'un entorn de desenvolupament no privilegiat.

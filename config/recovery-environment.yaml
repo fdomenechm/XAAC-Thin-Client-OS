@@ -1,0 +1,49 @@
+schema_version: 1
+recovery_id: xaac-recovery
+phase: "10.4"
+hardware_profile: wyse3040
+boot:
+  target: xaac-recovery.target
+  grub_entry: XAAC Thin Client OS — Recovery
+  root_label: XAAC_ROOT
+  hidden_menu_timeout_seconds: 1
+  network_default: disabled
+  kiosk_default: disabled
+commands:
+  - status
+  - rollback
+  - repair
+  - network-on
+  - network-off
+rollback:
+  require_confirmation: true
+  restore_packages: true
+  restore_configuration: true
+repair:
+  require_recovery_boot: true
+  dpkg_configure: true
+  update_initramfs: true
+  update_grub: true
+  restore_configuration_supported: true
+network:
+  optional: true
+  require_explicit_enable: true
+  manager_unit: NetworkManager.service
+factory_reset:
+  enabled: false
+  reason: signed_factory_image_not_provisioned
+safety:
+  require_local_admin: true
+  fail_closed: true
+  preserve_evidence: true
+  automatic_factory_reset: false
+  remote_unattended_factory_reset: false
+outputs:
+  policy: /etc/xaac/recovery/policy.json
+  state: /var/lib/xaac-recovery/state.json
+  admin: /usr/local/sbin/xaac-recovery
+  runtime: /usr/local/libexec/xaac_recovery_runtime.py
+  target: /etc/systemd/system/xaac-recovery.target
+  grub_entry: /etc/grub.d/42_xaac_recovery
+  grub_defaults: /etc/default/grub.d/99-xaac-recovery.cfg
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-recovery.conf

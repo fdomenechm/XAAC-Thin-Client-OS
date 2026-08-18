@@ -21,6 +21,13 @@ policy:
     - /usr/local/sbin/xaac-maintenance logs
     - /usr/local/sbin/xaac-maintenance cleanup
     - /usr/local/sbin/xaac-maintenance diagnostics
+    - /usr/local/sbin/xaac-recovery status
+    - /usr/local/sbin/xaac-recovery menu
+    - /usr/local/sbin/xaac-recovery rollback --yes
+    - /usr/local/sbin/xaac-recovery repair --yes
+    - /usr/local/sbin/xaac-recovery repair --restore-configuration --yes
+    - /usr/local/sbin/xaac-recovery network-on --yes
+    - /usr/local/sbin/xaac-recovery network-off --yes
     - /usr/bin/systemctl status *
     - /usr/bin/journalctl *
 paths:

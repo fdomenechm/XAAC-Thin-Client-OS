@@ -265,6 +265,11 @@ from xaac_thin_client_os.maintenance_diagnostics import (
     MaintenanceDiagnosticsInstaller,
     create_maintenance_diagnostics_plan,
 )
+from xaac_thin_client_os.recovery_environment import (
+    RecoveryEnvironmentError,
+    RecoveryEnvironmentInstaller,
+    create_recovery_environment_plan,
+)
 
 
 class ProductionBuildError(RuntimeError):
@@ -1380,6 +1385,76 @@ class ProductionIsoBuilder:
             phase="configure-maintenance-diagnostics-10-3",
         )
 
+    def _configure_recovery_environment(self) -> None:
+        """Install the phase 10.4 local boot recovery environment."""
+        try:
+            plan = create_recovery_environment_plan(
+                self.paths.rootfs,
+                self.paths.project_root / "config/recovery-environment.yaml",
+            )
+            RecoveryEnvironmentInstaller().install(plan)
+        except RecoveryEnvironmentError as exc:
+            raise ProductionBuildError(
+                f"Entorn de recuperació 10.4 invàlid: {exc}"
+            ) from exc
+
+        admin_source = self.paths.project_root / "assets/runtime/xaac-recovery"
+        runtime_source = self.paths.project_root / "assets/runtime/xaac_recovery_runtime.py"
+        if not admin_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac-recovery")
+        if not runtime_source.is_file():
+            raise ProductionBuildError("Falta assets/runtime/xaac_recovery_runtime.py")
+
+        admin_target = plan.output("admin")
+        runtime_target = plan.output("runtime")
+        admin_target.parent.mkdir(parents=True, exist_ok=True)
+        runtime_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(admin_source, admin_target)
+        shutil.copy2(runtime_source, runtime_target)
+        admin_target.chmod(0o750)
+        runtime_target.chmod(0o640)
+
+        self._atomic_write(
+            self._inside("/etc/profile.d/xaac-recovery-hint.sh"),
+            "# Managed by XAAC Thin Client OS phase 10.4\n"
+            "if [ \"$(id -un 2>/dev/null)\" = xaac-admin ] && [ -t 0 ] && "
+            "grep -qw 'systemd.unit=xaac-recovery.target' /proc/cmdline 2>/dev/null; then\n"
+            "  printf '%s\\n' 'XAAC Recovery actiu. Executeu: sudo xaac-recovery menu'\n"
+            "fi\n",
+            0o644,
+        )
+
+        if self.dry_run:
+            return
+        self._chroot(
+            ["systemd-tmpfiles", "--create", "/usr/lib/tmpfiles.d/xaac-recovery.conf"],
+            phase="configure-recovery-tmpfiles",
+        )
+        self._chroot(
+            [
+                "/bin/sh",
+                "-ec",
+                "test -r /etc/xaac/recovery/policy.json; "
+                "test -r /var/lib/xaac-recovery/state.json; "
+                "test -x /usr/local/sbin/xaac-recovery; "
+                "test -r /usr/local/libexec/xaac_recovery_runtime.py; "
+                "test -f /etc/systemd/system/xaac-recovery.target; "
+                "test -x /etc/grub.d/42_xaac_recovery; "
+                "test -f /etc/default/grub.d/99-xaac-recovery.cfg; "
+                "grep -Fx 'GRUB_TIMEOUT=1' /etc/default/grub.d/99-xaac-recovery.cfg >/dev/null; "
+                "grep -F 'systemd.unit=xaac-recovery.target' /etc/grub.d/42_xaac_recovery >/dev/null; "
+                "grep -F 'Conflicts=graphical.target greetd.service xaac-vpn-manager.service xaac-agent.service' "
+                "/etc/systemd/system/xaac-recovery.target >/dev/null; "
+                "/usr/bin/python3 -m py_compile /usr/local/sbin/xaac-recovery "
+                "/usr/local/libexec/xaac_recovery_runtime.py; "
+                "/bin/sh -n /etc/grub.d/42_xaac_recovery; "
+                "/usr/local/sbin/xaac-recovery --help >/dev/null; "
+                "test \"$(stat -c '%a' /usr/local/sbin/xaac-recovery)\" = '750'; "
+                "test \"$(stat -c '%a' /usr/local/libexec/xaac_recovery_runtime.py)\" = '640'",
+            ],
+            phase="configure-recovery-environment-10-4",
+        )
+
     def _configure_openvpn3_network(self) -> None:
         """Persist the OpenVPN 3 DNS backend used by the minimal XAAC OS.
 
@@ -2396,6 +2471,7 @@ exit 0
             self._install_block9_target_validation()
             self._configure_update_architecture()
             self._configure_maintenance_diagnostics()
+            self._configure_recovery_environment()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()

@@ -1,9 +1,9 @@
 # Recuperació
 
-Aquest directori forma part de l'arquitectura obligatòria de XAAC Thin Client OS i està reservat per als recursos de recuperació del sistema.
+Els recursos de recuperació de producció del Bloc 10 es defineixen en `config/recovery-environment.yaml`, `src/xaac_thin_client_os/recovery_environment.py` i `assets/runtime/xaac-recovery`.
 
-A partir del Bloc 11 contindrà els components necessaris per als estats de recuperació, reparació, mode local, partició de recuperació, factory reset, USB i PXE.
+La Fase 10.4 proporciona un target systemd mínim, una entrada GRUB, rollback transaccional, reparació de `dpkg`/initramfs/GRUB i restauració de configuració. No habilita factory reset perquè encara no existeix una imatge factory independent i signada a la partició de recuperació.
 
-Es manté versionat encara que no continga implementacions en el punt de partida de la fase 11.1.
+Alguns mòduls antics de recovery continuen versionats com a prototips del full de ruta anterior, però no estan integrats en el `ProductionIsoBuilder` i no s'han de considerar mecanismes de producció.
 
-Consulteu també la [guia de recuperació](../docs/manual/recovery.md).
+Consulteu [docs/manual/recovery.md](../docs/manual/recovery.md) i [Fase 10.4](../docs/phases/block-10/phase-10-04.md).

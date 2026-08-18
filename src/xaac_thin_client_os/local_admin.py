@@ -56,8 +56,17 @@ def create_local_admin_plan(rootfs:Path,profile_path:Path,request:LocalAdminRequ
         f'/usr/local/sbin/xaac-maintenance {command}'
         for command in ('status','health','network','storage','services','logs','cleanup','diagnostics')
     )
+    recovery_commands=', '.join((
+        '/usr/local/sbin/xaac-recovery status',
+        '/usr/local/sbin/xaac-recovery menu',
+        '/usr/local/sbin/xaac-recovery rollback --yes',
+        '/usr/local/sbin/xaac-recovery repair --yes',
+        '/usr/local/sbin/xaac-recovery repair --restore-configuration --yes',
+        '/usr/local/sbin/xaac-recovery network-on --yes',
+        '/usr/local/sbin/xaac-recovery network-off --yes',
+    ))
     sudoers=(f'Defaults:{username} use_pty,log_output,passwd_timeout=1\n'
-             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, {maintenance_commands}, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
+             f'{username} ALL=(root) /usr/local/sbin/xaac-admin-menu, {maintenance_commands}, {recovery_commands}, /usr/bin/systemctl status *, /usr/bin/journalctl *\n')
     menu='''#!/bin/sh
 set -eu
 printf '%s\n' 'XAAC Thin Client OS — Administració local' '1) Estat general' '2) Health-check' '3) Xarxa' '4) Emmagatzematge' '5) Serveis' '6) Logs sanititzats' '7) Generar diagnòstic' '8) Neteja segura' '9) Canviar contrasenya' '0) Eixir'

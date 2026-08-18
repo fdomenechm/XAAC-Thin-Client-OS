@@ -681,6 +681,44 @@ def manual_rollback(*, audit: Callable[[str, dict[str, Any]], None] | None = Non
         handle.close()
 
 
+def restore_latest_configuration(
+    *, audit: Callable[[str, dict[str, Any]], None] | None = None
+) -> dict[str, Any]:
+    """Restore only configuration from the newest verified recovery point.
+
+    This is intended for the phase 10.4 recovery environment when package
+    versions are healthy but configuration has become unusable. It uses the
+    same archive hash and tar-member validation as a full package rollback.
+    """
+    policy = load_policy()
+    handle = _lock()
+    try:
+        recovery = _latest_recovery_point(policy)
+        metadata = load_json(recovery / "recovery-point.json", "el punt de recuperació")
+        configuration = metadata.get("configuration")
+        if not isinstance(configuration, dict):
+            raise UpdateRuntimeError("Punt de recuperació sense configuració")
+        _restore_configuration(recovery, configuration)
+        state = {
+            "schema_version": 2,
+            "status": "configuration_restored_manual",
+            "transaction_id": metadata.get("transaction_id"),
+            "completed_at": utc_now(),
+            "recovery_point": str(recovery),
+            "members": list(configuration.get("members", [])),
+            "last_error": None,
+        }
+        _write_transaction_state(state)
+        if audit:
+            audit(
+                "manual_configuration_restore_completed",
+                {"transaction_id": metadata.get("transaction_id")},
+            )
+        return state
+    finally:
+        handle.close()
+
+
 def recover_interrupted(*, audit: Callable[[str, dict[str, Any]], None] | None = None) -> dict[str, Any] | None:
     """Rollback an update interrupted after package mutation, typically at boot."""
     if not STATE_PATH.is_file():
