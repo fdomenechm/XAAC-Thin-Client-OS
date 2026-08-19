@@ -1,3 +1,11 @@
+# 2026-08-19 — Correcció Fase 10.7: llengua de XAAC Thin Client sincronitzada amb la instal·lació
+
+- Corregit el desajust pel qual XAAC Thin Client conservava `language = ca` del paquet Debian encara que l'administrador haguera seleccionat Español o English durant la instal·lació.
+- L'instal·lador aplica ara el codi de llengua seleccionat (`ca`, `es` o `en`) a `/etc/xaac-thinclient/config.ini` del sistema de destinació abans del primer arranc del quiosc.
+- La verificació final falla de manera controlada si `application.language` no coincideix amb la selecció de l'instal·lador.
+- El resum de Recovery registra també `thinclient_language=<ca|es|en>` per facilitar la diagnosi.
+- Afegida regressió executada sobre els tres idiomes suportats i mantinguda la validació `sh -n` del script d'instal·lació generat.
+
 # 2026-08-19 — Correcció Fase 10.7: finalització controlada de l'instal·lador
 
 - Corregida la regressió observada en VM on una fallada tardana de `xaac-installer-welcome.service` activava el fallback `OnFailure` i deixava `tty1` en un prompt de login del sistema Live.

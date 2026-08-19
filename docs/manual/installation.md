@@ -18,7 +18,7 @@ Instal·lació de XAAC Thin Client OS en un Dell Wyse 3040 mitjançant ISO, IMG 
 7. No interrompeu el particionat, la còpia ni la instal·lació de GRUB.
 8. Quan aparega el missatge de finalització correcta, premeu Retorn per apagar el sistema i retireu el mitjà d'instal·lació.
 
-La llengua i el teclat seleccionats queden aplicats també al sistema instal·lat. La zona horària es manté en `Europe/Madrid`. Si l'instal·lador detecta una errada, manté `tty1` sota control, mostra l'error i ofereix únicament reiniciar; no ha d'aparéixer un prompt de login del sistema Live.
+La llengua i el teclat seleccionats queden aplicats també al sistema instal·lat. La llengua seleccionada es copia igualment a `application.language` de `/etc/xaac-thinclient/config.ini`, per tant XAAC Thin Client ha d'arrancar en Valencià/Català, Español o English d'acord amb la selecció feta a l'inici de la instal·lació. La zona horària es manté en `Europe/Madrid`. Si l'instal·lador detecta una errada, manté `tty1` sota control, mostra l'error i ofereix únicament reiniciar; no ha d'aparéixer un prompt de login del sistema Live.
 
 ## IMG
 Descomprimiu la IMG XZ, verifiqueu-ne el hash i escriviu-la només sobre el dispositiu de destinació correcte. En el primer inici s’expandeix l’arrel i es regeneren els identificadors.

@@ -936,6 +936,33 @@ def test_phase_10_7_installer_language_and_keyboard_selection() -> None:
     assert "keyboard_layout=$install_keyboard_layout" in source
 
 
+def test_phase_10_7_installer_persists_xaac_thinclient_language(tmp_path: Path) -> None:
+    script = _render_production_installer()
+    assert 'thinclient_config="$mount_root/etc/xaac-thinclient/config.ini"' in script
+    assert 'language = $install_language' in script
+    assert 'thinclient_language=$install_language' in script
+    assert 'thinclient_language_fail' in script
+
+    start = script.index('thinclient_config="$mount_root/etc/xaac-thinclient/config.ini"')
+    end = script.index('if [ -f "$mount_root/etc/xaac-thinclient/device.ini" ]', start)
+    synchronizer = script[start:end]
+    for language in ("ca", "es", "en"):
+        root = tmp_path / language
+        config = root / "etc/xaac-thinclient/config.ini"
+        config.parent.mkdir(parents=True)
+        config.write_text("[application]\nlanguage = ca\nmode = production\n", encoding="utf-8")
+        result = subprocess.run(
+            ["sh"],
+            input="set -eu\n" + synchronizer,
+            text=True,
+            capture_output=True,
+            env={**__import__("os").environ, "mount_root": str(root), "install_language": language},
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert f"language = {language}\n" in config.read_text(encoding="utf-8")
+
+
 def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
     import inspect
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
