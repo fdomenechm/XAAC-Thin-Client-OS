@@ -407,16 +407,21 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_tty1_failure_restores_authenticated_getty_without_autologin() -> None:
+def test_installer_tty1_failure_stays_owned_by_installer_without_login_fallback() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    script = _render_production_installer()
     assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
     assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "OnFailure=xaac-installer-restore-getty.service" in source
+    assert "OnFailure=xaac-installer-restore-getty.service" not in source
+    assert "xaac-installer-restore-getty.service" not in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
-    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
+    assert "xaac_installer_exit" in script
+    assert "cap consola de login" in script
+    assert "xaac_request_poweroff" in script
+    assert "systemctl poweroff\n    while :; do sleep 3600; done" in script
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -922,8 +927,11 @@ def test_phase_10_7_installer_language_and_keyboard_selection() -> None:
     assert "install_keyboard_layout=es" in source
     assert "install_keyboard_layout=us" in source
     assert "loadkeys" in source
-    assert "update-locale" in source and "install_locale" in source
-    assert "dpkg-reconfigure keyboard-configuration" in source
+    script = _render_production_installer()
+    assert '$mount_root/etc/locale.conf' in script
+    assert '$mount_root/etc/default/locale' in script
+    assert 'chroot "$mount_root" update-locale' not in script
+    assert 'dpkg-reconfigure keyboard-configuration' not in script
     assert "locale=$install_locale" in source
     assert "keyboard_layout=$install_keyboard_layout" in source
 
@@ -934,3 +942,35 @@ def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
     for prefix in ("ca:", "es:", "en:"):
         for key in ("title", "keyboard_title", "select_disk", "configure_password", "configure_hostname", "configure_rdp", "s10", "complete", "poweroff"):
             assert f"{prefix}{key})" in source
+
+
+def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
+    script = _render_production_installer()
+    subprocess.run(["sh", "-n"], input=script, text=True, check=True)
+
+
+def test_phase_10_7_failure_path_keeps_tty_owned_and_never_falls_to_login(tmp_path: Path) -> None:
+    script = _render_production_installer()
+    # Force a controlled failure after language/keyboard selection. Replace the
+    # failure handler reboot with an exit so the test can terminate.
+    script = script.replace("disks_file=$(mktemp)", "false", 1)
+    script = script.replace(
+        "systemctl reboot || true\n        while :; do sleep 3600; done",
+        "exit 77",
+        1,
+    )
+    path = tmp_path / "xaac-installer-welcome"
+    path.write_text(script, encoding="utf-8")
+    result = subprocess.run(
+        ["sh", str(path)],
+        input="1\n1\n\n",
+        text=True,
+        capture_output=True,
+        env={**__import__("os").environ, "TERM": "linux"},
+        check=False,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 77
+    assert "La instal·lació s'ha aturat per una errada." in output
+    assert "Premeu Retorn per reiniciar el sistema:" in output
+    assert " login:" not in output

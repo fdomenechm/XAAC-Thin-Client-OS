@@ -224,8 +224,9 @@ La política de consoles és íntegrament de XAAC:
 - `tty2`–`tty6` utilitzen sense modificacions la plantilla autenticada
   `getty@.service` de Debian;
 - en mode instal·lador, `xaac-installer-welcome.service` pren exclusivament
-  `tty1`, entra en conflicte amb `getty@tty1.service` i el restaura mitjançant
-  `OnFailure` si l’instal·lador falla.
+  `tty1` i entra en conflicte amb `getty@tty1.service`; si es produeix una
+  errada, el mateix instal·lador conserva la consola, mostra un missatge
+  controlat i només permet reiniciar, sense exposar cap prompt de login.
 
 El bootstrap es fa en dues etapes: `debootstrap --variant=minbase` crea Debian
 base i la fase `configure` instal·la kernel, firmware i paquets des de dins del
@@ -243,15 +244,16 @@ Variant:             cap
 Zona horària:        `Europe/Madrid`
 ```
 
-En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la llengua entre **Valencià/Català**, **Español** i **English**, i després tria independentment el teclat físic entre **Espanyol** i **English (US)**. La selecció s'aplica a la sessió Live i es persisteix al sistema instal·lat en `/etc/default/locale` i `/etc/default/keyboard`.
+En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la llengua entre **Valencià/Català**, **Español** i **English**, i després tria independentment el teclat físic entre **Espanyol** i **English (US)**. La selecció s'aplica a la sessió Live i es persisteix al sistema instal·lat en `/etc/locale.conf`, `/etc/default/locale` i `/etc/default/keyboard`.
 
-La configuració declarativa inicial es troba en `config/localization.yaml`. El constructor instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`; durant la consolidació de la instal·lació executa `update-locale` i `dpkg-reconfigure keyboard-configuration` amb els valors triats. Els tres locales suportats (`ca_ES.UTF-8`, `es_ES.UTF-8` i `en_US.UTF-8`) ja estan generats al rootfs i no depenen de `live-config` ni de la xarxa. La zona horària continua fixada a `Europe/Madrid`.
+La configuració declarativa inicial es troba en `config/localization.yaml`. El constructor instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`. Durant la instal·lació final els valors triats s'escriuen directament als fitxers persistents, evitant reexecutar `dpkg-reconfigure` dins del chroot de destinació. Els tres locales suportats (`ca_ES.UTF-8`, `es_ES.UTF-8` i `en_US.UTF-8`) ja estan generats al rootfs i no depenen de `live-config` ni de la xarxa. La zona horària continua fixada a `Europe/Madrid`.
 
 Després de construir la ISO es pot verificar amb:
 
 ```bash
 grep -n 'linux /live/vmlinuz' .build/production/iso-staging/boot/grub/grub.cfg
 cat .build/production/rootfs/etc/default/keyboard
+cat .build/production/rootfs/etc/locale.conf
 cat .build/production/rootfs/etc/default/locale
 ```
 

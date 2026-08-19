@@ -1,3 +1,12 @@
+# 2026-08-19 — Correcció Fase 10.7: finalització controlada de l'instal·lador
+
+- Corregida la regressió observada en VM on una fallada tardana de `xaac-installer-welcome.service` activava el fallback `OnFailure` i deixava `tty1` en un prompt de login del sistema Live.
+- Eliminat `xaac-installer-restore-getty.service`: el mode instal·lador conserva ara `tty1` fins a l'apagada o el reinici i mai exposa una consola de login com a resultat d'una fallada.
+- Afegit un handler de fallada del mateix instal·lador, localitzat en Valencià/Català, Español i English, que manté la consola i espera Retorn per reiniciar.
+- Les peticions de `poweroff` i `reboot` mantenen viu el procés de l'instal·lador fins que systemd atura la màquina, evitant que `getty@tty1` reaparega durant la transició.
+- La persistència de locale s'escriu ara directament en `/etc/locale.conf` i `/etc/default/locale`; el teclat es persisteix en `/etc/default/keyboard`, sense executar `update-locale` ni `dpkg-reconfigure keyboard-configuration` dins del chroot final.
+- Afegides regressions perquè el script generat passe `sh -n`, mantinga el flux de fallada controlat i no torne a introduir el fallback a `getty`.
+
 # 2026-08-19 — Fase 10.7: selecció d'idioma i teclat durant la instal·lació
 
 - L'instal·lador demana la llengua abans de seleccionar el disc: Valencià/Català (`ca_ES.UTF-8`), Español (`es_ES.UTF-8`) o English (`en_US.UTF-8`).
