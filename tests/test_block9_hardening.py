@@ -10,6 +10,7 @@ from xaac_thin_client_os.firewall_configuration import create_firewall_configura
 from xaac_thin_client_os.production_builder import ProductionIsoBuilder
 from xaac_thin_client_os.ssh_configuration import create_ssh_configuration_plan
 from xaac_thin_client_os.systemd_hardening import create_systemd_hardening_plan
+from production_installer_utils import render_production_installer
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +49,7 @@ def test_production_policy_keeps_ssh_off_and_nftables_default_deny() -> None:
 def test_production_builder_applies_and_verifies_network_hardening() -> None:
     configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
     helper = inspect.getsource(ProductionIsoBuilder._configure_production_network_hardening)
-    installer = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    installer = render_production_installer(ROOT)
 
     assert "self._configure_production_network_hardening()" in configure
     assert 'chroot "$mount_root" systemctl enable ssh.service' not in installer

@@ -36,17 +36,22 @@ def _installer_script(project_root: Path) -> str:
     return eval(code, {"self": fake_self, "installed_kernel_cmdline": "quiet splash"})
 
 
-def test_phase851_installer_forces_catalan_utf8_console_and_visible_cursor(project_root: Path) -> None:
+def test_phase851_installer_uses_utf8_console_and_visible_cursor(project_root: Path) -> None:
     script = _installer_script(project_root)
-    assert "export LANG=ca_ES.UTF-8" in script
-    assert "export LC_ALL=ca_ES.UTF-8" in script
+    assert "export LANG=C.UTF-8" in script
+    assert "export LC_ALL=C.UTF-8" in script
+    assert "install_locale=ca_ES.UTF-8" in script
+    assert "install_locale=es_ES.UTF-8" in script
+    assert "install_locale=en_US.UTF-8" in script
+    assert "export LANG=$install_locale" in script
+    assert "export LC_ALL=$install_locale" in script
     assert "setupcon --force" in script
     assert "printf '\\033[?25h'" in script
     assert "setterm --cursor on" in script
     # The whole installer avoids the typographic apostrophe that can render as a box on TTY.
     assert "’" not in script
-    assert "No s'ha detectat" in script
-    assert "L'OPERACIÓ" in script
+    assert "ca:no_disk)" in script and "detectat cap disc" in script
+    assert "ca:summary)" in script and "OPERACIÓ" in script
 
 
 def test_phase851_generated_installer_keeps_posix_shell_syntax(tmp_path: Path, project_root: Path) -> None:

@@ -46,7 +46,8 @@ for gate in \
     scripts/validate-block10-phase3.sh \
     scripts/validate-block10-phase4.sh \
     scripts/validate-block10-phase5.sh \
-    scripts/validate-block10-phase6.sh
+    scripts/validate-block10-phase6.sh \
+    scripts/validate-block10-phase7.sh
 do
     if [ ! -x "$gate" ]; then
         printf 'Error: gate absent o no executable: %s\n' "$gate" >&2
@@ -88,4 +89,4 @@ else
     printf '%s\n' '[XAAC] AVÍS: keyring públic de releases absent; les actualitzacions externes quedaran bloquejades fail-closed.'
 fi
 
-printf '%s\n' 'Bloc 10.6 pre-ISO: gate tècnic superat. Encara cal la validació física documentada al Wyse 3040.'
+printf '%s\n' 'Bloc 10.7 pre-ISO: gate tècnic superat. Encara cal la validació física documentada al Wyse 3040.'

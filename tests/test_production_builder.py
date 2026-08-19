@@ -15,6 +15,26 @@ from xaac_thin_client_os.production_builder import (
 )
 
 
+def _render_production_installer() -> str:
+    import ast
+    import inspect
+    import textwrap
+
+    source = textwrap.dedent(inspect.getsource(ProductionIsoBuilder.phase_configure))
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or len(node.args) < 2:
+            continue
+        target = ast.get_source_segment(source, node.args[0]) or ""
+        if "xaac-installer-welcome" not in target or "service" in target:
+            continue
+        return eval(
+            compile(ast.Expression(node.args[1]), "<installer>", "eval"),
+            {"installed_kernel_cmdline": "quiet splash loglevel=0"},
+        )
+    raise AssertionError("production installer script not found")
+
+
 def minimal_project(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir()
@@ -212,7 +232,7 @@ def test_production_builder_reconfigures_keyboard_noninteractively() -> None:
 def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     import inspect
 
-    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure) + _render_production_installer()
     assert "/usr/local/sbin/xaac-installer-welcome" in source
     assert "ConditionKernelCommandLine=xaac.mode=installer" in source
     assert "Conflicts=getty@tty1.service" in source
@@ -222,7 +242,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "minimum_size=7000000000" in source
     assert "INSTALL XAAC" in source
     assert "El disc seleccionat conté el sistema Live actiu" in source
-    assert "No s'ha detectat alimentació externa" in source
+    assert "ca:no_ac)" in source and "alimentació externa" in source
     assert "sgdisk --zap-all" in source
     assert "-c 1:XAAC_EFI" in source
     assert "-c 2:XAAC_ROOT" in source
@@ -253,7 +273,7 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert 'GRUB_DISTRIBUTOR="XAAC Thin Client OS"' in source
     assert "menuentry \'XAAC Thin Client OS\'" in source
     assert 'chmod -x "$mount_root/etc/grub.d/10_linux"' in source
-    assert "grub.cfg no conté l'entrada XAAC Thin Client OS" in source
+    assert "ca:grub_entry_fail)" in source and "grub.cfg no conté" in source
     assert "grub.cfg no conté cap ordre linux" in source
     assert "grub.cfg no conté cap ordre initrd" in source
     assert "etc/machine-id" in source
@@ -668,9 +688,9 @@ def test_kiosk_configuration_is_applied_after_runtime_packages() -> None:
 
 
 def test_installed_system_uses_greetd_without_tty1_autologin() -> None:
-    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8") + _render_production_installer()
     assert "agetty --autologin xaac-kiosk" not in source
-    assert 'ln -sfn /dev/null "$mount_root/etc/systemd/system/getty@tty1.service"' in source
+    assert "ln -sfn /dev/null" in source and "getty@tty1.service" in source
     assert 'usermod --shell /usr/sbin/nologin xaac-kiosk' in source
     assert 'systemctl enable greetd.service' in source
     assert 'systemctl set-default graphical.target' in source
@@ -890,3 +910,27 @@ def test_phase_10_1_update_architecture_is_integrated_into_production_builder() 
     assert "current-release.json" in helper
     assert "build_release_manifest" in helper
     assert "_configure_update_architecture()" in configure
+
+
+def test_phase_10_7_installer_language_and_keyboard_selection() -> None:
+    import inspect
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    assert "Seleccioneu l'idioma / Seleccione el idioma / Select language" in source
+    assert "install_locale=ca_ES.UTF-8" in source
+    assert "install_locale=es_ES.UTF-8" in source
+    assert "install_locale=en_US.UTF-8" in source
+    assert "install_keyboard_layout=es" in source
+    assert "install_keyboard_layout=us" in source
+    assert "loadkeys" in source
+    assert "update-locale" in source and "install_locale" in source
+    assert "dpkg-reconfigure keyboard-configuration" in source
+    assert "locale=$install_locale" in source
+    assert "keyboard_layout=$install_keyboard_layout" in source
+
+
+def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
+    import inspect
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    for prefix in ("ca:", "es:", "en:"):
+        for key in ("title", "keyboard_title", "select_disk", "configure_password", "configure_hostname", "configure_rdp", "s10", "complete", "poweroff"):
+            assert f"{prefix}{key})" in source

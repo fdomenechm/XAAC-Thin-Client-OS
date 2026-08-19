@@ -233,22 +233,19 @@ chroot.
 
 ### Llengua i teclat de la ISO
 
-La configuració predeterminada de XAAC Thin Client OS és:
+El rootfs Live arranca amb aquesta configuració inicial:
 
 ```text
-Llengua:             català (`ca_ES.UTF-8`)
-Teclat:              espanyol (`es`)
+Llengua inicial:     català (`ca_ES.UTF-8`)
+Teclat inicial:      espanyol (`es`)
 Model de teclat:     `pc105`
 Variant:             cap
 Zona horària:        `Europe/Madrid`
 ```
 
-La configuració declarativa es troba en `config/localization.yaml`. El constructor
-instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`, escriu
-`/etc/default/keyboard` i `/etc/default/locale`, i executa
-`dpkg-reconfigure keyboard-configuration` de manera no interactiva. Aquests
-valors queden integrats directament al rootfs; no depenen de `live-config` ni de
-paràmetres variables de l'arrencada.
+En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la llengua entre **Valencià/Català**, **Español** i **English**, i després tria independentment el teclat físic entre **Espanyol** i **English (US)**. La selecció s'aplica a la sessió Live i es persisteix al sistema instal·lat en `/etc/default/locale` i `/etc/default/keyboard`.
+
+La configuració declarativa inicial es troba en `config/localization.yaml`. El constructor instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`; durant la consolidació de la instal·lació executa `update-locale` i `dpkg-reconfigure keyboard-configuration` amb els valors triats. Els tres locales suportats (`ca_ES.UTF-8`, `es_ES.UTF-8` i `en_US.UTF-8`) ja estan generats al rootfs i no depenen de `live-config` ni de la xarxa. La zona horària continua fixada a `Europe/Madrid`.
 
 Després de construir la ISO es pot verificar amb:
 

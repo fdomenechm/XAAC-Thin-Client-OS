@@ -1,3 +1,13 @@
+# 2026-08-19 — Fase 10.7: selecció d'idioma i teclat durant la instal·lació
+
+- L'instal·lador demana la llengua abans de seleccionar el disc: Valencià/Català (`ca_ES.UTF-8`), Español (`es_ES.UTF-8`) o English (`en_US.UTF-8`).
+- Afegida selecció independent de teclat Espanyol (`es`, predeterminat) o English US (`us`), aplicada immediatament a la consola Live amb `loadkeys` quan està disponible.
+- Tots els prompts, advertiments, errors i missatges de progrés de l'instal·lador disposen de les tres traduccions.
+- La llengua i el teclat seleccionats es persisteixen en `/etc/default/locale` i `/etc/default/keyboard`, amb `update-locale` i `dpkg-reconfigure keyboard-configuration` dins del sistema instal·lat.
+- La verificació final comprova `LANG` i `XKBLAYOUT`, i el resum de Recovery registra `locale` i `keyboard_layout`.
+- La zona horària continua deliberadament fixada a `Europe/Madrid`.
+- Afegit `scripts/validate-block10-phase7.sh` i regressions específiques abans de la qualificació física del Bloc 11.
+
 # 2026-08-18 — Fase 10.6: actualització controlada del sistema base
 
 - Afegida l'actualització suportada de Debian 13/trixie amb `xaac-update-admin os-status`, `os-check` i `os-update --yes`.

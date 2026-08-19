@@ -11,6 +11,7 @@ from xaac_thin_client_os.recovery_environment import (
     create_recovery_environment_plan,
     load_recovery_environment,
 )
+from production_installer_utils import render_production_installer
 
 ROOT = Path(__file__).parents[1]
 
@@ -149,9 +150,7 @@ def test_recovery_console_is_independent_from_masked_normal_tty1(tmp_path: Path)
         _rootfs(tmp_path), ROOT / "config/recovery-environment.yaml"
     )
     _, _, target, console, *_ = RecoveryEnvironmentInstaller().install(plan)
-    production_source = (ROOT / "src/xaac_thin_client_os/production_builder.py").read_text(
-        encoding="utf-8"
-    )
+    production_source = render_production_installer(ROOT)
     assert 'ln -sfn /dev/null "$mount_root/etc/systemd/system/getty@tty1.service"' in production_source
     assert "getty@tty1.service" not in target.read_text(encoding="utf-8")
     assert "xaac-recovery-console.service" in target.read_text(encoding="utf-8")

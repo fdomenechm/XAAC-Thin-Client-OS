@@ -1,8 +1,8 @@
-from pathlib import Path
+from production_installer_utils import render_production_installer
 
 
 def _production_builder_source() -> str:
-    return Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    return render_production_installer()
 
 
 def test_installer_regenerates_ssh_host_keys_after_identity_sanitisation():
