@@ -407,44 +407,39 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_tty1_failure_stays_owned_by_installer_without_login_fallback() -> None:
+def test_installer_uses_direct_synchronous_poweroff_without_extra_live_tty_masks() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    squashfs_source = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
     script = _render_production_installer()
     assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
     assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
     assert "OnFailure=xaac-installer-restore-getty.service" not in source
     assert "xaac-installer-restore-getty.service" not in source
-    assert "_mask_live_installer_tty1" not in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
-    assert "ExecStartPre=-/bin/systemctl mask --runtime getty@tty1.service" in source
-    assert "xaac_installer_exit" in script
-    assert "cap consola de login" in script
-    assert "xaac_request_poweroff" in script
-    assert "systemctl --no-block poweroff || /sbin/poweroff -f || true" in script
+    assert "mask --runtime getty@tty1.service" not in source
+    assert "_mask_live_installer_tty1" not in squashfs_source
+    assert "systemctl --no-block poweroff" not in script
+    assert "while :; do sleep 3600; done" not in script
+    assert "systemctl poweroff || /sbin/poweroff -f" in script
 
 
-def test_live_tty1_persistent_mask_is_deferred_until_squashfs(tmp_path: Path) -> None:
-    import inspect
+def test_installer_poweroff_releases_mounts_then_calls_systemctl_synchronously() -> None:
+    script = _render_production_installer()
+    poweroff = script.index("xaac_request_poweroff() {")
+    cleanup = script.index("xaac_cleanup_before_power_action", poweroff)
+    disarm = script.index("trap - EXIT HUP INT TERM", cleanup)
+    request = script.index("systemctl poweroff || /sbin/poweroff -f", disarm)
+    end = script.index("}\n", request)
+    assert poweroff < cleanup < disarm < request < end
 
-    configure_source = inspect.getsource(ProductionIsoBuilder.phase_configure)
-    squashfs_source = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
-    assert "live_tty1_getty" not in configure_source
-    assert "_mask_live_installer_tty1" not in configure_source
-    mask_call = squashfs_source.index("self._mask_live_installer_tty1()")
-    squash_call = squashfs_source.index('"mksquashfs"')
-    assert mask_call < squash_call
-
-    root = minimal_project(tmp_path)
-    builder = object.__new__(ProductionIsoBuilder)
-    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
-    builder.paths.rootfs.mkdir(parents=True)
-    builder._mask_live_installer_tty1()
-    mask = builder.paths.rootfs / "etc/systemd/system/getty@tty1.service"
-    assert mask.is_symlink()
-    assert mask.readlink() == Path("/dev/null")
+    final_message = script.rindex("xaac_say complete")
+    prompt = script.index("xaac_prompt poweroff", final_message)
+    enter = script.index("IFS= read -r _answer", prompt)
+    call = script.index("xaac_request_poweroff", enter)
+    assert final_message < prompt < enter < call
 
 
 def test_production_builder_has_no_accidental_literal_newlines_in_python_comments() -> None:
@@ -452,16 +447,38 @@ def test_production_builder_has_no_accidental_literal_newlines_in_python_comment
     assert "# tty1 is installer-owned in the Live image. Mask the normal getty in\\n" not in source
 
 
-def test_installer_shutdown_disarms_failure_traps_before_power_action() -> None:
+def test_installer_reboot_is_synchronous_and_has_no_wait_loop() -> None:
     script = _render_production_installer()
     reboot = script.index("xaac_request_reboot() {")
-    poweroff = script.index("xaac_request_poweroff() {")
-    trap_reboot = script.index("trap - EXIT HUP INT TERM", reboot)
-    request_reboot = script.index("systemctl --no-block reboot", reboot)
-    trap_poweroff = script.index("trap - EXIT HUP INT TERM", poweroff)
-    request_poweroff = script.index("systemctl --no-block poweroff", poweroff)
-    assert reboot < trap_reboot < request_reboot < poweroff
-    assert poweroff < trap_poweroff < request_poweroff
+    cleanup = script.index("xaac_cleanup_before_power_action", reboot)
+    disarm = script.index("trap - EXIT HUP INT TERM", cleanup)
+    request = script.index("systemctl reboot || /sbin/reboot -f", disarm)
+    assert reboot < cleanup < disarm < request
+    assert "systemctl --no-block reboot" not in script
+    assert "while :; do sleep 3600; done" not in script
+
+
+def test_installer_poweroff_helper_returns_after_direct_systemctl_call(tmp_path: Path) -> None:
+    script = _render_production_installer()
+    cleanup_start = script.index("xaac_cleanup_before_power_action() {")
+    cleanup_end = script.index("xaac_installer_exit() {", cleanup_start)
+    poweroff_start = script.index("xaac_request_poweroff() {")
+    poweroff_end = script.index("trap 'xaac_installer_exit' EXIT", poweroff_start)
+    helpers = script[cleanup_start:cleanup_end] + script[poweroff_start:poweroff_end]
+
+    log = tmp_path / "poweroff.log"
+    harness = (
+        "set -eu\n"
+        f"log={str(log)!r}\n"
+        "cleanup_install() { printf '%s\n' cleanup >> \"$log\"; }\n"
+        "systemctl() { printf 'systemctl %s\n' \"$*\" >> \"$log\"; return 0; }\n"
+        + helpers
+        + "xaac_request_poweroff\nprintf '%s\n' returned >> \"$log\"\n"
+    )
+    result = subprocess.run(["sh"], input=harness, text=True, capture_output=True, check=False, timeout=5)
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == ["cleanup", "systemctl poweroff", "returned"]
+
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -1022,7 +1039,7 @@ def test_phase_10_7_failure_path_keeps_tty_owned_and_never_falls_to_login(tmp_pa
     # failure handler reboot with an exit so the test can terminate.
     script = script.replace("disks_file=$(mktemp)", "false", 1)
     script = script.replace(
-        "systemctl --no-block reboot || /sbin/reboot -f || true\n        while :; do sleep 3600; done",
+        "systemctl reboot || /sbin/reboot -f",
         "exit 77",
         1,
     )

@@ -1,3 +1,11 @@
+# 2026-08-20 — Correcció Fase 10.7: apagada directa després de la instal·lació
+
+- Restaurat el contracte simple i ja validat de finalització: instal·lació correcta → missatge de finalització → Retorn → `systemctl poweroff` síncron → apagada del terminal.
+- Eliminats `systemctl --no-block`, els bucles d'espera infinita i les proteccions addicionals de `tty1` introduïdes en les darreres correccions del Live.
+- Abans de l'apagada es desmunten explícitament els muntatges de destinació/chroot i es desarmen els traps; així l'apagada no queda bloquejada per muntatges que l'instal·lador mantenia oberts.
+- `xaac-installer-welcome.service` conserva únicament el comportament original necessari mentre l'instal·lador està actiu: atura i entra en conflicte amb `getty@tty1.service`, sense masks runtime ni masks persistents específics del Live.
+- El sistema instal·lat manté intacta la seua política normal de quiosc i Recovery; aquesta correcció afecta només el cicle de vida del Live Installer.
+
 # 2026-08-20 — Correcció Fase 10.7: regressió del constructor per tty1
 
 - Corregida una regressió introduïda en la protecció de `tty1`: quatre salts de línia havien quedat escrits com a seqüències literals `\n` dins d'un comentari Python de `phase_configure`, de manera que la inicialització de `live_tty1_getty` quedava comentada i la construcció fallava en intentar usar la variable.

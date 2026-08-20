@@ -802,26 +802,6 @@ class ProductionIsoBuilder:
         if target.exists():
             shutil.rmtree(target)
 
-    def _mask_live_installer_tty1(self) -> None:
-        """Mask tty1 only when the Live rootfs is ready to be compressed.
-
-        The installer owns tty1 for the complete Live session. Creating the
-        persistent /dev/null mask during ``phase_configure`` is too early:
-        package maintainer scripts and build-time ``systemctl`` operations still
-        run against that rootfs and must see the normal Debian unit topology.
-        Defer the persistent mask until immediately before SquashFS creation.
-        Runtime protection remains active through the installer's ExecStartPre.
-        """
-        target = self._inside("/etc/systemd/system/getty@tty1.service")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists() or target.is_symlink():
-            if target.is_dir():
-                raise ProductionBuildError(f"No es pot emmascarar tty1: {target} és un directori")
-            target.unlink()
-        target.symlink_to("/dev/null")
-        if not target.is_symlink() or target.readlink() != Path("/dev/null"):
-            raise ProductionBuildError("No s'ha pogut emmascarar getty@tty1.service al rootfs Live")
-
     def phase_rootfs(self) -> None:
         """Bootstrap only the minimal Debian base system.
 
@@ -2385,6 +2365,12 @@ exit 0
                 "xaac_say() { xaac_msg \"$1\"; printf '\\n'; }\n"
                 "xaac_prompt() { xaac_msg \"$1\"; }\n"
                 "disks_file=\n"
+                "xaac_cleanup_before_power_action() {\n"
+                "    # If disk deployment has started, release every target/chroot mount\n"
+                "    # before asking systemd to stop the Live system. Early reboot paths\n"
+                "    # (for example, no disk selected) do not define cleanup_install yet.\n"
+                "    if command -v cleanup_install >/dev/null 2>&1; then cleanup_install; else sync || true; fi\n"
+                "}\n"
                 "xaac_installer_exit() {\n"
                 "    status=$?\n"
                 "    trap - EXIT HUP INT TERM\n"
@@ -2394,25 +2380,22 @@ exit 0
                 "        xaac_say failure\n"
                 "        xaac_prompt failure_reboot\n"
                 "        IFS= read -r _answer || true\n"
-                "        systemctl --no-block reboot || /sbin/reboot -f || true\n"
-                "        while :; do sleep 3600; done\n"
+                "        xaac_cleanup_before_power_action\n"
+                "        systemctl reboot || /sbin/reboot -f\n"
                 "    fi\n"
                 "    return 0\n"
                 "}\n"
                 "xaac_request_reboot() {\n"
-                "    # Shutdown stops this service with SIGTERM. Disarm the EXIT/signal\n"
-                "    # handlers first so a normal reboot is never reclassified as an\n"
-                "    # installer failure. --no-block also avoids waiting on our own stop.\n"
+                "    xaac_cleanup_before_power_action\n"
                 "    trap - EXIT HUP INT TERM\n"
-                "    systemctl --no-block reboot || /sbin/reboot -f || true\n"
-                "    while :; do sleep 3600; done\n"
+                "    systemctl reboot || /sbin/reboot -f\n"
                 "}\n"
                 "xaac_request_poweroff() {\n"
-                "    # Same rule as reboot: request shutdown asynchronously and keep tty1\n"
-                "    # owned until systemd terminates the Live environment.\n"
+                "    # Keep the final path deliberately simple and synchronous: release\n"
+                "    # installer mounts, disarm traps, then ask systemd to power off.\n"
+                "    xaac_cleanup_before_power_action\n"
                 "    trap - EXIT HUP INT TERM\n"
-                "    systemctl --no-block poweroff || /sbin/poweroff -f || true\n"
-                "    while :; do sleep 3600; done\n"
+                "    systemctl poweroff || /sbin/poweroff -f\n"
                 "}\n"
                 "trap 'xaac_installer_exit' EXIT\n"
                 "trap 'exit 130' HUP INT TERM\n"
@@ -2837,7 +2820,6 @@ exit 0
             "[Service]\n"
             "Type=idle\n"
             "ExecStartPre=-/bin/systemctl stop getty@tty1.service\n"
-            "ExecStartPre=-/bin/systemctl mask --runtime getty@tty1.service\n"
             "ExecStart=/usr/local/sbin/xaac-installer-welcome\n"
             "StandardInput=tty\n"
             "StandardOutput=tty\n"
@@ -3092,10 +3074,6 @@ exit 0
         self._assert_chroot_unmounted("generació del squashfs")
         self._verify_thinclient_rootfs(context="pre-squashfs")
         self._verify_block7_rootfs(context="pre-squashfs")
-        # All chroot/package configuration is complete. Apply the persistent
-        # tty1 mask only now so it is present in the Live image without
-        # perturbing dpkg/systemd while the rootfs is being assembled.
-        self._mask_live_installer_tty1()
         output = self.paths.build_root / "rootfs.squashfs"
         output.unlink(missing_ok=True)
         self.runner.run([

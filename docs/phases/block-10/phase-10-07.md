@@ -66,9 +66,20 @@ Aquesta fase és prèvia a la qualificació sobre el Dell Wyse 3040. La primera 
 
 ## Correcció de finalització de l'instal·lador
 
-La primera validació en VM de la Fase 10.7 va revelar que una fallada tardana de l'instal·lador podia activar el `OnFailure` històric que restaurava `getty@tty1.service`. Això deixava visible un prompt de login del sistema Live en lloc de mantindre el flux d'appliance.
+La validació en VM va demostrar que les proteccions addicionals introduïdes al Live per evitar un `getty` intermedi havien complicat el camí d'apagada fins al punt que, després de prémer Retorn, el terminal podia quedar encés. El contracte correcte és deliberadament més simple i coincideix amb el comportament que ja havia funcionat abans de la Fase 10.7.
 
-La correcció elimina aquest fallback. `tty1` continua sent propietat de l'instal·lador fins a l'apagada o el reinici. En cas d'error, el mateix script mostra un missatge controlat i espera Retorn per reiniciar. En una instal·lació correcta continua mostrant el missatge final i espera Retorn abans de sol·licitar `poweroff`; després de la petició de poweroff/reboot el procés es manté actiu fins que systemd atura la màquina, evitant que un `getty` aparega durant la transició.
+En una instal·lació correcta la seqüència és única:
+
+1. es completa i verifica la instal·lació;
+2. es mostra el missatge de finalització;
+3. l'instal·lador espera Retorn;
+4. es desmunten els muntatges de destinació/chroot i es fa `sync`;
+5. es desarmen els traps de l'instal·lador;
+6. s'executa `systemctl poweroff` de manera síncrona, amb `/sbin/poweroff -f` només com a fallback.
+
+No s'usa `--no-block`, no hi ha cap bucle d'espera després de la petició d'apagada i no s'aplica cap mask addicional de `getty@tty1.service` al Live. `xaac-installer-welcome.service` simplement atura `getty@tty1.service` abans d'arrancar i hi entra en conflicte mentre l'instal·lador està actiu.
+
+En cas d'error, el mateix instal·lador mostra un missatge controlat i ofereix Retorn per reiniciar. La política de `tty1` del sistema **instal·lat** (quiosc i Recovery) no es modifica.
 
 ## Correcció: sincronització amb XAAC Thin Client
 
@@ -76,16 +87,3 @@ La validació posterior de la Fase 10.7 va detectar que el sistema operatiu cons
 
 La sincronització és fail-closed: si el fitxer `/etc/xaac-thinclient/config.ini` no existeix o el valor final no coincideix amb `ca`, `es` o `en` segons la selecció, la instal·lació no es declara completada.
 
-## Correcció addicional: tty1 fins a l'apagada real
-
-Una segona prova en VM va mostrar que l'eliminació de l'antic `OnFailure` no era suficient. En una instal·lació correcta, la petició de `poweroff` podia provocar la parada del mateix servei instal·lador; el `SIGTERM` era capturat i convertit en una eixida no zero, cosa que podia reentrar en el handler de fallada. Quan el servei deixava de posseir `tty1`, systemd podia generar de nou el getty normal i mostrar `xaac-thin-client login:`.
-
-La correcció reforça el contracte de consola en tres nivells:
-
-1. `xaac-installer-welcome.service` aplica `systemctl mask --runtime getty@tty1.service` abans d'arrancar i manté així `tty1` fora de l'abast del getty durant tota la sessió Live.
-2. El mask persistent de `getty@tty1.service` s'aplica al rootfs **només en `phase_squashfs`**, quan ja han acabat les operacions de construcció dins del chroot. D'aquesta manera el Live conserva el bloqueig sense interferir amb `apt`, `dpkg`, `systemctl` o `update-initramfs` durant la generació de la imatge.
-3. Les funcions de reinici i apagada desarmen els traps i usen `systemctl --no-block`, mantenint el procés viu fins que systemd tanque la sessió Live.
-
-El 20 d'agost es va corregir també una regressió del constructor causada per seqüències literals `\n` que havien deixat la inicialització del mask dins d'un comentari Python. La suite inclou ara una comprovació específica contra aquesta classe d'error.
-
-Per tant, una instal·lació correcta només pot acabar amb el missatge de finalització i la petició «Retorn per apagar»; mai amb un prompt de login en `tty1`.
