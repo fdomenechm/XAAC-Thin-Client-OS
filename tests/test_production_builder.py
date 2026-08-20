@@ -407,7 +407,7 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_uses_direct_synchronous_poweroff_without_extra_live_tty_masks() -> None:
+def test_installer_restores_known_working_enter_then_direct_poweroff_path() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
@@ -416,31 +416,33 @@ def test_installer_uses_direct_synchronous_poweroff_without_extra_live_tty_masks
     assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
     assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "OnFailure=xaac-installer-restore-getty.service" not in source
-    assert "xaac-installer-restore-getty.service" not in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "mask --runtime getty@tty1.service" not in source
     assert "_mask_live_installer_tty1" not in squashfs_source
+
+    # This is intentionally the same successful shutdown contract that was
+    # present before phase 10.7: message -> Enter -> direct systemctl poweroff.
+    assert "xaac_request_poweroff" not in script
     assert "systemctl --no-block poweroff" not in script
+    assert "/sbin/poweroff -f" not in script
     assert "while :; do sleep 3600; done" not in script
-    assert "systemctl poweroff || /sbin/poweroff -f" in script
-
-
-def test_installer_poweroff_releases_mounts_then_calls_systemctl_synchronously() -> None:
-    script = _render_production_installer()
-    poweroff = script.index("xaac_request_poweroff() {")
-    cleanup = script.index("xaac_cleanup_before_power_action", poweroff)
-    disarm = script.index("trap - EXIT HUP INT TERM", cleanup)
-    request = script.index("systemctl poweroff || /sbin/poweroff -f", disarm)
-    end = script.index("}\n", request)
-    assert poweroff < cleanup < disarm < request < end
 
     final_message = script.rindex("xaac_say complete")
     prompt = script.index("xaac_prompt poweroff", final_message)
     enter = script.index("IFS= read -r _answer", prompt)
-    call = script.index("xaac_request_poweroff", enter)
-    assert final_message < prompt < enter < call
+    request = script.index("systemctl poweroff", enter)
+    assert final_message < prompt < enter < request
+    tail = script[request:request + 80]
+    assert tail.startswith("systemctl poweroff\n")
 
+
+def test_installer_successful_poweroff_does_not_cleanup_or_disarm_traps_before_systemd() -> None:
+    script = _render_production_installer()
+    final_message = script.rindex("xaac_say complete")
+    success_tail = script[final_message:]
+    assert "xaac_cleanup_before_power_action" not in success_tail
+    assert "trap - EXIT HUP INT TERM" not in success_tail
+    assert "systemctl poweroff" in success_tail
 
 def test_production_builder_has_no_accidental_literal_newlines_in_python_comments() -> None:
     source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
@@ -456,28 +458,6 @@ def test_installer_reboot_is_synchronous_and_has_no_wait_loop() -> None:
     assert reboot < cleanup < disarm < request
     assert "systemctl --no-block reboot" not in script
     assert "while :; do sleep 3600; done" not in script
-
-
-def test_installer_poweroff_helper_returns_after_direct_systemctl_call(tmp_path: Path) -> None:
-    script = _render_production_installer()
-    cleanup_start = script.index("xaac_cleanup_before_power_action() {")
-    cleanup_end = script.index("xaac_installer_exit() {", cleanup_start)
-    poweroff_start = script.index("xaac_request_poweroff() {")
-    poweroff_end = script.index("trap 'xaac_installer_exit' EXIT", poweroff_start)
-    helpers = script[cleanup_start:cleanup_end] + script[poweroff_start:poweroff_end]
-
-    log = tmp_path / "poweroff.log"
-    harness = (
-        "set -eu\n"
-        f"log={str(log)!r}\n"
-        "cleanup_install() { printf '%s\n' cleanup >> \"$log\"; }\n"
-        "systemctl() { printf 'systemctl %s\n' \"$*\" >> \"$log\"; return 0; }\n"
-        + helpers
-        + "xaac_request_poweroff\nprintf '%s\n' returned >> \"$log\"\n"
-    )
-    result = subprocess.run(["sh"], input=harness, text=True, capture_output=True, check=False, timeout=5)
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").splitlines() == ["cleanup", "systemctl poweroff", "returned"]
 
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:

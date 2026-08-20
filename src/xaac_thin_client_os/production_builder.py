@@ -2390,13 +2390,6 @@ exit 0
                 "    trap - EXIT HUP INT TERM\n"
                 "    systemctl reboot || /sbin/reboot -f\n"
                 "}\n"
-                "xaac_request_poweroff() {\n"
-                "    # Keep the final path deliberately simple and synchronous: release\n"
-                "    # installer mounts, disarm traps, then ask systemd to power off.\n"
-                "    xaac_cleanup_before_power_action\n"
-                "    trap - EXIT HUP INT TERM\n"
-                "    systemctl poweroff || /sbin/poweroff -f\n"
-                "}\n"
                 "trap 'xaac_installer_exit' EXIT\n"
                 "trap 'exit 130' HUP INT TERM\n"
                 "clear\n"
@@ -2804,7 +2797,7 @@ exit 0
                 "xaac_say complete\n"
                 "xaac_prompt poweroff\n"
                 "IFS= read -r _answer\n"
-                "xaac_request_poweroff\n"
+                "systemctl poweroff\n"
             ).replace("__XAAC_KERNEL_CMDLINE__", installed_kernel_cmdline),
             0o755,
         )

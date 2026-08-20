@@ -66,20 +66,19 @@ Aquesta fase és prèvia a la qualificació sobre el Dell Wyse 3040. La primera 
 
 ## Correcció de finalització de l'instal·lador
 
-La validació en VM va demostrar que les proteccions addicionals introduïdes al Live per evitar un `getty` intermedi havien complicat el camí d'apagada fins al punt que, després de prémer Retorn, el terminal podia quedar encés. El contracte correcte és deliberadament més simple i coincideix amb el comportament que ja havia funcionat abans de la Fase 10.7.
+La validació en VM va demostrar que les correccions successives sobre el final de la instal·lació havien alterat un camí que ja estava funcionant abans de la Fase 10.7. Per evitar noves interferències, el final d'èxit s'ha restaurat literalment al contracte de la baseline validada.
 
 En una instal·lació correcta la seqüència és única:
 
 1. es completa i verifica la instal·lació;
 2. es mostra el missatge de finalització;
 3. l'instal·lador espera Retorn;
-4. es desmunten els muntatges de destinació/chroot i es fa `sync`;
-5. es desarmen els traps de l'instal·lador;
-6. s'executa `systemctl poweroff` de manera síncrona, amb `/sbin/poweroff -f` només com a fallback.
+4. s'executa directament `systemctl poweroff`;
+5. systemd realitza la parada del Live i l'apagada del terminal.
 
-No s'usa `--no-block`, no hi ha cap bucle d'espera després de la petició d'apagada i no s'aplica cap mask addicional de `getty@tty1.service` al Live. `xaac-installer-welcome.service` simplement atura `getty@tty1.service` abans d'arrancar i hi entra en conflicte mentre l'instal·lador està actiu.
+No hi ha cap helper d'apagada en aquest camí, ni neteja explícita abans de `systemctl poweroff`, ni `trap - ...`, ni `--no-block`, ni `/sbin/poweroff -f`, ni bucles d'espera. La funció `cleanup_install`, registrada com a trap des del moment en què comença el desplegament al disc, continua encarregant-se de la neteja quan el servei és aturat durant la seqüència normal de shutdown, igual que en la versió anterior a la Fase 10.7 que estava validada.
 
-En cas d'error, el mateix instal·lador mostra un missatge controlat i ofereix Retorn per reiniciar. La política de `tty1` del sistema **instal·lat** (quiosc i Recovery) no es modifica.
+Tampoc s'aplica cap protecció nova de `tty1` al Live. `xaac-installer-welcome.service` conserva únicament el control necessari mentre està en execució (`ExecStartPre=stop getty@tty1.service` i `Conflicts=getty@tty1.service`). La política de `tty1` del sistema instal·lat, del quiosc i de Recovery és independent i no es modifica.
 
 ## Correcció: sincronització amb XAAC Thin Client
 

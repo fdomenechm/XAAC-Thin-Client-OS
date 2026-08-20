@@ -1,10 +1,10 @@
-# 2026-08-20 — Correcció Fase 10.7: apagada directa després de la instal·lació
+# 2026-08-20 — Correcció Fase 10.7: restauració exacta de l'apagada postinstal·lació
 
-- Restaurat el contracte simple i ja validat de finalització: instal·lació correcta → missatge de finalització → Retorn → `systemctl poweroff` síncron → apagada del terminal.
-- Eliminats `systemctl --no-block`, els bucles d'espera infinita i les proteccions addicionals de `tty1` introduïdes en les darreres correccions del Live.
-- Abans de l'apagada es desmunten explícitament els muntatges de destinació/chroot i es desarmen els traps; així l'apagada no queda bloquejada per muntatges que l'instal·lador mantenia oberts.
-- `xaac-installer-welcome.service` conserva únicament el comportament original necessari mentre l'instal·lador està actiu: atura i entra en conflicte amb `getty@tty1.service`, sense masks runtime ni masks persistents específics del Live.
-- El sistema instal·lat manté intacta la seua política normal de quiosc i Recovery; aquesta correcció afecta només el cicle de vida del Live Installer.
+- Comparat el final de l'instal·lador amb la baseline anterior a la Fase 10.7 que estava validada en VM i apagava correctament el terminal.
+- Restaurat exactament el camí d'èxit: instal·lació correcta → missatge de finalització → Retorn → `systemctl poweroff`.
+- Eliminat del camí d'èxit qualsevol helper intermedi, neteja prèvia de muntatges, desarmat de traps, `--no-block`, fallback forçat o bucle d'espera. La neteja registrada amb `trap cleanup_install` continua actuant durant la parada del servei, tal com feia en la baseline funcional.
+- No s'ha afegit cap protecció nova de `tty1`; el servei Live conserva només `stop` + `Conflicts=getty@tty1.service` mentre l'instal·lador està actiu.
+- Es mantenen intactes la selecció d'idioma/teclat i la sincronització de `application.language` de XAAC Thin Client.
 
 # 2026-08-20 — Correcció Fase 10.7: regressió del constructor per tty1
 
