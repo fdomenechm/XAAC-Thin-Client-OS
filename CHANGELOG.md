@@ -1,3 +1,13 @@
+## 2026-08-20 — Fase 10.7: restauració definitiva del Live Installer validat
+
+- Restaurat sobre el codi font `20260820-144400` el control complet de `tty1` i apagada de la versió `20260819-175805`, validada prèviament amb instal·lació correcta.
+- `/usr/local/sbin/xaac-installer-welcome` torna a usar `xaac_installer_exit`, `xaac_request_reboot` i `xaac_request_poweroff`; després del missatge final queda bloquejat en `read` i només després de Retorn sol·licita `systemctl poweroff`.
+- Eliminats `OnFailure=xaac-installer-restore-getty.service` i la unitat `xaac-installer-restore-getty.service`, responsables que una eixida no-zero exposara el login de `tty1` del Live.
+- En cas d'error, el mateix instal·lador manté `tty1`, mostra la incidència i demana Retorn per reiniciar, sense obrir cap consola de login.
+- La sincronització de llengua de XAAC Thin Client continua fora del Live Installer i s'executa abans de `greetd` només en el sistema instal·lat.
+- Afegit un bloqueig de regressió sobre el SHA-256 del Live Installer generat (`2692fad417fea4941e7ae4f71f8d511ee158e31f30792972029cab087b2d7649`) per impedir canvis accidentals en aquest flux.
+- Validació: 1.587 tests, 88 tests específics de Fase 10.7 i gate final del Bloc 10 superats.
+
 # 2026-08-20 — Correcció Fase 10.7: causa arrel de l'eixida a tty1
 
 - Identificada la causa exacta de la regressió: la verificació final de `application.language` s'executava abans de sincronitzar XAAC Thin Client fora del Live; amb `es` o `en`, `config.ini` encara contenia `language = ca`, el `grep` fallava i `set -e` terminava l'instal·lador abans del prompt d'apagada.

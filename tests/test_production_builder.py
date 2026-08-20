@@ -407,7 +407,7 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_restores_known_good_pre_10_7_tty_control_flow() -> None:
+def test_installer_restores_user_validated_175805_tty_control_flow() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
@@ -416,21 +416,22 @@ def test_installer_restores_known_good_pre_10_7_tty_control_flow() -> None:
     assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
     assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "OnFailure=xaac-installer-restore-getty.service" in source
-    assert "/etc/systemd/system/xaac-installer-restore-getty.service" in source
-    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
+    assert "OnFailure=xaac-installer-restore-getty.service" not in source
+    assert "/etc/systemd/system/xaac-installer-restore-getty.service" not in source
+    assert "ExecStart=/bin/systemctl start getty@tty1.service" not in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "mask --runtime getty@tty1.service" not in source
     assert "_mask_live_installer_tty1" not in squashfs_source
     assert "xaac_cleanup_before_power_action" not in script
-    assert "xaac_installer_exit" not in script
-    assert "xaac_request_reboot" not in script
-    assert "xaac_request_poweroff" not in script
+    assert "xaac_installer_exit()" in script
+    assert "xaac_request_reboot()" in script
+    assert "xaac_request_poweroff()" in script
+    assert "trap 'xaac_installer_exit' EXIT" in script
     assert "systemctl --no-block poweroff" not in script
-    assert "while :; do sleep 3600; done" not in script
+    assert "while :; do sleep 3600; done" in script
 
 
-def test_installer_final_path_is_exact_message_enter_systemctl_poweroff() -> None:
+def test_installer_final_path_is_exact_message_enter_validated_poweroff_helper() -> None:
     script = _render_production_installer()
     expected_tail = (
         "sync\n"
@@ -438,25 +439,25 @@ def test_installer_final_path_is_exact_message_enter_systemctl_poweroff() -> Non
         "xaac_say complete\n"
         "xaac_prompt poweroff\n"
         "IFS= read -r _answer\n"
-        "systemctl poweroff\n"
+        "xaac_request_poweroff\n"
     )
     assert expected_tail in script
 
     final_message = script.rindex("xaac_say complete")
     prompt = script.index("xaac_prompt poweroff", final_message)
     enter = script.index("IFS= read -r _answer", prompt)
-    poweroff = script.index("systemctl poweroff", enter)
+    poweroff = script.index("xaac_request_poweroff", enter)
     assert final_message < prompt < enter < poweroff
     between_enter_and_poweroff = script[enter + len("IFS= read -r _answer"):poweroff]
     assert between_enter_and_poweroff.strip() == ""
 
 
-def test_installer_uses_original_direct_reboot_paths() -> None:
+def test_installer_uses_validated_reboot_helper_paths() -> None:
     script = _render_production_installer()
-    assert "xaac_request_reboot" not in script
+    assert "xaac_request_reboot()" in script
     assert "systemctl --no-block reboot" not in script
     assert "systemctl reboot || /sbin/reboot -f" not in script
-    assert script.count("systemctl reboot") >= 2
+    assert script.count("xaac_request_reboot") >= 3  # definition + two call sites
 
 
 def test_production_builder_has_no_accidental_literal_newlines_in_python_comments() -> None:
@@ -991,7 +992,7 @@ def test_phase_10_7_thinclient_language_sync_is_outside_live_installer(tmp_path:
 
     # It only records the selected OS locale; the installed system synchronises
     # application.language on first graphical boot, before greetd.
-    assert 'thinclient_language=$install_language' in script
+    assert 'thinclient_language=$install_language' not in script
     assert '/usr/local/sbin/xaac-sync-thinclient-language' in source
     assert 'ConditionKernelCommandLine=!xaac.mode=installer' in source
     assert 'Before=greetd.service' in source
@@ -1039,18 +1040,30 @@ def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
             assert f"{prefix}{key})" in source
 
 
+
+
+def test_phase_10_7_live_installer_matches_user_validated_175805_snapshot() -> None:
+    import hashlib
+
+    script = _render_production_installer()
+    assert hashlib.sha256(script.encode("utf-8")).hexdigest() == (
+        "2692fad417fea4941e7ae4f71f8d511ee158e31f30792972029cab087b2d7649"
+    )
+
 def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
     script = _render_production_installer()
     subprocess.run(["sh", "-n"], input=script, text=True, check=True)
 
 
-def test_phase_10_7_failure_path_uses_original_onfailure_getty_restore() -> None:
+def test_phase_10_7_failure_path_stays_on_installer_tty_and_never_opens_login() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     script = _render_production_installer()
-    assert "trap 'xaac_installer_exit' EXIT" not in script
-    assert "xaac_installer_exit()" not in script
-    assert "OnFailure=xaac-installer-restore-getty.service" in source
-    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
+    assert "trap 'xaac_installer_exit' EXIT" in script
+    assert "xaac_installer_exit()" in script
+    assert "xaac_say failure" in script
+    assert "xaac_prompt failure_reboot" in script
+    assert "OnFailure=xaac-installer-restore-getty.service" not in source
+    assert "ExecStart=/bin/systemctl start getty@tty1.service" not in source
 
