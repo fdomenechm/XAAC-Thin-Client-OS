@@ -1,10 +1,12 @@
-# 2026-08-20 — Correcció Fase 10.7: restauració exacta de l'apagada postinstal·lació
+# 2026-08-20 — Correcció Fase 10.7: restauració exacta del final de l'instal·lador
 
-- Comparat el final de l'instal·lador amb la baseline anterior a la Fase 10.7 que estava validada en VM i apagava correctament el terminal.
-- Restaurat exactament el camí d'èxit: instal·lació correcta → missatge de finalització → Retorn → `systemctl poweroff`.
-- Eliminat del camí d'èxit qualsevol helper intermedi, neteja prèvia de muntatges, desarmat de traps, `--no-block`, fallback forçat o bucle d'espera. La neteja registrada amb `trap cleanup_install` continua actuant durant la parada del servei, tal com feia en la baseline funcional.
-- No s'ha afegit cap protecció nova de `tty1`; el servei Live conserva només `stop` + `Conflicts=getty@tty1.service` mentre l'instal·lador està actiu.
-- Es mantenen intactes la selecció d'idioma/teclat i la sincronització de `application.language` de XAAC Thin Client.
+- Comparat el Live Installer amb la baseline `20260819-105127`, que tenia validat el comportament «missatge final → Retorn → apagada».
+- Eliminats del camí Live `xaac_cleanup_before_power_action`, `xaac_installer_exit`, `xaac_request_reboot` i `xaac_request_poweroff`; aquestes capes no existien en la baseline funcional i podien alterar el cicle de vida de `tty1` i de systemd.
+- Restaurat literalment el final `sync` → missatge de finalització → prompt → `read` → `systemctl poweroff`, sense cap instrucció intermèdia després del Retorn.
+- Restaurats els reinicis directes amb `systemctl reboot` i el `trap cleanup_install EXIT HUP INT TERM` original per a la neteja dels muntatges durant l'aturada.
+- Restaurada la topologia original de systemd amb `OnFailure=xaac-installer-restore-getty.service`; el getty de `tty1` només es recupera si l'instal·lador falla, mai en el camí correcte d'instal·lació.
+- Es mantenen intactes la selecció `ca/es/en`, la selecció de teclat `es/us` i la sincronització de `application.language` de XAAC Thin Client.
+- Afegides regressions que exigeixen l'absència dels helpers eliminats i verifiquen que entre l'Enter final i `systemctl poweroff` no hi haja cap altra ordre.
 
 # 2026-08-20 — Correcció Fase 10.7: regressió del constructor per tty1
 

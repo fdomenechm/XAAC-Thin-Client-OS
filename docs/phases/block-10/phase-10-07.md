@@ -66,19 +66,19 @@ Aquesta fase és prèvia a la qualificació sobre el Dell Wyse 3040. La primera 
 
 ## Correcció de finalització de l'instal·lador
 
-La validació en VM va demostrar que les correccions successives sobre el final de la instal·lació havien alterat un camí que ja estava funcionant abans de la Fase 10.7. Per evitar noves interferències, el final d'èxit s'ha restaurat literalment al contracte de la baseline validada.
+La validació en VM va demostrar que les proteccions addicionals introduïdes al Live per evitar un `getty` intermedi havien complicat el camí d'apagada fins al punt que, després de prémer Retorn, el terminal podia quedar encés. El contracte correcte és deliberadament més simple i coincideix amb el comportament que ja havia funcionat abans de la Fase 10.7.
 
-En una instal·lació correcta la seqüència és única:
+En una instal·lació correcta la seqüència és única i recupera literalment el control de finalització de la baseline anterior a la Fase 10.7:
 
 1. es completa i verifica la instal·lació;
-2. es mostra el missatge de finalització;
-3. l'instal·lador espera Retorn;
-4. s'executa directament `systemctl poweroff`;
-5. systemd realitza la parada del Live i l'apagada del terminal.
+2. es fa `sync`;
+3. es mostra el missatge de finalització;
+4. l'instal·lador mostra `Premeu Retorn per apagar el sistema:` i queda bloquejat en el `read`;
+5. només després de rebre Retorn s'executa directament `systemctl poweroff`.
 
-No hi ha cap helper d'apagada en aquest camí, ni neteja explícita abans de `systemctl poweroff`, ni `trap - ...`, ni `--no-block`, ni `/sbin/poweroff -f`, ni bucles d'espera. La funció `cleanup_install`, registrada com a trap des del moment en què comença el desplegament al disc, continua encarregant-se de la neteja quan el servei és aturat durant la seqüència normal de shutdown, igual que en la versió anterior a la Fase 10.7 que estava validada.
+Entre el `read` final i `systemctl poweroff` **no hi ha cap helper, cleanup explícit, desarmat de traps, fallback, `--no-block`, mask de `tty1` ni bucle d'espera**. La neteja dels muntatges continua sent responsabilitat del `trap cleanup_install` original quan systemd para l'instal·lador durant l'apagada.
 
-Tampoc s'aplica cap protecció nova de `tty1` al Live. `xaac-installer-welcome.service` conserva únicament el control necessari mentre està en execució (`ExecStartPre=stop getty@tty1.service` i `Conflicts=getty@tty1.service`). La política de `tty1` del sistema instal·lat, del quiosc i de Recovery és independent i no es modifica.
+`xaac-installer-welcome.service` recupera també la topologia original validada: atura i entra en conflicte amb `getty@tty1.service` mentre està actiu i usa `OnFailure=xaac-installer-restore-getty.service` únicament si l'instal·lador acaba amb error. La política de `tty1` del sistema **instal·lat** (quiosc i Recovery) no es modifica.
 
 ## Correcció: sincronització amb XAAC Thin Client
 
