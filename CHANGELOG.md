@@ -1,3 +1,11 @@
+# 2026-08-20 — Correcció Fase 10.7: regressió del constructor per tty1
+
+- Corregida una regressió introduïda en la protecció de `tty1`: quatre salts de línia havien quedat escrits com a seqüències literals `\n` dins d'un comentari Python de `phase_configure`, de manera que la inicialització de `live_tty1_getty` quedava comentada i la construcció fallava en intentar usar la variable.
+- Afegida una regressió específica que detecta aquesta classe d'error de generació de codi i evita que una seqüència `\n` accidental torne a absorbir instruccions dins d'un comentari.
+- El mask persistent de `getty@tty1.service` ja no es crea durant `phase_configure`. S'aplica en `phase_squashfs`, després de completar totes les operacions de `apt`, `dpkg`, `systemctl`, configuració i initramfs sobre el rootfs.
+- Es conserva la defensa runtime de `xaac-installer-welcome.service` (`stop` + `mask --runtime`) i el sistema instal·lat continua deixant `tty1` emmascarat; per tant, la correcció del final «Retorn → apagada» es manté intacta.
+- Eliminats del ZIP de lliurament els artefactes locals `.build`, `.pytest_cache` i `__pycache__` que havien quedat en el ZIP utilitzat per reproduir la incidència.
+
 # 2026-08-19 — Correcció Fase 10.7: tty1 bloquejat fins a l'apagada real
 
 - Corregida la segona regressió observada en VM on, després d'una instal·lació correcta, la consola Live podia acabar mostrant `xaac-thin-client login:` en lloc de romandre en el flux final «Retorn per apagar».

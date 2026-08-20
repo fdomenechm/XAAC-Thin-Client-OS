@@ -802,6 +802,26 @@ class ProductionIsoBuilder:
         if target.exists():
             shutil.rmtree(target)
 
+    def _mask_live_installer_tty1(self) -> None:
+        """Mask tty1 only when the Live rootfs is ready to be compressed.
+
+        The installer owns tty1 for the complete Live session. Creating the
+        persistent /dev/null mask during ``phase_configure`` is too early:
+        package maintainer scripts and build-time ``systemctl`` operations still
+        run against that rootfs and must see the normal Debian unit topology.
+        Defer the persistent mask until immediately before SquashFS creation.
+        Runtime protection remains active through the installer's ExecStartPre.
+        """
+        target = self._inside("/etc/systemd/system/getty@tty1.service")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            if target.is_dir():
+                raise ProductionBuildError(f"No es pot emmascarar tty1: {target} és un directori")
+            target.unlink()
+        target.symlink_to("/dev/null")
+        if not target.is_symlink() or target.readlink() != Path("/dev/null"):
+            raise ProductionBuildError("No s'ha pogut emmascarar getty@tty1.service al rootfs Live")
+
     def phase_rootfs(self) -> None:
         """Bootstrap only the minimal Debian base system.
 
@@ -2805,14 +2825,6 @@ exit 0
             ).replace("__XAAC_KERNEL_CMDLINE__", installed_kernel_cmdline),
             0o755,
         )
-        # tty1 is installer-owned in the Live image. Mask the normal getty in\n        # the rootfs as well as at runtime (see ExecStartPre below), so even an\n        # unexpected installer exit can never expose a login prompt. The\n        # installed kiosk also deliberately keeps tty1 masked.\n        live_tty1_getty = self._inside("/etc/systemd/system/getty@tty1.service")
-        live_tty1_getty.parent.mkdir(parents=True, exist_ok=True)
-        if live_tty1_getty.exists() or live_tty1_getty.is_symlink():
-            if live_tty1_getty.is_dir():
-                raise ProductionBuildError(f"No es pot emmascarar tty1: {live_tty1_getty} és un directori")
-            live_tty1_getty.unlink()
-        live_tty1_getty.symlink_to("/dev/null")
-
         self._atomic_write(
             self._inside("/etc/systemd/system/xaac-installer-welcome.service"),
             "[Unit]\n"
@@ -3080,6 +3092,10 @@ exit 0
         self._assert_chroot_unmounted("generació del squashfs")
         self._verify_thinclient_rootfs(context="pre-squashfs")
         self._verify_block7_rootfs(context="pre-squashfs")
+        # All chroot/package configuration is complete. Apply the persistent
+        # tty1 mask only now so it is present in the Live image without
+        # perturbing dpkg/systemd while the rootfs is being assembled.
+        self._mask_live_installer_tty1()
         output = self.paths.build_root / "rootfs.squashfs"
         output.unlink(missing_ok=True)
         self.runner.run([

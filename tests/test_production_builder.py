@@ -417,13 +417,39 @@ def test_installer_tty1_failure_stays_owned_by_installer_without_login_fallback(
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
     assert "OnFailure=xaac-installer-restore-getty.service" not in source
     assert "xaac-installer-restore-getty.service" not in source
-    assert 'live_tty1_getty.symlink_to("/dev/null")' in source
+    assert "_mask_live_installer_tty1" not in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
     assert "ExecStartPre=-/bin/systemctl mask --runtime getty@tty1.service" in source
     assert "xaac_installer_exit" in script
     assert "cap consola de login" in script
     assert "xaac_request_poweroff" in script
     assert "systemctl --no-block poweroff || /sbin/poweroff -f || true" in script
+
+
+def test_live_tty1_persistent_mask_is_deferred_until_squashfs(tmp_path: Path) -> None:
+    import inspect
+
+    configure_source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    squashfs_source = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
+    assert "live_tty1_getty" not in configure_source
+    assert "_mask_live_installer_tty1" not in configure_source
+    mask_call = squashfs_source.index("self._mask_live_installer_tty1()")
+    squash_call = squashfs_source.index('"mksquashfs"')
+    assert mask_call < squash_call
+
+    root = minimal_project(tmp_path)
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = BuildPaths.create(root)  # type: ignore[misc]
+    builder.paths.rootfs.mkdir(parents=True)
+    builder._mask_live_installer_tty1()
+    mask = builder.paths.rootfs / "etc/systemd/system/getty@tty1.service"
+    assert mask.is_symlink()
+    assert mask.readlink() == Path("/dev/null")
+
+
+def test_production_builder_has_no_accidental_literal_newlines_in_python_comments() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "# tty1 is installer-owned in the Live image. Mask the normal getty in\\n" not in source
 
 
 def test_installer_shutdown_disarms_failure_traps_before_power_action() -> None:

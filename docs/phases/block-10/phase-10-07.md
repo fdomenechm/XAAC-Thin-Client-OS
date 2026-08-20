@@ -82,8 +82,10 @@ Una segona prova en VM va mostrar que l'eliminació de l'antic `OnFailure` no er
 
 La correcció reforça el contracte de consola en tres nivells:
 
-1. `getty@tty1.service` està emmascarat en el rootfs Live.
-2. `xaac-installer-welcome.service` aplica també `systemctl mask --runtime getty@tty1.service` abans d'arrancar.
+1. `xaac-installer-welcome.service` aplica `systemctl mask --runtime getty@tty1.service` abans d'arrancar i manté així `tty1` fora de l'abast del getty durant tota la sessió Live.
+2. El mask persistent de `getty@tty1.service` s'aplica al rootfs **només en `phase_squashfs`**, quan ja han acabat les operacions de construcció dins del chroot. D'aquesta manera el Live conserva el bloqueig sense interferir amb `apt`, `dpkg`, `systemctl` o `update-initramfs` durant la generació de la imatge.
 3. Les funcions de reinici i apagada desarmen els traps i usen `systemctl --no-block`, mantenint el procés viu fins que systemd tanque la sessió Live.
+
+El 20 d'agost es va corregir també una regressió del constructor causada per seqüències literals `\n` que havien deixat la inicialització del mask dins d'un comentari Python. La suite inclou ara una comprovació específica contra aquesta classe d'error.
 
 Per tant, una instal·lació correcta només pot acabar amb el missatge de finalització i la petició «Retorn per apagar»; mai amb un prompt de login en `tty1`.
