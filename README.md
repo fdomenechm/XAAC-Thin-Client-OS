@@ -244,7 +244,7 @@ Variant:             cap
 Zona horària:        `Europe/Madrid`
 ```
 
-En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la llengua entre **Valencià/Català**, **Español** i **English**, i després tria independentment el teclat físic entre **Espanyol** i **English (US)**. La selecció s'aplica a la sessió Live i es persisteix al sistema instal·lat en `/etc/locale.conf`, `/etc/default/locale` i `/etc/default/keyboard`.
+En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la llengua entre **Valencià/Català**, **Español** i **English**, i després tria independentment el teclat físic entre **Espanyol** i **English (US)**. La selecció s'aplica a la sessió Live i es persisteix al sistema instal·lat en `/etc/locale.conf`, `/etc/default/locale` i `/etc/default/keyboard`. La sincronització de `application.language` de **XAAC Thin Client** es fa després, en el primer arrencament del sistema instal·lat i abans de `greetd`; no forma part del camí crític del Live Installer.
 
 La configuració declarativa inicial es troba en `config/localization.yaml`. El constructor instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`. Durant la instal·lació final els valors triats s'escriuen directament als fitxers persistents, evitant reexecutar `dpkg-reconfigure` dins del chroot de destinació. Els tres locales suportats (`ca_ES.UTF-8`, `es_ES.UTF-8` i `en_US.UTF-8`) ja estan generats al rootfs i no depenen de `live-config` ni de la xarxa. La zona horària continua fixada a `Europe/Madrid`.
 

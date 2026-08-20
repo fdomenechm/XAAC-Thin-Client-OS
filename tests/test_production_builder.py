@@ -35,26 +35,6 @@ def _render_production_installer() -> str:
     raise AssertionError("production installer script not found")
 
 
-def _render_phase_configure_payload(target_fragment: str) -> str:
-    import ast
-    import inspect
-    import textwrap
-
-    source = textwrap.dedent(inspect.getsource(ProductionIsoBuilder.phase_configure))
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or len(node.args) < 2:
-            continue
-        target = ast.get_source_segment(source, node.args[0]) or ""
-        if target_fragment not in target:
-            continue
-        return eval(
-            compile(ast.Expression(node.args[1]), "<phase-configure-payload>", "eval"),
-            {"installed_kernel_cmdline": "quiet splash loglevel=0"},
-        )
-    raise AssertionError(f"phase_configure payload not found: {target_fragment}")
-
-
 def minimal_project(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir()
@@ -427,21 +407,62 @@ def test_chroot_rbind_mounts_are_made_rslave() -> None:
     assert "cleanup_chroot_mounts" in source
 
 
-def test_installer_tty1_failure_stays_owned_by_installer_without_login_fallback() -> None:
+def test_installer_restores_known_good_pre_10_7_tty_control_flow() -> None:
     import inspect
 
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    squashfs_source = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
     script = _render_production_installer()
     assert "getty@tty1.service.d/99-xaac-autologin.conf" not in source
     assert "agetty --autologin xaac-kiosk" not in source
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
-    assert "OnFailure=xaac-installer-restore-getty.service" not in source
-    assert "xaac-installer-restore-getty.service" not in source
+    assert "OnFailure=xaac-installer-restore-getty.service" in source
+    assert "/etc/systemd/system/xaac-installer-restore-getty.service" in source
+    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
-    assert "xaac_installer_exit" in script
-    assert "cap consola de login" in script
-    assert "xaac_request_poweroff" in script
-    assert "systemctl poweroff\n    while :; do sleep 3600; done" in script
+    assert "mask --runtime getty@tty1.service" not in source
+    assert "_mask_live_installer_tty1" not in squashfs_source
+    assert "xaac_cleanup_before_power_action" not in script
+    assert "xaac_installer_exit" not in script
+    assert "xaac_request_reboot" not in script
+    assert "xaac_request_poweroff" not in script
+    assert "systemctl --no-block poweroff" not in script
+    assert "while :; do sleep 3600; done" not in script
+
+
+def test_installer_final_path_is_exact_message_enter_systemctl_poweroff() -> None:
+    script = _render_production_installer()
+    expected_tail = (
+        "sync\n"
+        "printf '\\n'\n"
+        "xaac_say complete\n"
+        "xaac_prompt poweroff\n"
+        "IFS= read -r _answer\n"
+        "systemctl poweroff\n"
+    )
+    assert expected_tail in script
+
+    final_message = script.rindex("xaac_say complete")
+    prompt = script.index("xaac_prompt poweroff", final_message)
+    enter = script.index("IFS= read -r _answer", prompt)
+    poweroff = script.index("systemctl poweroff", enter)
+    assert final_message < prompt < enter < poweroff
+    between_enter_and_poweroff = script[enter + len("IFS= read -r _answer"):poweroff]
+    assert between_enter_and_poweroff.strip() == ""
+
+
+def test_installer_uses_original_direct_reboot_paths() -> None:
+    script = _render_production_installer()
+    assert "xaac_request_reboot" not in script
+    assert "systemctl --no-block reboot" not in script
+    assert "systemctl reboot || /sbin/reboot -f" not in script
+    assert script.count("systemctl reboot") >= 2
+
+
+def test_production_builder_has_no_accidental_literal_newlines_in_python_comments() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert "# tty1 is installer-owned in the Live image. Mask the normal getty in\\n" not in source
+
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -956,62 +977,58 @@ def test_phase_10_7_installer_language_and_keyboard_selection() -> None:
     assert "keyboard_layout=$install_keyboard_layout" in source
 
 
-def test_phase_10_7_thinclient_language_sync_is_outside_installer_transaction() -> None:
+def test_phase_10_7_thinclient_language_sync_is_outside_live_installer(tmp_path: Path) -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     script = _render_production_installer()
-    assert "thinclient_config=" not in script
-    assert "thinclient_language_fail" not in script
-    assert "xaac-sync-thinclient-language" not in script
 
-    helper = _render_phase_configure_payload("/usr/local/sbin/xaac-sync-thinclient-language")
-    unit = _render_phase_configure_payload("/etc/systemd/system/xaac-thinclient-language-sync.service")
-    assert "ConditionKernelCommandLine=!xaac.mode=installer" in unit
-    assert "Before=greetd.service" in unit
-    assert "ExecStart=/usr/local/sbin/xaac-sync-thinclient-language" in unit
+    # The Live Installer must never edit or validate Thin Client language.
+    assert 'thinclient_config="$mount_root/etc/xaac-thinclient/config.ini"' not in script
+    assert 'thinclient_language_fail' not in script
+    assert 'grep -Eq \"^[[:space:]]*language[[:space:]]*=[[:space:]]*$install_language' not in script
+    assert 'language = $install_language' not in script
 
+    # It only records the selected OS locale; the installed system synchronises
+    # application.language on first graphical boot, before greetd.
+    assert 'thinclient_language=$install_language' in script
+    assert '/usr/local/sbin/xaac-sync-thinclient-language' in source
+    assert 'ConditionKernelCommandLine=!xaac.mode=installer' in source
+    assert 'Before=greetd.service' in source
+    assert 'systemctl", "enable", "xaac-thinclient-language-sync.service' in source
 
-@pytest.mark.parametrize(
-    ("locale_value", "expected_language"),
-    [("ca_ES.UTF-8", "ca"), ("es_ES.UTF-8", "es"), ("en_US.UTF-8", "en")],
-)
-def test_phase_10_7_thinclient_language_sync_maps_installed_locale(
-    tmp_path: Path, locale_value: str, expected_language: str
-) -> None:
-    helper = _render_phase_configure_payload("/usr/local/sbin/xaac-sync-thinclient-language")
-    root = tmp_path / "root"
-    config_dir = root / "etc/xaac-thinclient"
-    config_dir.mkdir(parents=True)
-    (root / "etc/locale.conf").write_text(f"LANG={locale_value}\n", encoding="utf-8")
-    config = config_dir / "config.ini"
-    config.write_text(
-        "[application]\ntitle = XAAC Thin Client\nlanguage = ca\nremember_username = true\n",
-        encoding="utf-8",
-    )
-    path = tmp_path / "xaac-sync-thinclient-language"
-    path.write_text(helper, encoding="utf-8")
-    result = subprocess.run(
-        ["sh", str(path)],
-        env={**__import__("os").environ, "XAAC_ROOT": str(root)},
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stderr
-    assert f"language = {expected_language}" in config.read_text(encoding="utf-8")
+    helper_start = source.index('"#!/bin/sh\\n"', source.index('/usr/local/sbin/xaac-sync-thinclient-language'))
+    helper_end = source.index('            0o755,', helper_start)
+    helper_source = source[helper_start:helper_end]
+    # Render the adjacent Python string literals with the same AST technique used
+    # by the installer helper so the actual shell is exercised below.
+    import ast
+    method_source = __import__('textwrap').dedent(inspect.getsource(ProductionIsoBuilder.phase_configure))
+    tree = ast.parse(method_source)
+    helper = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or len(node.args) < 2:
+            continue
+        target = ast.get_source_segment(method_source, node.args[0]) or ''
+        if 'xaac-sync-thinclient-language' not in target:
+            continue
+        helper = eval(compile(ast.Expression(node.args[1]), '<sync-helper>', 'eval'))
+        break
+    assert helper is not None
 
-
-def test_phase_10_7_known_good_installer_completion_path_is_unchanged() -> None:
-    script = _render_production_installer()
-    tail = "\n".join(script.rstrip().splitlines()[-5:]) + "\n"
-    assert tail == (
-        "printf '\\n'\n"
-        "xaac_say complete\n"
-        "xaac_prompt poweroff\n"
-        "IFS= read -r _answer\n"
-        "xaac_request_poweroff\n"
-        ""
-    )
-    assert "xaac_request_poweroff()" in script
-    assert "systemctl poweroff\n    while :; do sleep 3600; done" in script
+    for locale, language in (("ca_ES.UTF-8", "ca"), ("es_ES.UTF-8", "es"), ("en_US.UTF-8", "en")):
+        root = tmp_path / language
+        locale_file = root / 'etc/locale.conf'
+        config = root / 'etc/xaac-thinclient/config.ini'
+        config.parent.mkdir(parents=True)
+        locale_file.parent.mkdir(parents=True, exist_ok=True)
+        locale_file.write_text(f'LANG={locale}\n', encoding='utf-8')
+        config.write_text('[application]\nlanguage = ca\nmode = production\n', encoding='utf-8')
+        # Rewrite absolute paths only for the isolated test root.
+        test_helper = helper.replace('/etc/locale.conf', str(locale_file)).replace('/etc/default/locale', str(root / 'etc/default/locale')).replace('/etc/xaac-thinclient/config.ini', str(config))
+        result = subprocess.run(['sh'], input=test_helper, text=True, capture_output=True, check=False)
+        assert result.returncode == 0, result.stderr
+        assert f'language = {language}\n' in config.read_text(encoding='utf-8')
 
 
 def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
@@ -1027,28 +1044,13 @@ def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
     subprocess.run(["sh", "-n"], input=script, text=True, check=True)
 
 
-def test_phase_10_7_failure_path_keeps_tty_owned_and_never_falls_to_login(tmp_path: Path) -> None:
+def test_phase_10_7_failure_path_uses_original_onfailure_getty_restore() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     script = _render_production_installer()
-    # Force a controlled failure after language/keyboard selection. Replace the
-    # failure handler reboot with an exit so the test can terminate.
-    script = script.replace("disks_file=$(mktemp)", "false", 1)
-    script = script.replace(
-        "systemctl reboot || true\n        while :; do sleep 3600; done",
-        "exit 77",
-        1,
-    )
-    path = tmp_path / "xaac-installer-welcome"
-    path.write_text(script, encoding="utf-8")
-    result = subprocess.run(
-        ["sh", str(path)],
-        input="1\n1\n\n",
-        text=True,
-        capture_output=True,
-        env={**__import__("os").environ, "TERM": "linux"},
-        check=False,
-    )
-    output = result.stdout + result.stderr
-    assert result.returncode == 77
-    assert "La instal·lació s'ha aturat per una errada." in output
-    assert "Premeu Retorn per reiniciar el sistema:" in output
-    assert " login:" not in output
+    assert "trap 'xaac_installer_exit' EXIT" not in script
+    assert "xaac_installer_exit()" not in script
+    assert "OnFailure=xaac-installer-restore-getty.service" in source
+    assert "ExecStart=/bin/systemctl start getty@tty1.service" in source
+

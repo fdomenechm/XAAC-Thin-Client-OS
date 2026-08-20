@@ -1,12 +1,10 @@
-# 2026-08-20 — Correcció Fase 10.7: desacoblament del Live Installer i llengua del Thin Client
+# 2026-08-20 — Correcció Fase 10.7: causa arrel de l'eixida a tty1
 
-- Correcció aplicada directament sobre el ZIP `xaac-thin-client-os(20260820-104333).zip`; no s'ha substituït el projecte per una baseline anterior.
-- Eliminada de la transacció destructiva d'instal·lació la modificació i verificació de `/etc/xaac-thinclient/config.ini`, que era l'únic canvi funcional introduït immediatament abans de començar la regressió de finalització observada en VM.
-- Restaurat en el Live Installer el mateix control d'errors, `tty1`, reinici i apagada de `20260819-175805`, última versió validada amb «missatge final → Retorn → apagada».
-- Eliminat `OnFailure=xaac-installer-restore-getty.service`; una fallada queda gestionada pel mateix instal·lador i no pot convertir `tty1` en un prompt de login del sistema Live.
-- La llengua pròpia de XAAC Thin Client es sincronitza ara fora de l'instal·lador mitjançant `xaac-thinclient-language-sync.service`, abans de `greetd.service` i només en el sistema instal·lat.
-- El sincronitzador és idempotent i aplica `ca_ES.UTF-8 → ca`, `es_ES.UTF-8 → es` i `en_US.UTF-8 → en`.
-- Afegides regressions per garantir que el sincronitzador no apareix al script Live, que no existeix fallback de login en `tty1`, que els tres locales es mapen correctament i que el tram final de l'instal·lador es manté en la forma validada.
+- Identificada la causa exacta de la regressió: la verificació final de `application.language` s'executava abans de sincronitzar XAAC Thin Client fora del Live; amb `es` o `en`, `config.ini` encara contenia `language = ca`, el `grep` fallava i `set -e` terminava l'instal·lador abans del prompt d'apagada.
+- Eliminades del Live Installer tant la modificació com la verificació de `/etc/xaac-thinclient/config.ini`.
+- El final d'èxit es manté sense cap helper intermedi: `missatge final → Retorn → systemctl poweroff`.
+- Afegit `xaac-thinclient-language-sync.service`, executat únicament en el sistema instal·lat i abans de `greetd`, per aplicar `ca/es/en` des del locale persistent.
+- La correcció parteix directament del ZIP de l'usuari `20260820-104333`.
 
 # 2026-08-20 — Correcció Fase 10.7: restauració exacta del final de l'instal·lador
 

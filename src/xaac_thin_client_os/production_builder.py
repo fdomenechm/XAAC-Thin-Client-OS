@@ -2361,31 +2361,6 @@ exit 0
                 "}\n"
                 "xaac_say() { xaac_msg \"$1\"; printf '\\n'; }\n"
                 "xaac_prompt() { xaac_msg \"$1\"; }\n"
-                "disks_file=\n"
-                "xaac_installer_exit() {\n"
-                "    status=$?\n"
-                "    trap - EXIT HUP INT TERM\n"
-                "    [ -z \"${disks_file:-}\" ] || rm -f \"$disks_file\"\n"
-                "    if [ \"$status\" -ne 0 ]; then\n"
-                "        printf '\\n'\n"
-                "        xaac_say failure\n"
-                "        xaac_prompt failure_reboot\n"
-                "        IFS= read -r _answer || true\n"
-                "        systemctl reboot || true\n"
-                "        while :; do sleep 3600; done\n"
-                "    fi\n"
-                "    return 0\n"
-                "}\n"
-                "xaac_request_reboot() {\n"
-                "    systemctl reboot\n"
-                "    while :; do sleep 3600; done\n"
-                "}\n"
-                "xaac_request_poweroff() {\n"
-                "    systemctl poweroff\n"
-                "    while :; do sleep 3600; done\n"
-                "}\n"
-                "trap 'xaac_installer_exit' EXIT\n"
-                "trap 'exit 130' HUP INT TERM\n"
                 "clear\n"
                 "printf '%s\\n' 'XAAC Thin Client OS'\n"
                 "printf '%s\\n' '==================='\n"
@@ -2429,6 +2404,7 @@ exit 0
                 "xaac_say warning\n"
                 "printf '\\n'\n"
                 "disks_file=$(mktemp)\n"
+                "trap 'rm -f \"$disks_file\"' EXIT HUP INT TERM\n"
                 "lsblk -bdnP -o NAME,SIZE,MODEL,TYPE,RO,RM | while IFS= read -r line; do\n"
                 "    eval \"$line\"\n"
                 "    [ \"${TYPE:-}\" = disk ] || continue\n"
@@ -2441,7 +2417,7 @@ exit 0
                 "    xaac_say no_disk\n"
                 "    xaac_prompt reboot\n"
                 "    IFS= read -r _answer\n"
-                "    xaac_request_reboot\n"
+                "    systemctl reboot\n"
                 "fi\n"
                 "xaac_say disks\n"
                 "printf '\\n'\n"
@@ -2504,7 +2480,7 @@ exit 0
                 "    xaac_say confirmation_bad\n"
                 "    xaac_prompt reboot\n"
                 "    IFS= read -r _answer\n"
-                "    xaac_request_reboot\n"
+                "    systemctl reboot\n"
                 "fi\n"
                 "printf '\\n'\n"
                 "xaac_say confirmation_ok\n"
@@ -2526,7 +2502,7 @@ exit 0
                 "    case $admin_password in *:*) xaac_say password_colon; continue ;; esac\n"
                 "    break\n"
                 "done\n"
-                "trap 'exit 130' HUP INT TERM\n"
+                "trap - HUP INT TERM\n"
                 "unset admin_password_confirm\n"
                 "printf '\n"
                 "'; xaac_say configure_hostname\n"
@@ -2779,13 +2755,14 @@ exit 0
                 "bootloader=shim-signed-grub-efi-amd64-removable\n"
                 "locale=$install_locale\n"
                 "keyboard_layout=$install_keyboard_layout\n"
+                "thinclient_language=$install_language\n"
                 "EOF\n"
                 "sync\n"
                 "printf '\\n'\n"
                 "xaac_say complete\n"
                 "xaac_prompt poweroff\n"
                 "IFS= read -r _answer\n"
-                "xaac_request_poweroff\n"
+                "systemctl poweroff\n"
             ).replace("__XAAC_KERNEL_CMDLINE__", installed_kernel_cmdline),
             0o755,
         )
@@ -2797,7 +2774,7 @@ exit 0
             "After=systemd-user-sessions.service\n"
             "Before=getty@tty1.service\n"
             "Conflicts=getty@tty1.service\n"
-            "\n"
+            "OnFailure=xaac-installer-restore-getty.service\n\n"
             "[Service]\n"
             "Type=idle\n"
             "ExecStartPre=-/bin/systemctl stop getty@tty1.service\n"
@@ -2814,19 +2791,27 @@ exit 0
             "WantedBy=multi-user.target\n",
         )
 
-        # Keep application language synchronisation out of the installer
-        # transaction. The installer only persists the selected OS locale; on
-        # the first installed-system graphical boot this idempotent oneshot
-        # maps that locale to XAAC Thin Client's own application.language.
-        # This deliberately does not run in xaac.mode=installer.
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-installer-restore-getty.service"),
+            "[Unit]\n"
+            "Description=Restore tty1 login after XAAC installer failure\n"
+            "After=xaac-installer-welcome.service\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/bin/systemctl start getty@tty1.service\n",
+        )
+
+        # XAAC Thin Client keeps its own application language in config.ini.
+        # Keep this synchronisation completely outside the Live Installer:
+        # the installer persists only the selected OS locale, while this
+        # idempotent oneshot runs on the installed system before greetd.
         self._atomic_write(
             self._inside("/usr/local/sbin/xaac-sync-thinclient-language"),
             "#!/bin/sh\n"
             "set -eu\n"
-            "root=${XAAC_ROOT:-/}\n"
-            "locale_file=$root/etc/locale.conf\n"
-            "[ -r \"$locale_file\" ] || locale_file=$root/etc/default/locale\n"
-            "config=$root/etc/xaac-thinclient/config.ini\n"
+            "locale_file=/etc/locale.conf\n"
+            "[ -r \"$locale_file\" ] || locale_file=/etc/default/locale\n"
+            "config=/etc/xaac-thinclient/config.ini\n"
             "[ -r \"$locale_file\" ] || exit 0\n"
             "[ -f \"$config\" ] || exit 0\n"
             "locale_value=$(sed -n 's/^[[:space:]]*LANG[[:space:]]*=[[:space:]]*//p' \"$locale_file\" | head -n1 | tr -d '\"')\n"
@@ -2836,16 +2821,7 @@ exit 0
             "    en|en_*|en.*) app_language=en ;;\n"
             "    *) exit 0 ;;\n"
             "esac\n"
-            "if grep -Eq '^[[:space:]]*language[[:space:]]*=' \"$config\"; then\n"
-            "    sed -i \"s/^[[:space:]]*language[[:space:]]*=.*/language = $app_language/\" \"$config\"\n"
-            "else\n"
-            "    tmp=$(mktemp)\n"
-            "    trap 'rm -f \"$tmp\"' EXIT HUP INT TERM\n"
-            "    awk -v lang=\"$app_language\" 'BEGIN { done=0 } /^[[:space:]]*[[]application[]][[:space:]]*$/ { print; print \"language = \" lang; done=1; next } { print } END { if (!done) exit 42 }' \"$config\" > \"$tmp\"\n"
-            "    cat \"$tmp\" > \"$config\"\n"
-            "    rm -f \"$tmp\"\n"
-            "    trap - EXIT HUP INT TERM\n"
-            "fi\n"
+            "sed -i \"s/^[[:space:]]*language[[:space:]]*=.*/language = $app_language/\" \"$config\"\n"
             "grep -Eq \"^[[:space:]]*language[[:space:]]*=[[:space:]]*$app_language[[:space:]]*$\" \"$config\"\n",
             0o755,
         )
@@ -3050,8 +3026,8 @@ exit 0
                 "systemctl --global disable xaac-thinclient.service >/dev/null 2>&1 || true",
             ], phase="configure-disable-generic-xaac-autostart")
             self._chroot(["systemctl", "enable", "NetworkManager.service"], phase="configure-networkmanager")
-            self._chroot(["systemctl", "enable", "greetd.service"], phase="configure-greetd")
             self._chroot(["systemctl", "enable", "xaac-thinclient-language-sync.service"], phase="configure-thinclient-language-sync")
+            self._chroot(["systemctl", "enable", "greetd.service"], phase="configure-greetd")
             self._chroot(["systemctl", "set-default", "graphical.target"], phase="configure-graphical-target")
             self._chroot(["systemctl", "enable", "xaac-installer-welcome.service"], phase="configure-installer-welcome")
             self._verify_block7_rootfs(context="configure")
