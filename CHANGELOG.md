@@ -1,3 +1,12 @@
+# 2026-08-19 — Correcció Fase 10.7: tty1 bloquejat fins a l'apagada real
+
+- Corregida la segona regressió observada en VM on, després d'una instal·lació correcta, la consola Live podia acabar mostrant `xaac-thin-client login:` en lloc de romandre en el flux final «Retorn per apagar».
+- La causa era el cicle de vida de `xaac-installer-welcome.service`: la petició síncrona de `systemctl poweroff` podia coincidir amb el `SIGTERM` de parada del mateix servei i el `trap EXIT` reinterpretava eixa terminació normal com una fallada.
+- `poweroff` i `reboot` es demanen ara amb `systemctl --no-block`; abans de fer-ho es desarmen els traps `EXIT/HUP/INT/TERM`, de manera que una parada normal no pot entrar en el handler d'error.
+- `getty@tty1.service` queda emmascarat també en el rootfs Live i, com a defensa addicional, el servei instal·lador aplica un mask runtime abans d'executar-se. Així `tty1` no pot exposar mai un prompt de login durant la sessió d'instal·lació.
+- Es manté el contracte final: instal·lació correcta → missatge verificat → Retorn → apagada; instal·lació fallida → missatge controlat → Retorn → reinici.
+- Afegida regressió específica que comprova l'ordre «desarmar traps → sol·licitar power action» i la doble protecció contra `getty@tty1`.
+
 # 2026-08-19 — Correcció Fase 10.7: llengua de XAAC Thin Client sincronitzada amb la instal·lació
 
 - Corregit el desajust pel qual XAAC Thin Client conservava `language = ca` del paquet Debian encara que l'administrador haguera seleccionat Español o English durant la instal·lació.

@@ -75,3 +75,15 @@ La correcció elimina aquest fallback. `tty1` continua sent propietat de l'insta
 La validació posterior de la Fase 10.7 va detectar que el sistema operatiu conservava correctament el locale seleccionat, però XAAC Thin Client continuava utilitzant el valor `language = ca` inclòs per defecte en el seu paquet Debian. La correcció es fa en el mateix instal·lador, quan encara disposa de privilegis sobre el sistema de destinació, i no requereix modificar el paquet de XAAC Thin Client.
 
 La sincronització és fail-closed: si el fitxer `/etc/xaac-thinclient/config.ini` no existeix o el valor final no coincideix amb `ca`, `es` o `en` segons la selecció, la instal·lació no es declara completada.
+
+## Correcció addicional: tty1 fins a l'apagada real
+
+Una segona prova en VM va mostrar que l'eliminació de l'antic `OnFailure` no era suficient. En una instal·lació correcta, la petició de `poweroff` podia provocar la parada del mateix servei instal·lador; el `SIGTERM` era capturat i convertit en una eixida no zero, cosa que podia reentrar en el handler de fallada. Quan el servei deixava de posseir `tty1`, systemd podia generar de nou el getty normal i mostrar `xaac-thin-client login:`.
+
+La correcció reforça el contracte de consola en tres nivells:
+
+1. `getty@tty1.service` està emmascarat en el rootfs Live.
+2. `xaac-installer-welcome.service` aplica també `systemctl mask --runtime getty@tty1.service` abans d'arrancar.
+3. Les funcions de reinici i apagada desarmen els traps i usen `systemctl --no-block`, mantenint el procés viu fins que systemd tanque la sessió Live.
+
+Per tant, una instal·lació correcta només pot acabar amb el missatge de finalització i la petició «Retorn per apagar»; mai amb un prompt de login en `tty1`.

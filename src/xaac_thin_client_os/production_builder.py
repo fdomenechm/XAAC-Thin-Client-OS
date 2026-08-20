@@ -2374,17 +2374,24 @@ exit 0
                 "        xaac_say failure\n"
                 "        xaac_prompt failure_reboot\n"
                 "        IFS= read -r _answer || true\n"
-                "        systemctl reboot || true\n"
+                "        systemctl --no-block reboot || /sbin/reboot -f || true\n"
                 "        while :; do sleep 3600; done\n"
                 "    fi\n"
                 "    return 0\n"
                 "}\n"
                 "xaac_request_reboot() {\n"
-                "    systemctl reboot\n"
+                "    # Shutdown stops this service with SIGTERM. Disarm the EXIT/signal\n"
+                "    # handlers first so a normal reboot is never reclassified as an\n"
+                "    # installer failure. --no-block also avoids waiting on our own stop.\n"
+                "    trap - EXIT HUP INT TERM\n"
+                "    systemctl --no-block reboot || /sbin/reboot -f || true\n"
                 "    while :; do sleep 3600; done\n"
                 "}\n"
                 "xaac_request_poweroff() {\n"
-                "    systemctl poweroff\n"
+                "    # Same rule as reboot: request shutdown asynchronously and keep tty1\n"
+                "    # owned until systemd terminates the Live environment.\n"
+                "    trap - EXIT HUP INT TERM\n"
+                "    systemctl --no-block poweroff || /sbin/poweroff -f || true\n"
                 "    while :; do sleep 3600; done\n"
                 "}\n"
                 "trap 'xaac_installer_exit' EXIT\n"
@@ -2798,6 +2805,14 @@ exit 0
             ).replace("__XAAC_KERNEL_CMDLINE__", installed_kernel_cmdline),
             0o755,
         )
+        # tty1 is installer-owned in the Live image. Mask the normal getty in\n        # the rootfs as well as at runtime (see ExecStartPre below), so even an\n        # unexpected installer exit can never expose a login prompt. The\n        # installed kiosk also deliberately keeps tty1 masked.\n        live_tty1_getty = self._inside("/etc/systemd/system/getty@tty1.service")
+        live_tty1_getty.parent.mkdir(parents=True, exist_ok=True)
+        if live_tty1_getty.exists() or live_tty1_getty.is_symlink():
+            if live_tty1_getty.is_dir():
+                raise ProductionBuildError(f"No es pot emmascarar tty1: {live_tty1_getty} és un directori")
+            live_tty1_getty.unlink()
+        live_tty1_getty.symlink_to("/dev/null")
+
         self._atomic_write(
             self._inside("/etc/systemd/system/xaac-installer-welcome.service"),
             "[Unit]\n"
@@ -2810,6 +2825,7 @@ exit 0
             "[Service]\n"
             "Type=idle\n"
             "ExecStartPre=-/bin/systemctl stop getty@tty1.service\n"
+            "ExecStartPre=-/bin/systemctl mask --runtime getty@tty1.service\n"
             "ExecStart=/usr/local/sbin/xaac-installer-welcome\n"
             "StandardInput=tty\n"
             "StandardOutput=tty\n"

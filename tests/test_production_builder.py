@@ -417,11 +417,25 @@ def test_installer_tty1_failure_stays_owned_by_installer_without_login_fallback(
     assert "getty@tty{tty}.service.d/99-xaac-authenticated.conf" in source
     assert "OnFailure=xaac-installer-restore-getty.service" not in source
     assert "xaac-installer-restore-getty.service" not in source
+    assert 'live_tty1_getty.symlink_to("/dev/null")' in source
     assert "ExecStartPre=-/bin/systemctl stop getty@tty1.service" in source
+    assert "ExecStartPre=-/bin/systemctl mask --runtime getty@tty1.service" in source
     assert "xaac_installer_exit" in script
     assert "cap consola de login" in script
     assert "xaac_request_poweroff" in script
-    assert "systemctl poweroff\n    while :; do sleep 3600; done" in script
+    assert "systemctl --no-block poweroff || /sbin/poweroff -f || true" in script
+
+
+def test_installer_shutdown_disarms_failure_traps_before_power_action() -> None:
+    script = _render_production_installer()
+    reboot = script.index("xaac_request_reboot() {")
+    poweroff = script.index("xaac_request_poweroff() {")
+    trap_reboot = script.index("trap - EXIT HUP INT TERM", reboot)
+    request_reboot = script.index("systemctl --no-block reboot", reboot)
+    trap_poweroff = script.index("trap - EXIT HUP INT TERM", poweroff)
+    request_poweroff = script.index("systemctl --no-block poweroff", poweroff)
+    assert reboot < trap_reboot < request_reboot < poweroff
+    assert poweroff < trap_poweroff < request_poweroff
 
 def test_build_script_has_exit_trap_for_chroot_cleanup() -> None:
     project = Path(__file__).resolve().parents[1]
@@ -982,7 +996,7 @@ def test_phase_10_7_failure_path_keeps_tty_owned_and_never_falls_to_login(tmp_pa
     # failure handler reboot with an exit so the test can terminate.
     script = script.replace("disks_file=$(mktemp)", "false", 1)
     script = script.replace(
-        "systemctl reboot || true\n        while :; do sleep 3600; done",
+        "systemctl --no-block reboot || /sbin/reboot -f || true\n        while :; do sleep 3600; done",
         "exit 77",
         1,
     )
