@@ -1,3 +1,13 @@
+## 2026-08-20 — Fase 10.7: correcció basada en diagnòstic del Live Installer
+
+- Corregida la fallada real observada en la instal·lació en castellà/anglès: `/etc/default/locale` pot referenciar el mateix fitxer que `/etc/locale.conf`; el `cp` entre ambdós retornava error i `set -e` terminava l'instal·lador abans del missatge final. Ara els dos destins s'escriuen directament, cosa que funciona també quan un és un enllaç a l'altre.
+- Corregida la reinstal·lació sobre un disc amb una GPT/signatures prèvies: `wipefs` usa `--all --force` abans de `sgdisk --zap-all`.
+- Aïllats els muntatges del Live Installer amb `PrivateMounts=yes`, evitant que `/mnt/xaac-target` i els `rbind` de `/dev`, `/sys` i `/run` es propaguen als namespaces de `systemd-udevd`, `systemd-logind`, NetworkManager, XAAC VPN o XAAC Agent.
+- La neteja del target és ara recursiva (`umount -R`, amb `umount -l` només com a últim recurs dins del namespace privat) i torna a formar part del handler d'eixida de l'instal·lador; ja no substitueix el `trap EXIT` que mostra l'error controlat.
+- `xaac_request_poweroff` i `xaac_request_reboot` desarmen els traps abans de sol·licitar l'acció de systemd, de manera que una parada normal no es reinterpreta com una fallada.
+- Afegides regressions específiques per al cas `/etc/default/locale` → `/etc/locale.conf`, per al `wipefs --force`, per a l'aïllament de muntatges i per a la sintaxi POSIX del script generat.
+- La correcció deriva directament del ZIP `xaac-thin-client-os(20260820-172005).zip` i incorpora les causes demostrades durant la depuració de la mateixa ISO, no hipòtesis sobre `tty1` o `poweroff`.
+
 ## 2026-08-20 — Fase 10.7: restauració definitiva del Live Installer validat
 
 - Restaurat sobre el codi font `20260820-144400` el control complet de `tty1` i apagada de la versió `20260819-175805`, validada prèviament amb instal·lació correcta.

@@ -65,20 +65,38 @@ Gate focalitzat:
 Aquesta fase és prèvia a la qualificació sobre el Dell Wyse 3040. La primera instal·lació física del Bloc 11 validarà també el canvi real de llengua i teclat.
 
 
-## Correcció definitiva del control de `tty1` i apagada
+## Correcció diagnosticada del Live Installer (20-08-2026)
 
-Després de diverses regressions en VM, el control del Live Installer queda congelat sobre la implementació de `20260819-175805`, que va ser validada amb instal·lació completa correcta. Tant el script `/usr/local/sbin/xaac-installer-welcome` com la unitat `xaac-installer-welcome.service` es mantenen amb el mateix flux funcional.
+La depuració de la ISO real amb `systemd.debug_shell=1` i una traça del pas 9 va permetre identificar la causa exacta de la terminació abans del prompt final. L'ordre que fallava era:
 
-En una instal·lació correcta la seqüència és:
+```sh
+cp "$mount_root/etc/locale.conf" "$mount_root/etc/default/locale"
+```
+
+En Debian 13 els dos camins poden resoldre al mateix fitxer. En eixe cas `cp` retorna un estat no-zero amb el missatge «són el mateix fitxer» i, com l'instal·lador usa `set -e`, el procés acabava abans de `xaac_say complete`. La persistència del locale escriu ara directament els dos camins amb `printf`; la mateixa operació és vàlida tant si són fitxers independents com si `/etc/default/locale` és un enllaç a `/etc/locale.conf`.
+
+La mateixa sessió de depuració va demostrar dos defectes addicionals de reinstal·lació/neteja:
+
+- `wipefs -a` podia rebutjar una taula de particions existent; s'utilitza ara `wipefs --all --force` abans de recrear la GPT.
+- Els muntatges de `/mnt/xaac-target` es propagaven a namespaces de serveis del Live (`systemd-udevd`, `systemd-logind`, NetworkManager, XAAC VPN i XAAC Agent). Això podia deixar `/dev/sda2` «in use» en una nova execució encara que ja no apareguera muntada en la shell de depuració.
+
+Per evitar aquesta propagació, `xaac-installer-welcome.service` usa:
+
+```ini
+PrivateMounts=yes
+```
+
+Els `rbind` de `/dev`, `/sys` i `/run` continuen marcant-se `rslave` dins del namespace privat. `cleanup_install` usa desmuntatge recursiu i el handler `xaac_installer_exit` és l'únic `trap EXIT`: una fallada neteja el target i manté el missatge controlat en `tty1`, en lloc de substituir el handler d'error per un trap de neteja independent.
+
+En una instal·lació correcta el contracte continua sent:
 
 1. es completa i verifica la instal·lació;
-2. es fa `sync`;
-3. es mostra el missatge de finalització;
-4. es mostra `Premeu Retorn per apagar el sistema:` i el procés queda bloquejat esperant l'entrada;
-5. després de Retorn s'invoca `xaac_request_poweroff`;
-6. el helper sol·licita `systemctl poweroff` i manté viu el procés fins que systemd executa l'apagada.
+2. es mostra el missatge de finalització;
+3. es mostra `Premeu Retorn per apagar el sistema:` (o la traducció seleccionada) i s'espera l'entrada;
+4. després de Retorn `xaac_request_poweroff` desarma els traps i invoca `systemctl poweroff`;
+5. el procés roman viu fins que systemd completa l'apagada.
 
-El final del script és, deliberadament:
+El final del script continua sent deliberadament:
 
 ```sh
 xaac_say complete
@@ -87,17 +105,9 @@ IFS= read -r _answer
 xaac_request_poweroff
 ```
 
-`xaac-installer-welcome.service` conserva `Conflicts=getty@tty1.service` i atura `getty@tty1` abans d'arrancar l'instal·lador. **No usa `OnFailure` i no existeix cap `xaac-installer-restore-getty.service`**. Això evita que una incidència del Live Installer expose un prompt de login en `tty1`.
+`xaac-installer-welcome.service` manté `Conflicts=getty@tty1.service` i no usa `OnFailure` ni cap servei `restore-getty`. En cas d'error, el propi instal·lador conserva la consola, informa de la fallada i demana Retorn per reiniciar.
 
-El mateix script manté un `trap EXIT` propi. Si alguna ordre retorna error, l'instal·lador conserva la consola, mostra un missatge d'error i demana Retorn per reiniciar; no allibera `tty1` a un `getty`.
-
-Per evitar una nova regressió accidental, els tests bloquegen també el SHA-256 del script Live generat:
-
-```text
-2692fad417fea4941e7ae4f71f8d511ee158e31f30792972029cab087b2d7649
-```
-
-Aquest hash correspon al Live Installer validat de `20260819-175805`. Qualsevol canvi futur en el script haurà de ser explícit i actualitzar la prova de regressió.
+Els tests mantenen un SHA-256 del script Live complet després d'aquesta correcció diagnosticada. Qualsevol canvi futur del Live Installer ha de ser explícit i actualitzar alhora les regressions funcionals.
 
 ## Sincronització de llengua de XAAC Thin Client fora del Live Installer
 

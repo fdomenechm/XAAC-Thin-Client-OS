@@ -243,6 +243,8 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert "INSTALL XAAC" in source
     assert "El disc seleccionat conté el sistema Live actiu" in source
     assert "ca:no_ac)" in source and "alimentació externa" in source
+    assert 'wipefs --all --force "$target"' in source
+    assert 'wipefs -a "$target"' not in source
     assert "sgdisk --zap-all" in source
     assert "-c 1:XAAC_EFI" in source
     assert "-c 2:XAAC_ROOT" in source
@@ -258,7 +260,12 @@ def test_installer_step5_completes_uefi_boot_and_postinstall() -> None:
     assert 'vmlinuz-$kernel_version' in source
     assert 'initrd.img-$kernel_version' in source
     assert "UUID=$root_uuid / ext4 defaults,noatime 0 1" in source
-    assert "trap cleanup_install EXIT HUP INT TERM" in source
+    assert "cleanup_install()" in source
+    assert 'umount -R "$mounted"' in source
+    assert "trap cleanup_install EXIT HUP INT TERM" not in source
+    assert "trap 'xaac_installer_exit' EXIT" in source
+    assert "cleanup_install\n" in source
+    assert "PrivateMounts=yes" in source
     assert "grub-install --target=x86_64-efi" in source
     assert "--removable --no-nvram --recheck" in source
     assert "shimx64.efi.signed" in source
@@ -1042,12 +1049,63 @@ def test_phase_10_7_installer_has_three_complete_ui_languages() -> None:
 
 
 
-def test_phase_10_7_live_installer_matches_user_validated_175805_snapshot() -> None:
+def test_phase_10_7_locale_persistence_handles_default_locale_alias(tmp_path: Path) -> None:
+    script = _render_production_installer()
+    locale_writes = [
+        line for line in script.splitlines()
+        if line.startswith("printf 'LANG=%s\\nLANGUAGE=%s\\n'")
+    ]
+    assert len(locale_writes) == 2
+    assert 'cp "$mount_root/etc/locale.conf" "$mount_root/etc/default/locale"' not in script
+
+    root = tmp_path / "target"
+    (root / "etc/default").mkdir(parents=True)
+    locale_conf = root / "etc/locale.conf"
+    locale_conf.write_text("LANG=ca_ES.UTF-8\n", encoding="utf-8")
+    (root / "etc/default/locale").symlink_to("../locale.conf")
+
+    snippet = (
+        "set -eu\n"
+        f"mount_root={root}\n"
+        "install_locale=es_ES.UTF-8\n"
+        "install_language_env=es_ES:es\n"
+        + "\n".join(locale_writes)
+        + "\n"
+    )
+    result = subprocess.run(["sh"], input=snippet, text=True, capture_output=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert locale_conf.read_text(encoding="utf-8") == "LANG=es_ES.UTF-8\nLANGUAGE=es_ES:es\n"
+
+
+def test_phase_10_7_installer_mounts_are_private_and_cleanup_is_recursive() -> None:
+    import inspect
+
+    source = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    script = _render_production_installer()
+    assert "PrivateMounts=yes" in source
+    assert 'mount --rbind /dev "$mount_root/dev"' in script
+    assert 'mount --make-rslave "$mount_root/dev"' in script
+    assert 'mount --make-rslave "$mount_root/sys"' in script
+    assert 'mount --make-rslave "$mount_root/run"' in script
+    assert 'umount -R "$mounted"' in script
+    assert 'umount -l "$mounted"' in script
+    assert "trap cleanup_install EXIT HUP INT TERM" not in script
+    exit_handler = script[script.index("xaac_installer_exit() {"):script.index("xaac_request_reboot() {")]
+    assert "cleanup_install" in exit_handler
+
+
+def test_phase_10_7_reinstall_forces_wipe_of_existing_partition_table() -> None:
+    script = _render_production_installer()
+    assert 'wipefs --all --force "$target"' in script
+    assert 'wipefs -a "$target"' not in script
+
+
+def test_phase_10_7_live_installer_matches_audited_post_diagnostics_snapshot() -> None:
     import hashlib
 
     script = _render_production_installer()
     assert hashlib.sha256(script.encode("utf-8")).hexdigest() == (
-        "2692fad417fea4941e7ae4f71f8d511ee158e31f30792972029cab087b2d7649"
+        "97a939b5573e61589cf7fe3852006660c537ea71cc9596db643752890ad2298e"
     )
 
 def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
