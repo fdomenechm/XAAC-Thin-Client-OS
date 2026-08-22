@@ -23,7 +23,7 @@ Firmware UEFI
 - **Configuració declarativa**: YAML sota `config/` i perfils sota `profiles/`.
 - **Sessió de quiosc**: compte dedicat, compositor i supervisor amb restriccions.
 - **Agent**: identitat, inventari, enrolament, polítiques, estat i diagnòstic.
-- **Administració remota**: OpenSSH restringit, desactivat per defecte i activable temporalment.
+- **Administració remota**: OpenSSH restringit i actiu per defecte com a canal de gestió remota; abans del provisionament admet contrasenya o clau per a `xaac-admin`, i el Management Server/Agent el redueix posteriorment a només clau pública.
 - **Actualització i recuperació**: verificació criptogràfica, staging, rollback i diversos nivells de recuperació.
 
 ## Decisions de disseny

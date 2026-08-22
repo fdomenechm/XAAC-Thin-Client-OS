@@ -2,9 +2,9 @@ schema_version: 1
 package:
   name: xaac-thin-client-vpn
   architecture: all
-  version: "0.5.2~dev1-1"
-  artifact: packages/xaac-thin-client-vpn_0.5.2~dev1-1_all.deb
-  sha256: "4392a043d73c2cff6b1c14e1c4576d1afdf07799a2d91b426b044c12a623c876"
+  version: "1.0.0"
+  artifact: packages/xaac-thin-client-vpn_1.0.0_all.deb
+  sha256: "d896b13b0a3c01c3cca07aeaf92e3ebe67a946903d0121d18147d3e762963908"
   dependencies:
     - python3
     - python3-gi

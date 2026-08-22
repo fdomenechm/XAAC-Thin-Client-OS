@@ -16,6 +16,15 @@ administració remota restringida mitjançant OpenSSH, hardening, actualització
 - validació automatitzada i proves finals de maquinari.
 - experiència d'appliance XAAC validada en maquinari real, amb arrencada/transicions pròpies, canvas granit i feedback visual d'activitat;
 
+## Correccions validades en maquinari real
+
+- SSH actiu per defecte; durant el desplegament inicial `xaac-admin` admet contrasenya o clau pública i queda preparat perquè XAAC Management Server/Agent aplique després el mode només-clau.
+- sincronització NTP automàtica amb `systemd-timesyncd`;
+- gestió robusta d'eMMC i perfils OpenVPN 3;
+- distribució de teclat de la instal·lació propagada a Wayland/labwc i menú contextual del quiosc bloquejat;
+- scripts administratius `xaac-admin-change-language` i `xaac-admin-change-keyboard`;
+- XAAC Thin Client VPN i XAAC Thin Client 1.0.0 incorporen cursor d'espera i bloqueig temporal dels controls durant les operacions de connexió.
+
 ## Consideracions
 
 La release final només es considera publicada després de construir i verificar els

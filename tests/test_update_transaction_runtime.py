@@ -132,7 +132,7 @@ def configure_simulated_transaction(
     recovery.mkdir(parents=True)
     previous = {
         "xaac-thinclient": "1.0.0",
-        "xaac-thin-client-vpn": "0.5.2~dev1-1",
+        "xaac-thin-client-vpn": "1.0.0",
         "xaac-agent": "1.0.0-8",
     }
     current = dict(previous)

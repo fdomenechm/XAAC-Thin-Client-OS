@@ -15,7 +15,7 @@ allow_users: [xaac-admin]
 allowed_sources: [10.0.0.0/8, 192.168.0.0/16]
 authentication:
   public_key: true
-  password: false
+  password: true
   keyboard_interactive: false
   authorized_keys_directory: /etc/xaac/ssh/authorized_keys
   allowed_key_types: [ssh-ed25519, sk-ssh-ed25519@openssh.com]
@@ -54,10 +54,10 @@ def _requirements(plan) -> None:
         path.touch()
 
 
-def test_plan_renders_key_only_hardening(tmp_path: Path) -> None:
+def test_plan_renders_bootstrap_password_and_key_policy(tmp_path: Path) -> None:
     text = _plan(tmp_path).sshd_text()
-    assert "AuthenticationMethods publickey" in text
-    assert "PasswordAuthentication no" in text
+    assert "AuthenticationMethods any" in text
+    assert "PasswordAuthentication yes" in text
     assert "PermitRootLogin no" in text
     assert "AuthorizedKeysFile /etc/xaac/ssh/authorized_keys/%u" in text
 
@@ -71,10 +71,10 @@ def test_rejects_unsafe_rootfs(tmp_path: Path) -> None:
         create_ssh_configuration_plan(Path("/rootfs"), _config(tmp_path / "ssh.yaml"))
 
 
-def test_rejects_password_authentication(tmp_path: Path) -> None:
+def test_rejects_disabling_bootstrap_password_authentication(tmp_path: Path) -> None:
     config = _config(tmp_path / "ssh.yaml")
-    config.write_text(config.read_text().replace("password: false", "password: true"))
-    with pytest.raises(SshConfigurationError, match="clau pública"):
+    config.write_text(config.read_text().replace("password: true", "password: false"))
+    with pytest.raises(SshConfigurationError, match="contrasenya"):
         create_ssh_configuration_plan(tmp_path / "runs/build/rootfs", config)
 
 

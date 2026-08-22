@@ -41,7 +41,7 @@ def test_block94_release_gate_validates_only_effective_production_debs() -> None
 
     for artifact in (
         "packages/xaac-agent_1.0.0-8_amd64.deb",
-        "packages/xaac-thin-client-vpn_0.5.2~dev1-1_all.deb",
+        "packages/xaac-thin-client-vpn_1.0.0_all.deb",
         "packages/xaac-thinclient_1.0.0_all.deb",
     ):
         assert artifact in gate
@@ -63,7 +63,7 @@ def test_block94_target_validator_is_read_only_and_checks_effective_hardening() 
         "swappiness=100",
         "journald volatile",
         "fstrim enabled",
-        "SSH disabled at boot",
+        "SSH enabled at boot",
         "nftables active",
         "greetd active",
         "xaac-vpn-manager.service",

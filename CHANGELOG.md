@@ -1,3 +1,10 @@
+## 2026-08-22 — Iteració final de validació en maquinari real
+
+- SSH conserva `ssh.service` actiu per defecte i ara permet a `xaac-admin` autenticar-se amb contrasenya o clau pública abans del provisionament; `AuthenticationMethods any`, `PermitRootLogin no` i la resta del hardening continuen actius. El mode només-clau queda reservat a la política posterior aplicada per XAAC Management Server mitjançant XAAC Thin Client Agent.
+- Afegits `xaac-admin-change-language` i `xaac-admin-change-keyboard`, compatibles amb `/bin/sh`, no interactius i amb `get`, `list`, `set <valor>` i `--help`; queden integrats a `/usr/local/sbin` i documentats per a ús local, SSH i futura orquestració.
+- Actualitzat el paquet integrat `xaac-thin-client-vpn` a 1.0.0 i verificat que tant VPN com XAAC Thin Client 1.0.0 contenen el feedback d'operació: cursor `wait` i bloqueig temporal dels controls per evitar dobles clics.
+- Mantingudes les correccions ja validades al Dell Wyse 3040: NTP, eMMC no UTF-8, labwc/quiosc, XKB Wayland, OpenVPN 3 i `xaac-vpn-admin`. Intel SST queda documentat com a warning mentre ALSA detecte correctament les targetes i no hi haja fallada funcional d'àudio.
+
 ## 2026-08-22 — Paquet de correccions després de validació en Dell Wyse 3040
 
 - SSH queda activat per defecte com a únic canal de gestió remota; `authorized_keys` usa permisos compatibles amb `StrictModes` i continua sent modificable només per root.

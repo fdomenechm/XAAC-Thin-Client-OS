@@ -21,7 +21,7 @@ de la ISO queda concentrada en la fase 9.4, quan el bloc estiga consolidat.
 ## Fase 9.1 — Línia base efectiva de xarxa
 
 La revisió inicial ha detectat una diferència entre configuració declarativa i
-constructor de producció: `config/ssh.yaml` estableix SSH deshabilitat per defecte,
+constructor de producció: `config/ssh.yaml` estableix SSH habilitat per defecte per a `xaac-admin`,
 però el constructor habilitava `ssh.service` incondicionalment. Igualment,
 `config/firewall.yaml` existia però la fase de producció només habilitava el servei
 nftables sense garantir que el ruleset XAAC haguera sigut instal·lat.

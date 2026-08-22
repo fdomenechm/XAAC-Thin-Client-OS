@@ -37,7 +37,7 @@ command -v dpkg-deb >/dev/null 2>&1 || {
 
 for artifact in \
     packages/xaac-agent_1.0.0-8_amd64.deb \
-    packages/xaac-thin-client-vpn_0.5.2~dev1-1_all.deb \
+    packages/xaac-thin-client-vpn_1.0.0_all.deb \
     packages/xaac-thinclient_1.0.0_all.deb
 do
     if [ ! -f "$artifact" ] || ! dpkg-deb --info "$artifact" >/dev/null 2>&1; then

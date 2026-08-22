@@ -4,6 +4,7 @@
 
 - [Administració i enrolament de XAAC Agent](../architecture/agent-enrollment.md)
 - [Administració de XAAC Thin Client VPN](../architecture/vpn-administration.md)
+- [Idioma i teclat](localization.md)
 
 - [Administració](../manual/administration.md)
 - [Xarxa](../manual/network.md)

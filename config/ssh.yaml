@@ -9,7 +9,7 @@ allowed_sources:
   - 192.168.0.0/16
 authentication:
   public_key: true
-  password: false
+  password: true
   keyboard_interactive: false
   authorized_keys_directory: /etc/xaac/ssh/authorized_keys
   allowed_key_types:

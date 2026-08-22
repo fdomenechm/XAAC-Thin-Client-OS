@@ -68,8 +68,8 @@ check 'ptrace_scope=2' "test \"$(sysctl -n kernel.yama.ptrace_scope)\" = 2"
 check 'SysRq disabled' "test \"$(sysctl -n kernel.sysrq)\" = 0"
 check 'sctp blocked' "modprobe -n sctp 2>/dev/null | grep -F /bin/false"
 check 'squashfs not blocked' "! modprobe -n squashfs 2>/dev/null | grep -F /bin/false"
-check 'SSH disabled at boot' "! systemctl is-enabled --quiet ssh.service"
-check 'SSH inactive' "! systemctl is-active --quiet ssh.service"
+check 'SSH enabled at boot' "systemctl is-enabled --quiet ssh.service"
+check 'SSH active' "systemctl is-active --quiet ssh.service"
 check 'nftables active' 'systemctl is-active --quiet nftables.service'
 check 'nftables input drop' "nft list ruleset 2>/dev/null | grep -Eq 'hook input .*policy drop'"
 check 'NetworkManager active' 'systemctl is-active --quiet NetworkManager.service'

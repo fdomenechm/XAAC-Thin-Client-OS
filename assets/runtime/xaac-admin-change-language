@@ -1,0 +1,133 @@
+#!/bin/sh
+set -eu
+
+DEFAULT_LOCALE=/etc/default/locale
+SYSTEMD_LOCALE=/etc/locale.conf
+
+usage() {
+    cat <<'EOF'
+Ús: xaac-admin-change-language get
+    xaac-admin-change-language list
+    xaac-admin-change-language set <ca|es|en>
+    xaac-admin-change-language --help
+
+Canvia l'idioma persistent de XAAC Thin Client OS.
+Les ordres get, list i --help no requereixen privilegis.
+L'ordre set s'ha d'executar com a root, normalment amb sudo.
+EOF
+}
+
+code_to_locale() {
+    case "$1" in
+        ca) printf '%s\n' 'ca_ES.UTF-8' ;;
+        es) printf '%s\n' 'es_ES.UTF-8' ;;
+        en) printf '%s\n' 'en_US.UTF-8' ;;
+        *) return 1 ;;
+    esac
+}
+
+locale_to_code() {
+    case "$1" in
+        ca|ca_*|ca.*) printf '%s\n' ca ;;
+        es|es_*|es.*) printf '%s\n' es ;;
+        en|en_*|en.*) printf '%s\n' en ;;
+        *) return 1 ;;
+    esac
+}
+
+read_lang() {
+    file=$1
+    [ -r "$file" ] || return 1
+    sed -n 's/^[[:space:]]*LANG[[:space:]]*=[[:space:]]*//p' "$file" \
+        | head -n 1 | tr -d '"'
+}
+
+safe_locale_target() {
+    file=$1
+    if [ -L "$file" ]; then
+        target=$(readlink -f "$file")
+        case "$target" in
+            /etc/default/locale|/etc/locale.conf) ;;
+            *) echo "ERROR: enllaç de locale no segur: $file -> $target" >&2; exit 1 ;;
+        esac
+        printf '%s\n' "$target"
+    else
+        printf '%s\n' "$file"
+    fi
+}
+
+write_lang() {
+    file=$(safe_locale_target "$1")
+    value=$2
+    dir=$(dirname "$file")
+    base=$(basename "$file")
+    tmp="$dir/.${base}.xaac.$$"
+    umask 022
+    mkdir -p "$dir"
+    if [ -f "$file" ]; then
+        awk -v value="$value" '
+            BEGIN { done=0 }
+            /^[[:space:]]*LANG[[:space:]]*=/ {
+                if (!done) { print "LANG=" value; done=1 }
+                next
+            }
+            { print }
+            END { if (!done) print "LANG=" value }
+        ' "$file" > "$tmp"
+    else
+        printf 'LANG=%s\n' "$value" > "$tmp"
+    fi
+    chown root:root "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$file"
+}
+
+command=${1:-}
+case "$command" in
+    --help|-h|help)
+        usage
+        ;;
+    list)
+        printf '%s\n' ca es en
+        ;;
+    get)
+        current=$(read_lang "$DEFAULT_LOCALE" || true)
+        [ -n "$current" ] || current=$(read_lang "$SYSTEMD_LOCALE" || true)
+        if code=$(locale_to_code "$current"); then
+            printf '%s\n' "$code"
+        elif [ -n "$current" ]; then
+            printf '%s\n' "$current"
+        else
+            echo "ERROR: no s'ha pogut determinar LANG" >&2
+            exit 1
+        fi
+        ;;
+    set)
+        [ "$#" -eq 2 ] || { usage >&2; exit 2; }
+        [ "$(id -u)" -eq 0 ] || { echo 'ERROR: set requereix root; useu sudo.' >&2; exit 1; }
+        code=$2
+        locale=$(code_to_locale "$code") || {
+            echo "ERROR: idioma no admés: $code" >&2
+            echo 'Valors admesos: ca es en' >&2
+            exit 2
+        }
+        if command -v locale >/dev/null 2>&1; then
+            normalized=$(printf '%s' "$locale" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/\.utf-8$/.utf8/')
+            if ! locale -a 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr '-' '_' | grep -Fx "$normalized" >/dev/null; then
+                echo "ERROR: el locale $locale no està generat en el sistema." >&2
+                exit 1
+            fi
+        fi
+        write_lang "$DEFAULT_LOCALE" "$locale"
+        write_lang "$SYSTEMD_LOCALE" "$locale"
+        if [ -x /usr/local/sbin/xaac-sync-thinclient-language ]; then
+            /usr/local/sbin/xaac-sync-thinclient-language
+        fi
+        printf 'Idioma configurat: %s (%s)\n' "$code" "$locale"
+        printf '%s\n' "El canvi complet s'aplica en iniciar una nova sessió; es recomana reiniciar el sistema."
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

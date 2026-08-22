@@ -1,0 +1,105 @@
+#!/bin/sh
+set -eu
+
+KEYBOARD_FILE=/etc/default/keyboard
+
+usage() {
+    cat <<'EOF'
+Ús: xaac-admin-change-keyboard get
+    xaac-admin-change-keyboard list
+    xaac-admin-change-keyboard set <layout>
+    xaac-admin-change-keyboard --help
+
+Canvia la distribució de teclat persistent de XAAC Thin Client OS.
+Les ordres get, list i --help no requereixen privilegis.
+L'ordre set s'ha d'executar com a root, normalment amb sudo.
+EOF
+}
+
+supported_layout() {
+    case "$1" in
+        es|us|gb|fr|de|it|pt) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+read_key() {
+    key=$1
+    [ -r "$KEYBOARD_FILE" ] || return 1
+    sed -n "s/^[[:space:]]*$key[[:space:]]*=[[:space:]]*//p" "$KEYBOARD_FILE" \
+        | head -n 1 | tr -d '"'
+}
+
+write_keyboard() {
+    layout=$1
+    model=$(read_key XKBMODEL || true)
+    options=$(read_key XKBOPTIONS || true)
+    backspace=$(read_key BACKSPACE || true)
+    [ -n "$model" ] || model=pc105
+    [ -n "$backspace" ] || backspace=guess
+
+    if [ -L "$KEYBOARD_FILE" ]; then
+        target=$(readlink -f "$KEYBOARD_FILE")
+        case "$target" in
+            /etc/default/keyboard) ;;
+            *) echo "ERROR: enllaç de teclat no segur: $KEYBOARD_FILE -> $target" >&2; exit 1 ;;
+        esac
+    else
+        target=$KEYBOARD_FILE
+    fi
+
+    dir=$(dirname "$target")
+    base=$(basename "$target")
+    tmp="$dir/.${base}.xaac.$$"
+    umask 022
+    mkdir -p "$dir"
+    {
+        printf 'XKBMODEL="%s"\n' "$model"
+        printf 'XKBLAYOUT="%s"\n' "$layout"
+        printf 'XKBVARIANT=""\n'
+        printf 'XKBOPTIONS="%s"\n' "$options"
+        printf 'BACKSPACE="%s"\n' "$backspace"
+    } > "$tmp"
+    chown root:root "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$target"
+}
+
+command=${1:-}
+case "$command" in
+    --help|-h|help)
+        usage
+        ;;
+    list)
+        printf '%s\n' es us gb fr de it pt
+        ;;
+    get)
+        current=$(read_key XKBLAYOUT || true)
+        [ -n "$current" ] || { echo "ERROR: no s'ha pogut determinar XKBLAYOUT" >&2; exit 1; }
+        printf '%s\n' "$current"
+        ;;
+    set)
+        [ "$#" -eq 2 ] || { usage >&2; exit 2; }
+        [ "$(id -u)" -eq 0 ] || { echo 'ERROR: set requereix root; useu sudo.' >&2; exit 1; }
+        layout=$2
+        supported_layout "$layout" || {
+            echo "ERROR: distribució de teclat no admesa: $layout" >&2
+            echo 'Valors admesos: es us gb fr de it pt' >&2
+            exit 2
+        }
+        if [ -d /usr/share/X11/xkb/symbols ] && [ ! -f "/usr/share/X11/xkb/symbols/$layout" ]; then
+            echo "ERROR: la distribució XKB $layout no està instal·lada." >&2
+            exit 1
+        fi
+        write_keyboard "$layout"
+        if command -v setupcon >/dev/null 2>&1; then
+            setupcon --keyboard-only --force >/dev/null 2>&1 || true
+        fi
+        printf 'Teclat configurat: %s\n' "$layout"
+        printf '%s\n' "La consola s'actualitza quan és possible; Wayland/labwc aplica el canvi en una nova sessió. Es recomana reiniciar el sistema."
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

@@ -36,7 +36,7 @@ def test_production_policy_keeps_ssh_on_and_nftables_default_deny() -> None:
     assert ssh["enabled"] is True
     assert ssh["authentication"] == {
         "public_key": True,
-        "password": False,
+        "password": True,
         "keyboard_interactive": False,
         "authorized_keys_directory": "/etc/xaac/ssh/authorized_keys",
         "allowed_key_types": ["ssh-ed25519", "sk-ssh-ed25519@openssh.com"],

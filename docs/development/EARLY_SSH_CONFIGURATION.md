@@ -15,7 +15,7 @@ Configurar OpenSSH dins del rootfs Debian 13 amb una política segura per defect
 - mètodes d'autenticació;
 - límits i opcions d'enduriment.
 
-La configuració inicial només permet `xaac-admin`, exclusivament mitjançant clau pública. L'accés de `root`, les contrasenyes, l'autenticació interactiva, X11, els túnels i els reenviaments queden desactivats.
+La configuració inicial només permet `xaac-admin` i admet tant contrasenya com clau pública durant la instal·lació, proves i provisionament inicial. L'accés de `root`, l'autenticació interactiva, X11, els túnels i els reenviaments queden desactivats. Després del provisionament, XAAC Management Server, mitjançant XAAC Thin Client Agent, desactiva l'autenticació per contrasenya i deixa únicament la clau pública.
 
 ## Fitxers generats
 
@@ -46,7 +46,7 @@ Cal executar-la després de la configuració de xarxa.
 - validació estricta de l'esquema YAML;
 - validació de ports, usuaris i xarxes CIDR;
 - prohibició explícita de `root`;
-- autenticació exclusiva per clau pública;
+- autenticació inicial per contrasenya o clau pública, amb transició posterior a només clau pública;
 - escriptura atòmica i permisos controlats;
 - comprovació de privilegis i dels binaris/unitats d'OpenSSH;
 - log en `logs/ssh-configuration.log`;

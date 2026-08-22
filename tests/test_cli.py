@@ -217,7 +217,7 @@ def test_configure_ssh_dry_run_updates_current_manifest(
     manifest = project_root / ".build" / "runs" / payload["build_id"] / "manifest.json"
     data = json.loads(manifest.read_text(encoding="utf-8"))
     assert data["status"] == "ssh-configuration-planned"
-    assert data["ssh_configuration"]["authentication"]["password"] is False
+    assert data["ssh_configuration"]["authentication"]["password"] is True
 
 
 def test_configure_firewall_dry_run_updates_current_manifest(

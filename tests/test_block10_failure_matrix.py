@@ -49,7 +49,7 @@ def _candidate(namespace: dict, tmp_path: Path, *, schema: str = "xaac-update-ma
     components = []
     definitions = (
         ("xaac-thin-client", "xaac-thinclient", "1.0.1", "all"),
-        ("xaac-thin-client-vpn", "xaac-thin-client-vpn", "0.5.3-1", "all"),
+        ("xaac-thin-client-vpn", "xaac-thin-client-vpn", "1.0.1", "all"),
         ("xaac-agent", "xaac-agent", "1.0.1-1", "amd64"),
     )
     for component_id, package, version, architecture in definitions:
@@ -100,14 +100,14 @@ def _prepare_admin(namespace: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPa
     monkeypatch.setitem(globals_, "_compare_versions", lambda *_: True)
     monkeypatch.setitem(globals_, "_installed_version", lambda package: {
         "xaac-thinclient": "1.0.0",
-        "xaac-thin-client-vpn": "0.5.2~dev1-1",
+        "xaac-thin-client-vpn": "1.0.0",
         "xaac-agent": "1.0.0-8",
     }[package])
     monkeypatch.setitem(globals_, "_deb_metadata", lambda path: next(
         (item[1], item[2], item[3])
         for item in (
             ("xaac-thin-client", "xaac-thinclient", "1.0.1", "all"),
-            ("xaac-thin-client-vpn", "xaac-thin-client-vpn", "0.5.3-1", "all"),
+            ("xaac-thin-client-vpn", "xaac-thin-client-vpn", "1.0.1", "all"),
             ("xaac-agent", "xaac-agent", "1.0.1-1", "amd64"),
         )
         if path.name.startswith(item[1] + "_")

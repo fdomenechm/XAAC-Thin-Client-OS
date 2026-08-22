@@ -14,3 +14,6 @@ No inclogueu claus privades, tokens, credencials ni certificats particulars en e
 
 ## Integritat
 Verifiqueu manifests, hashes i signatures abans d’instal·lar paquets, actualitzacions, recuperacions o imatges. Investigueu qualsevol divergència abans de reparar-la.
+
+## Cicle de vida de l'autenticació SSH
+En un terminal acabat d'instal·lar, `xaac-admin` pot usar contrasenya o clau pública. Aquesta flexibilitat existeix per permetre proves, desplegament i enrolament quan encara no hi ha una clau gestionada. Una vegada provisionat pel XAAC Management Server, XAAC Thin Client Agent ha d'instal·lar les claus autoritzades i desactivar `PasswordAuthentication`, mantenint `PermitRootLogin no`.

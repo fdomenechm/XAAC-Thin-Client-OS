@@ -1,6 +1,6 @@
 # Fase 7.7 — OpenSSH
 
-La fase instal·la una política OpenSSH d'administració restringida. El servei queda desactivat per defecte i només pot habilitar-se temporalment mitjançant `xaac-ssh-access`, amb una duració entre 60 i 3.600 segons.
+La fase instal·la una política OpenSSH d'administració restringida. En la política efectiva actual el servei queda actiu per defecte, perquè és l’únic canal de gestió remota. Durant desplegament i proves `xaac-admin` admet contrasenya o clau pública; després del provisionament, XAAC Management Server/Agent desactiva la contrasenya. `xaac-ssh-access` es conserva com a helper administratiu de control explícit del servei.
 
 ## Controls
 

@@ -82,7 +82,7 @@ class SshConfigurationPlan:
             f"KbdInteractiveAuthentication {yesno(self.keyboard_interactive)}",
             f"AuthorizedKeysFile {key_file}",
             f"PubkeyAcceptedAlgorithms {','.join(self.allowed_key_types)}",
-            "AuthenticationMethods publickey", "UsePAM yes",
+            "AuthenticationMethods any", "UsePAM yes",
             f"AllowUsers {' '.join(self.allow_users)}",
             f"X11Forwarding {yesno(self.x11_forwarding)}",
             f"AllowTcpForwarding {yesno(self.tcp_forwarding)}",
@@ -194,8 +194,11 @@ def create_ssh_configuration_plan(rootfs: Path, config_path: Path) -> SshConfigu
     public_key = _boolean(auth["public_key"], "authentication.public_key")
     password = _boolean(auth["password"], "authentication.password")
     keyboard = _boolean(auth["keyboard_interactive"], "authentication.keyboard_interactive")
-    if not public_key or password or keyboard:
-        raise SshConfigurationError("SSH ha d'usar només autenticació per clau pública")
+    if not public_key or not password or keyboard:
+        raise SshConfigurationError(
+            "SSH inicial ha de permetre clau pública i contrasenya; "
+            "l'Agent desactiva la contrasenya després del provisionament"
+        )
     key_types = auth["allowed_key_types"]
     supported = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "rsa-sha2-512", "rsa-sha2-256"}
     if not isinstance(key_types, list) or not key_types or any(item not in supported for item in key_types):

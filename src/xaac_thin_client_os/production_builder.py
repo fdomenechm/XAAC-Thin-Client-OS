@@ -1029,8 +1029,8 @@ class ProductionIsoBuilder:
             [
                 "/bin/sh", "-ec",
                 "test -f /etc/ssh/sshd_config.d/20-xaac-hardening.conf; "
-                "grep -Fx 'PasswordAuthentication no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
-                "grep -Fx 'PermitRootLogin no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'PasswordAuthentication yes' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
+                "grep -Fx 'AuthenticationMethods any' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; grep -Fx 'PermitRootLogin no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
                 "test -x /usr/local/sbin/xaac-ssh-access; "
                 "systemctl is-enabled --quiet ssh.service; "
                 "test \"$(stat -c '%a' /etc/xaac/ssh/authorized_keys)\" = '755'; "
@@ -2909,6 +2909,19 @@ exit 0
             "WantedBy=graphical.target\n",
         )
 
+        # Administrative locale/keyboard helpers are deliberately non-interactive
+        # so they work equally from the local recovery console, SSH and future
+        # XAAC Management Server / Agent orchestration.
+        for helper_name in ("xaac-admin-change-language", "xaac-admin-change-keyboard"):
+            helper_source = self.paths.project_root / "assets/runtime" / helper_name
+            if not helper_source.is_file():
+                raise ProductionBuildError(f"Falta assets/runtime/{helper_name}")
+            helper_target = self._inside(f"/usr/local/sbin/{helper_name}")
+            helper_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(helper_source, helper_target)
+            helper_target.chmod(0o755)
+
+
         agent_debian_version = self._validate_xaac_agent_artifact()
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
@@ -2919,6 +2932,18 @@ exit 0
             self._apply_kiosk_stack()
             self._configure_boot_splash()
             self._chroot(["locale-gen"], phase="configure-locales")
+            self._chroot(
+                [
+                    "/bin/sh", "-ec",
+                    "test -x /usr/local/sbin/xaac-admin-change-language; "
+                    "test -x /usr/local/sbin/xaac-admin-change-keyboard; "
+                    "/bin/sh -n /usr/local/sbin/xaac-admin-change-language; "
+                    "/bin/sh -n /usr/local/sbin/xaac-admin-change-keyboard; "
+                    "/usr/local/sbin/xaac-admin-change-language --help >/dev/null; "
+                    "/usr/local/sbin/xaac-admin-change-keyboard --help >/dev/null",
+                ],
+                phase="configure-localization-admin-tools",
+            )
             self._chroot(["update-locale", f"LANG={self.settings.locale}"], phase="configure-update-locale")
             self._chroot(
                 ["/bin/sh", "-c", "DEBIAN_FRONTEND=noninteractive dpkg-reconfigure keyboard-configuration"],
