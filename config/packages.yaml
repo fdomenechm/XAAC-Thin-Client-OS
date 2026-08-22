@@ -1,5 +1,6 @@
 base:
 - systemd
+- systemd-timesyncd
 - linux-image-amd64
 - initramfs-tools
 - plymouth

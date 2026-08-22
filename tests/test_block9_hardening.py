@@ -29,11 +29,11 @@ def test_production_rootfs_is_accepted_by_network_hardening_plans(tmp_path: Path
     assert firewall.rootfs == rootfs.resolve()
 
 
-def test_production_policy_keeps_ssh_off_and_nftables_default_deny() -> None:
+def test_production_policy_keeps_ssh_on_and_nftables_default_deny() -> None:
     ssh = yaml.safe_load((ROOT / "config/ssh.yaml").read_text(encoding="utf-8"))
     firewall = yaml.safe_load((ROOT / "config/firewall.yaml").read_text(encoding="utf-8"))
 
-    assert ssh["enabled"] is False
+    assert ssh["enabled"] is True
     assert ssh["authentication"] == {
         "public_key": True,
         "password": False,
@@ -52,13 +52,14 @@ def test_production_builder_applies_and_verifies_network_hardening() -> None:
     installer = render_production_installer(ROOT)
 
     assert "self._configure_production_network_hardening()" in configure
-    assert 'chroot "$mount_root" systemctl enable ssh.service' not in installer
-    assert 'chroot "$mount_root" systemctl disable ssh.service' in installer
+    assert 'chroot "$mount_root" systemctl enable ssh.service' in installer
+    assert 'chroot "$mount_root" systemctl disable ssh.service' not in installer
     assert "create_ssh_configuration_plan" in helper
     assert "create_firewall_configuration_plan" in helper
     assert '["sshd", "-t"]' in helper
     assert '["nft", "-c", "-f", "/etc/nftables.conf"]' in helper
-    assert "! systemctl is-enabled --quiet ssh.service" in helper
+    assert "systemctl is-enabled --quiet ssh.service" in helper
+    assert "stat -c '%a' /etc/xaac/ssh/authorized_keys" in helper
     assert "systemctl is-enabled --quiet nftables.service" in helper
     assert "grep -F 'policy drop' /etc/nftables.conf" in helper
 

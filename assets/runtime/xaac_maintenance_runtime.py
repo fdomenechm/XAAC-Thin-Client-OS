@@ -444,7 +444,10 @@ def network_report(policy: dict[str, Any]) -> str:
 
 def _read_optional(path: Path) -> str | None:
     try:
-        return path.read_text(encoding="utf-8").strip()
+        # Some eMMC sysfs attributes contain vendor bytes which are not valid
+        # UTF-8.  Maintenance output is diagnostic text, so preserve readable
+        # data and replace only undecodable byte sequences instead of aborting.
+        return path.read_bytes().decode("utf-8", errors="replace").strip()
     except OSError:
         return None
 

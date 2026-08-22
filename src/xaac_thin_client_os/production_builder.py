@@ -991,8 +991,8 @@ class ProductionIsoBuilder:
 
         The production ISO builder is intentionally independent from the legacy
         image pipeline, so these policies must be applied explicitly here.  SSH
-        stays disabled at boot when config/ssh.yaml says so; the temporary access
-        helper can still start it on demand.  nftables is enabled with the
+        follows config/ssh.yaml and is enabled by default because it is the only
+        supported remote-administration channel.  nftables is enabled with the
         default-deny input/forward policy from config/firewall.yaml.
         """
         try:
@@ -1032,7 +1032,9 @@ class ProductionIsoBuilder:
                 "grep -Fx 'PasswordAuthentication no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
                 "grep -Fx 'PermitRootLogin no' /etc/ssh/sshd_config.d/20-xaac-hardening.conf >/dev/null; "
                 "test -x /usr/local/sbin/xaac-ssh-access; "
-                "! systemctl is-enabled --quiet ssh.service; "
+                "systemctl is-enabled --quiet ssh.service; "
+                "test \"$(stat -c '%a' /etc/xaac/ssh/authorized_keys)\" = '755'; "
+                "test \"$(stat -c '%a' /etc/xaac/ssh/authorized_keys/xaac-admin)\" = '644'; "
                 "systemctl is-enabled --quiet nftables.service; "
                 "grep -F 'policy drop' /etc/nftables.conf >/dev/null",
             ],
@@ -1558,6 +1560,43 @@ class ProductionIsoBuilder:
             phase="configure-recovery-environment-10-4",
         )
 
+    def _configure_time_synchronization(self) -> None:
+        """Enable systemd-timesyncd with deterministic network ordering.
+
+        Debian 13 ships systemd-timesyncd as a separate package.  The service
+        remains resident and reacts to network changes; the drop-in ensures its
+        boot start is ordered after NetworkManager/network-online.
+        """
+        raw = yaml.safe_load((self.paths.project_root / "config/network-services.yaml").read_text(encoding="utf-8"))
+        try:
+            fallback = raw["defaults"]["fallback_ntp"]
+        except (TypeError, KeyError) as exc:
+            raise ProductionBuildError("config/network-services.yaml no conté fallback_ntp") from exc
+        if not isinstance(fallback, list) or not fallback or not all(isinstance(item, str) and item.strip() for item in fallback):
+            raise ProductionBuildError("fallback_ntp invàlid a config/network-services.yaml")
+        self._atomic_write(
+            self._inside("/etc/systemd/timesyncd.conf.d/20-xaac.conf"),
+            "# Managed by XAAC Thin Client OS\n[Time]\nFallbackNTP=" + " ".join(fallback) + "\n",
+            0o644,
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf"),
+            "[Unit]\nWants=network-online.target\nAfter=NetworkManager.service network-online.target\n",
+            0o644,
+        )
+        self._chroot(["systemctl", "enable", "systemd-timesyncd.service"], phase="configure-enable-timesyncd")
+        self._chroot(
+            [
+                "/bin/sh", "-ec",
+                "systemctl is-enabled --quiet systemd-timesyncd.service; "
+                "test -s /etc/systemd/timesyncd.conf.d/20-xaac.conf; "
+                "grep -F 'FallbackNTP=' /etc/systemd/timesyncd.conf.d/20-xaac.conf >/dev/null; "
+                "grep -F 'After=NetworkManager.service network-online.target' "
+                "/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf >/dev/null",
+            ],
+            phase="configure-verify-timesyncd",
+        )
+
     def _configure_openvpn3_network(self) -> None:
         """Persist the OpenVPN 3 DNS backend used by the minimal XAAC OS.
 
@@ -1569,6 +1608,12 @@ class ProductionIsoBuilder:
         self._chroot(
             [
                 "/bin/sh", "-ec",
+                # XAAC owns VPN profile lifecycle through xaac-vpn-manager and
+                # xaac-vpn-admin.  The package autoloader is intentionally not
+                # used and must never appear as a failed boot unit.
+                "systemctl disable openvpn3-autoload.service >/dev/null 2>&1 || true; "
+                "systemctl mask openvpn3-autoload.service >/dev/null; "
+                "test \"$(readlink /etc/systemd/system/openvpn3-autoload.service)\" = '/dev/null'; "
                 # init-config works offline in the build chroot and writes the
                 # netcfg configuration directly.  Do not call
                 # `openvpn3-admin netcfg-service` here: that management
@@ -2748,7 +2793,9 @@ exit 0
                 "test -s \"$mount_root/etc/ssh/ssh_host_ed25519_key\" || { xaac_say ssh_key_fail; exit 1; }\n"
                 "test -s \"$mount_root/etc/ssh/ssh_host_ed25519_key.pub\" || { xaac_say ssh_pub_fail; exit 1; }\n"
                 "chroot \"$mount_root\" /usr/sbin/sshd -t || { xaac_say ssh_config_fail; exit 1; }\n"
-                "chroot \"$mount_root\" systemctl disable ssh.service >/dev/null 2>&1 || true\n"
+                "chroot \"$mount_root\" systemctl enable ssh.service >/dev/null || { xaac_say ssh_config_fail; exit 1; }\n"
+                "test \"$(stat -c '%a' \"$mount_root/etc/xaac/ssh/authorized_keys\")\" = 755 || { xaac_say ssh_config_fail; exit 1; }\n"
+                "test \"$(stat -c '%a' \"$mount_root/etc/xaac/ssh/authorized_keys/xaac-admin\")\" = 644 || { xaac_say ssh_config_fail; exit 1; }\n"
                 "touch \"$mount_root/var/lib/xaac/first-boot.pending\" \"$mount_root/etc/xaac-first-boot.pending\"\n"
                 "xaac_say s10\n"
                 "test -x \"$mount_root/usr/bin/systemctl\"\n"
@@ -3024,6 +3071,7 @@ exit 0
             self._configure_maintenance_diagnostics()
             self._configure_recovery_environment()
             self._install_block10_target_validation()
+            self._configure_time_synchronization()
             self._configure_openvpn3_network()
             self._install_zorin_icon_theme()
             self._install_zorin_gtk_theme()

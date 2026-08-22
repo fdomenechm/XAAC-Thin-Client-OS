@@ -27,10 +27,12 @@ _ALLOWED_COMMANDS = (
 )
 _ACTIVE_REQUIRED_SERVICES = {
     "NetworkManager.service",
+    "systemd-timesyncd.service",
+    "ssh.service",
     "nftables.service",
     "apparmor.service",
 }
-_INSTALLED_REQUIRED_SERVICES = {"ssh.service"}
+_INSTALLED_REQUIRED_SERVICES: set[str] = set()
 _OPTIONAL_SERVICES = {
     "xaac-agent.service",
     "xaac-vpn-manager.service",

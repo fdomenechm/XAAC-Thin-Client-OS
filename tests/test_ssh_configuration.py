@@ -130,9 +130,11 @@ def test_writes_restricted_policy_and_keeps_service_disabled(tmp_path: Path) -> 
     result = SshConfigurator(geteuid=lambda: 0).execute(plan, tmp_path / "ssh.log")
     assert result.executed
     assert not (plan.rootfs / "etc/systemd/system/multi-user.target.wants/ssh.service").exists()
-    key_file = plan.rootfs / "etc/xaac/ssh/authorized_keys/xaac-admin"
+    keys_dir = plan.rootfs / "etc/xaac/ssh/authorized_keys"
+    key_file = keys_dir / "xaac-admin"
     helper = plan.rootfs / "usr/local/sbin/xaac-ssh-access"
-    assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
+    assert stat.S_IMODE(keys_dir.stat().st_mode) == 0o755
+    assert stat.S_IMODE(key_file.stat().st_mode) == 0o644
     assert stat.S_IMODE(helper.stat().st_mode) == 0o750
     assert "temporary access" in helper.read_text()
 

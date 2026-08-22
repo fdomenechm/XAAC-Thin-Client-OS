@@ -24,9 +24,10 @@ def test_installer_validates_generated_openssh_host_keys():
     assert 'chroot "$mount_root" /usr/sbin/sshd -t' in tail
 
 
-def test_installer_keeps_ssh_disabled_after_keys_exist():
+def test_installer_enables_ssh_after_keys_exist():
     source = _production_builder_source()
     generate = source.index('chroot "$mount_root" ssh-keygen -A')
-    disable = source.index('chroot "$mount_root" systemctl disable ssh.service', generate)
-    assert generate < disable
-    assert 'chroot "$mount_root" systemctl enable ssh.service' not in source[generate:]
+    enable = source.index('chroot "$mount_root" systemctl enable ssh.service', generate)
+    assert generate < enable
+    assert 'chroot "$mount_root" systemctl disable ssh.service' not in source[generate:]
+    assert 'authorized_keys/xaac-admin' in source[enable:enable + 900]

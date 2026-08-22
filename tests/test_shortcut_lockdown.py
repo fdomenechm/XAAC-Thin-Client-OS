@@ -26,8 +26,12 @@ def test_profile_covers_all_phase_5_2_categories(project_root: Path) -> None:
 def test_plan_disables_compositor_defaults_and_exports_policy(tmp_path: Path, project_root: Path) -> None:
     plan = create_shortcut_lockdown_plan(tmp_path / "build/rootfs", project_root / "config/shortcut-lockdown.yaml")
     contents = {str(path): content for path, content, _ in plan.files}
-    assert "<keyboard />" in contents["/etc/xaac/labwc/rc.xml"]
+    assert '<keybind key="A-F4" />' in contents["/etc/xaac/labwc/rc.xml"]
     assert "<default" not in contents["/etc/xaac/labwc/rc.xml"]
+    assert 'button="Right" action="Press"' in contents["/etc/xaac/labwc/rc.xml"]
+    assert "ShowMenu" not in contents["/etc/xaac/labwc/rc.xml"]
+    assert "Reconfigure" not in contents["/etc/xaac/labwc/rc.xml"]
+    assert "Exit" not in contents["/etc/xaac/labwc/rc.xml"]
     assert "<decoration>server</decoration>" in contents["/etc/xaac/labwc/rc.xml"]
     assert "<layout>:</layout>" in contents["/etc/xaac/labwc/rc.xml"]
     assert 'serverDecoration="yes"' in contents["/etc/xaac/labwc/rc.xml"]

@@ -22,10 +22,11 @@ limits:
 services:
   active_required:
     - NetworkManager.service
+    - systemd-timesyncd.service
+    - ssh.service
     - nftables.service
     - apparmor.service
-  installed_required:
-    - ssh.service
+  installed_required: []
   optional:
     - xaac-agent.service
     - xaac-vpn-manager.service

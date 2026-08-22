@@ -778,7 +778,9 @@ def test_kiosk_configs_do_not_expose_labwc_menu_or_default_bindings(project_root
     rc = files["/etc/xaac/labwc/rc.xml"]
     assert "<menu" not in rc
     assert "<default" not in rc
-    assert "<keyboard />" in rc and "<mouse />" in rc
+    assert '<keybind key="A-F4" />' in rc
+    assert 'button="Right" action="Press"' in rc
+    assert "ShowMenu" not in rc
     assert "<policy>center</policy>" in rc
     assert 'name="AutoPlace" policy="center"' in rc
 
@@ -983,6 +985,10 @@ def test_phase_10_7_installer_language_and_keyboard_selection() -> None:
     assert 'dpkg-reconfigure keyboard-configuration' not in script
     assert "locale=$install_locale" in source
     assert "keyboard_layout=$install_keyboard_layout" in source
+    session_source = Path("src/xaac_thin_client_os/session_manager.py").read_text(encoding="utf-8")
+    assert "/etc/default/keyboard" in session_source
+    assert "XKB_DEFAULT_LAYOUT" in session_source
+    assert "xaac_xkb_layout=us" in session_source
 
 
 def test_phase_10_7_thinclient_language_sync_is_outside_live_installer(tmp_path: Path) -> None:
@@ -1105,7 +1111,7 @@ def test_phase_10_7_live_installer_matches_audited_post_diagnostics_snapshot() -
 
     script = _render_production_installer()
     assert hashlib.sha256(script.encode("utf-8")).hexdigest() == (
-        "97a939b5573e61589cf7fe3852006660c537ea71cc9596db643752890ad2298e"
+        "1c57e021c637114e2dd11dd6e8d25dad5824fe3a2d39d0d1f4e92e015dc79cb2"
     )
 
 def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
@@ -1125,3 +1131,19 @@ def test_phase_10_7_failure_path_stays_on_installer_tty_and_never_opens_login() 
     assert "OnFailure=xaac-installer-restore-getty.service" not in source
     assert "ExecStart=/bin/systemctl start getty@tty1.service" not in source
 
+
+
+def test_production_enables_timesyncd_and_masks_unused_openvpn3_autoload() -> None:
+    import inspect
+
+    timesync = inspect.getsource(ProductionIsoBuilder._configure_time_synchronization)
+    openvpn = inspect.getsource(ProductionIsoBuilder._configure_openvpn3_network)
+    configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
+    packages = (Path(__file__).parents[1] / "config/packages.yaml").read_text(encoding="utf-8")
+
+    assert "systemd-timesyncd" in packages
+    assert 'systemctl", "enable", "systemd-timesyncd.service' in timesync
+    assert "After=NetworkManager.service network-online.target" in timesync
+    assert "_configure_time_synchronization()" in configure
+    assert "systemctl mask openvpn3-autoload.service" in openvpn
+    assert "openvpn3-admin init-config --write-configs --force" in openvpn

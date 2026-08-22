@@ -182,8 +182,8 @@ def test_swap_candidate_preserves_old_profile_until_candidate_is_ready(
         if command and command[0] != "remove"
     )
     assert any(
-        command[:3] == [module.OPENVPN3, "config-manage", "--config"]
-        and "XAAC VPN CANDIDATE 1" in command
+        command[:3] == [module.OPENVPN3, "config-manage", "--path"]
+        and "/net/openvpn/v3/configuration/candidate" in command
         and module.PROFILE_NAME in command
         for command in calls
         if command and command[0] != "remove"
@@ -234,3 +234,43 @@ def test_status_parser_accepts_json_flag() -> None:
     args = module.build_parser().parse_args(["status", "--json"])
     assert args.command == "status"
     assert args.json_output is True
+
+
+def test_profile_paths_ignore_prefix_collisions(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+    import subprocess
+
+    module = load_runtime()
+    payload = {
+        "configurations": [
+            {"name": "XAAC VPN", "object_path": "/net/openvpn/v3/configuration/exact", "valid": True},
+            {"name": "XAAC VPN CANDIDATE 123", "path": "/net/openvpn/v3/configuration/candidate", "valid": True},
+            {"name": "XAAC VPN BACKUP 456", "path": "/net/openvpn/v3/configuration/backup", "valid": True},
+        ]
+    }
+    monkeypatch.setattr(
+        module,
+        "_run",
+        lambda command, **_kwargs: subprocess.CompletedProcess(command, 0, json.dumps(payload), ""),
+    )
+
+    assert module._profile_paths("XAAC VPN") == ["/net/openvpn/v3/configuration/exact"]
+
+
+def test_profile_paths_support_json_objects_keyed_by_dbus_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+    import subprocess
+
+    module = load_runtime()
+    payload = {
+        "/net/openvpn/v3/configuration/exact": {"configuration_name": "XAAC VPN", "valid": "true"},
+        "/net/openvpn/v3/configuration/longer": {"configuration_name": "XAAC VPN old", "valid": "true"},
+    }
+    monkeypatch.setattr(
+        module,
+        "_run",
+        lambda command, **_kwargs: subprocess.CompletedProcess(command, 0, json.dumps(payload), ""),
+    )
+
+    assert module._profile_paths("XAAC VPN") == ["/net/openvpn/v3/configuration/exact"]
+    assert module._profile_records_named("XAAC VPN")[0]["valid"] is True

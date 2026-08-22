@@ -266,14 +266,25 @@ class SshConfigurator:
             self._write(sources, "".join(f"{source}\n" for source in plan.allowed_sources), 0o640)
             if keys_dir.is_symlink():
                 raise SshConfigurationError(f"Directori de claus insegur: {keys_dir}")
-            keys_dir.mkdir(parents=True, exist_ok=True); keys_dir.chmod(0o750)
+            keys_dir.mkdir(parents=True, exist_ok=True)
+            # sshd reads an absolute AuthorizedKeysFile while temporarily using
+            # the target account credentials.  Keep the central directory and
+            # root-managed files readable, but never writable, by xaac-admin.
+            # 0755/0644 is accepted by StrictModes because only root can modify
+            # either object; 0750/0600 root:root made the key unreadable.
+            keys_dir.chmod(0o755)
             for user in plan.allow_users:
                 key_file = keys_dir / user
+                if key_file.is_symlink():
+                    raise SshConfigurationError(f"Fitxer de claus insegur: {key_file}")
                 if not key_file.exists():
-                    self._write(key_file, "# Managed by XAAC Agent; add approved public keys only\n", 0o600)
+                    self._write(key_file, "# Managed by XAAC Agent; add approved public keys only\n", 0o644)
+                else:
+                    key_file.chmod(0o644)
             self._write(helper, plan.helper_text(), 0o750)
             self._write(audit, plan.audit_text(), 0o640)
-            self._write(state, json.dumps({"schema_version": 1, "status": "disabled"}, sort_keys=True) + "\n", 0o640)
+            initial_status = "enabled" if plan.enabled else "disabled"
+            self._write(state, json.dumps({"schema_version": 1, "status": initial_status}, sort_keys=True) + "\n", 0o640)
             wants = plan.rootfs / "etc/systemd/system/multi-user.target.wants"
             wants.mkdir(parents=True, exist_ok=True)
             link = wants / "ssh.service"

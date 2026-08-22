@@ -1,3 +1,14 @@
+## 2026-08-22 — Paquet de correccions després de validació en Dell Wyse 3040
+
+- SSH queda activat per defecte com a únic canal de gestió remota; `authorized_keys` usa permisos compatibles amb `StrictModes` i continua sent modificable només per root.
+- `systemd-timesyncd` s'instal·la, configura i habilita explícitament, ordenat després de NetworkManager/network-online en cada arrencada.
+- `xaac-maintenance storage` tolera bytes no UTF-8 en atributs eMMC de sysfs.
+- labwc rep bindings explícits buits per impedir que recarregue automàticament el menú i les dreceres per defecte.
+- La sessió Wayland exporta `XKB_DEFAULT_LAYOUT`, `XKB_DEFAULT_VARIANT` i `XKB_DEFAULT_MODEL` a partir de `/etc/default/keyboard`, preservant la selecció `es`/`us` de l'instal·lador.
+- `xaac-vpn-admin` usa `openvpn3 configs-list --json` i coincidència exacta de nom; els filtres per prefix ja no poden confondre el perfil final amb candidats o backups.
+- `openvpn3-autoload.service` queda emmascarat perquè XAAC gestiona el cicle de vida VPN amb `xaac-vpn-manager`.
+- Revisat Intel SST/Cherry Trail: no s'aplica blacklist ni workaround específic; es manté com a warning de hardware mentre HDMI/ALSA funcione, evitant desactivar controladors d'àudio compatibles del kernel.
+
 ## 2026-08-20 — Fase 10.7: correcció basada en diagnòstic del Live Installer
 
 - Corregida la fallada real observada en la instal·lació en castellà/anglès: `/etc/default/locale` pot referenciar el mateix fitxer que `/etc/locale.conf`; el `cp` entre ambdós retornava error i `set -e` terminava l'instal·lador abans del missatge final. Ara els dos destins s'escriuen directament, cosa que funciona també quan un és un enllaç a l'altre.

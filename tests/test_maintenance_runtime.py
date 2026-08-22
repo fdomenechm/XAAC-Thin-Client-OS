@@ -82,7 +82,7 @@ def test_health_marks_required_inactive_service_as_error(monkeypatch: pytest.Mon
     assert "[ERROR] nftables.service" in text
 
 
-def test_health_accepts_ssh_inactive_when_unit_is_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_rejects_ssh_inactive_when_remote_management_requires_it(monkeypatch: pytest.MonkeyPatch) -> None:
     runtime = _load_runtime()
     monkeypatch.setattr(runtime, "_disk_usage", lambda: (8_000_000_000, 4_000_000_000, 50))
     monkeypatch.setattr(runtime, "_dpkg_audit", lambda: (True, "net"))
@@ -98,8 +98,9 @@ def test_health_accepts_ssh_inactive_when_unit_is_installed(monkeypatch: pytest.
         return {"load": "loaded", "active": "active", "enabled": "enabled"}
 
     monkeypatch.setattr(runtime, "_unit_info", fake_unit)
-    _, overall = runtime.health_report(_policy())
-    assert overall == "ok"
+    text, overall = runtime.health_report(_policy())
+    assert overall == "error"
+    assert "[ERROR] ssh.service" in text
 
 
 def test_logs_are_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -198,3 +199,13 @@ def test_cli_help_is_available_without_target_policy() -> None:
     assert result.returncode == 0
     assert "diagnostics" in result.stdout
     assert "cleanup" in result.stdout
+
+
+def test_storage_reader_tolerates_non_utf8_emmc_vendor_bytes(tmp_path: Path) -> None:
+    runtime = _load_runtime()
+    attribute = tmp_path / "name"
+    attribute.write_bytes(b"HYNIX\xffH8G4a\n")
+    value = runtime._read_optional(attribute)
+    assert value is not None
+    assert value.startswith("HYNIX")
+    assert "H8G4a" in value

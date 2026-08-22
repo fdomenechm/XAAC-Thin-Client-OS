@@ -41,6 +41,8 @@ def test_phase_10_3_profile_defines_single_admin_cli() -> None:
         "diagnostics",
     ]
     assert profile["outputs"]["admin"] == "/usr/local/sbin/xaac-maintenance"
+    assert "ssh.service" in profile["services"]["active_required"]
+    assert "systemd-timesyncd.service" in profile["services"]["active_required"]
 
 
 def test_phase_10_3_privacy_is_fail_closed() -> None:

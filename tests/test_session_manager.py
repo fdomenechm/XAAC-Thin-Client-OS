@@ -55,6 +55,11 @@ def test_plan_generates_restricted_autologin(tmp_path: Path, project_root: Path)
     assert mode == 0o600
     launcher, launcher_mode = files["/usr/local/libexec/xaac-session"]
     assert "exec /usr/bin/labwc" in launcher
+    assert "/etc/default/keyboard" in launcher
+    assert "XKB_DEFAULT_LAYOUT=$xaac_xkb_layout" in launcher
+    assert "XKB_DEFAULT_VARIANT=$xaac_xkb_variant" in launcher
+    assert "XKB_DEFAULT_MODEL=$xaac_xkb_model" in launcher
+    assert "XKB_DEFAULT_LAYOUT=es" not in launcher
     assert launcher_mode == 0o755
 
 

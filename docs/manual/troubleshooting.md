@@ -17,3 +17,10 @@ Verifiqueu signatura i versió del mitjà, partició de recuperació, alimentaci
 
 ## Informació per a suport
 Executeu `sudo xaac-maintenance diagnostics` i adjunteu el bundle generat junt amb els passos exactes per reproduir la incidència. No copieu manualment fitxers de secrets, perfils NetworkManager, claus privades ni credencials VPN.
+
+
+## Intel SST al Dell Wyse 3040
+
+En el Wyse 3040 (Intel Cherry Trail) poden aparéixer avisos del subsistema Intel SST/SOF durant l'arrencada encara que l'àudio funcional siga correcte. XAAC Thin Client OS **no** bloqueja ni força la desactivació d'Intel SST: el perfil d'àudio necessita conservar `snd_hdmi_lpe_audio` per a l'eixida HDMI i també admet `snd_hda_intel`.
+
+Per a la release actual, un missatge Intel SST queda classificat com a *warning de hardware* mentre `xaac-hw-validate audio`/ALSA detecte l'eixida HDMI i no existisca una unitat d'àudio fallida. Només s'ha d'obrir una incidència de driver si desapareix l'eixida HDMI, ALSA no enumera cap dispositiu esperat o el warning va acompanyat d'una fallada funcional reproduïble. No s'han d'afegir blacklists de `snd_soc_sst*`, `snd_sof*` o `snd_hdmi_lpe_audio` com a solució preventiva.

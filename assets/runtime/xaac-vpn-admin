@@ -131,25 +131,71 @@ def _write_policy(policy: str, path: Path = CONFIG_PATH) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _profile_paths(name: str) -> list[str]:
+def _profile_records(prefix: str) -> list[dict[str, object]]:
+    """Return OpenVPN 3 configuration records while preserving exact names.
+
+    ``openvpn3 configs-list --filter-config`` is a prefix filter, not an exact
+    lookup.  Use JSON output and keep the profile name associated with its
+    D-Bus path so callers can apply exact-name semantics safely.  The walker is
+    deliberately tolerant of both list records and objects keyed by D-Bus path.
+    """
     result = _run(
-        [OPENVPN3, "configs-list", "-v", "--filter-config", name],
+        [OPENVPN3, "configs-list", "--json", "--filter-config", prefix],
         check=False,
     )
-    output = f"{result.stdout}\n{result.stderr}"
-    return [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip().startswith("/net/openvpn/v3/configuration/")
-    ]
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise VpnAdminError(f"no s'han pogut llistar els perfils OpenVPN 3: {detail}")
+    try:
+        payload = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        raise VpnAdminError("OpenVPN 3 ha retornat una llista de perfils JSON invàlida") from exc
+
+    records: list[dict[str, object]] = []
+
+    def normalized(mapping: dict[str, object]) -> dict[str, object]:
+        return {re.sub(r"[^a-z0-9]", "", str(k).lower()): v for k, v in mapping.items()}
+
+    def walk(value: object, inherited_path: str | None = None) -> None:
+        if isinstance(value, list):
+            for item in value:
+                walk(item, inherited_path)
+            return
+        if not isinstance(value, dict):
+            return
+        norm = normalized(value)
+        name = next((norm[k] for k in ("configurationname", "configname", "name") if k in norm), None)
+        path = next((norm[k] for k in ("configurationpath", "configpath", "objectpath", "path") if k in norm), inherited_path)
+        if (
+            isinstance(name, str)
+            and isinstance(path, str)
+            and path.startswith("/net/openvpn/v3/configuration/")
+        ):
+            valid = next((norm[k] for k in ("valid", "isvalid") if k in norm), None)
+            if isinstance(valid, str):
+                lowered = valid.strip().lower()
+                valid = True if lowered == "true" else False if lowered == "false" else None
+            records.append({"name": name, "path": path, "valid": valid})
+        for key, item in value.items():
+            child_path = key if isinstance(key, str) and key.startswith("/net/openvpn/v3/configuration/") else inherited_path
+            walk(item, child_path)
+
+    walk(payload)
+    deduplicated: dict[str, dict[str, object]] = {}
+    for record in records:
+        deduplicated[str(record["path"])] = record
+    return list(deduplicated.values())
+
+def _profile_records_named(name: str) -> list[dict[str, object]]:
+    return [record for record in _profile_records(name) if record.get("name") == name]
+
+
+def _profile_paths(name: str) -> list[str]:
+    return [str(record["path"]) for record in _profile_records_named(name)]
 
 
 def _profile_details(name: str) -> str:
-    result = _run(
-        [OPENVPN3, "configs-list", "-v", "--filter-config", name],
-        check=False,
-    )
-    return f"{result.stdout}{result.stderr}"
+    return json.dumps(_profile_records_named(name), ensure_ascii=False, sort_keys=True)
 
 
 def _remove_profile_paths(paths: list[str]) -> None:
@@ -161,7 +207,6 @@ def _remove_profiles_named(name: str) -> int:
     paths = _profile_paths(name)
     _remove_profile_paths(paths)
     return len(paths)
-
 
 def _extract_common_name(subject: str) -> str | None:
     match = re.search(r"(?:^|,\s*)CN=([^,]+)", subject)
@@ -273,13 +318,12 @@ def _validate_and_extract_p12(
 
 
 def _validate_imported_profile(name: str) -> None:
-    details = _profile_details(name)
-    paths = _profile_paths(name)
-    if len(paths) != 1:
+    records = _profile_records_named(name)
+    if len(records) != 1:
         raise VpnAdminError(
-            f"s'esperava un únic perfil temporal però se n'han trobat {len(paths)}"
+            f"s'esperava un únic perfil temporal però se n'han trobat {len(records)}"
         )
-    if "Invalid:" in details or "Configuration profile is missing required options" in details:
+    if records[0].get("valid") is False:
         raise VpnAdminError("OpenVPN 3 ha marcat el perfil importat com a invàlid")
 
 
@@ -317,12 +361,17 @@ def _swap_candidate_profile(candidate: str) -> None:
         _remove_profile_paths(old_paths)
 
     try:
+        candidate_paths = _profile_paths(candidate)
+        if len(candidate_paths) != 1:
+            raise VpnAdminError(
+                f"s'esperava un únic perfil candidat però se n'han trobat {len(candidate_paths)}"
+            )
         _run(
             [
                 OPENVPN3,
                 "config-manage",
-                "--config",
-                candidate,
+                "--path",
+                candidate_paths[0],
                 "--rename",
                 PROFILE_NAME,
             ]
@@ -449,12 +498,11 @@ def command_policy(policy: str) -> None:
 
 def _status_payload() -> dict[str, object]:
     policy = _read_policy()
-    profile_details = _profile_details(PROFILE_NAME)
-    profile_paths = _profile_paths(PROFILE_NAME)
+    profile_records = _profile_records_named(PROFILE_NAME)
+    profile_paths = [str(record["path"]) for record in profile_records]
     profile_valid = (
-        len(profile_paths) == 1
-        and "Invalid:" not in profile_details
-        and "Configuration profile is missing required options" not in profile_details
+        len(profile_records) == 1
+        and profile_records[0].get("valid") is not False
     )
 
     manager = _run(
