@@ -1561,11 +1561,12 @@ class ProductionIsoBuilder:
         )
 
     def _configure_time_synchronization(self) -> None:
-        """Enable systemd-timesyncd with deterministic network ordering.
+        """Enable systemd-timesyncd without overriding its standard ordering.
 
-        Debian 13 ships systemd-timesyncd as a separate package.  The service
-        remains resident and reacts to network changes; the drop-in ensures its
-        boot start is ordered after NetworkManager/network-online.
+        systemd-timesyncd is intentionally an early-boot service.  It must not
+        be ordered after NetworkManager/network-online.target: doing so creates
+        an ordering cycle through sysinit.target.  The daemon starts early and
+        synchronises automatically once usable network connectivity appears.
         """
         raw = yaml.safe_load((self.paths.project_root / "config/network-services.yaml").read_text(encoding="utf-8"))
         try:
@@ -1579,11 +1580,18 @@ class ProductionIsoBuilder:
             "# Managed by XAAC Thin Client OS\n[Time]\nFallbackNTP=" + " ".join(fallback) + "\n",
             0o644,
         )
-        self._atomic_write(
-            self._inside("/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf"),
-            "[Unit]\nWants=network-online.target\nAfter=NetworkManager.service network-online.target\n",
-            0o644,
+        # Remove the obsolete XAAC ordering override even on an incremental
+        # build tree.  The stock unit already handles network changes and is
+        # deliberately ordered before sysinit.target.
+        network_dropin = self._inside(
+            "/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf"
         )
+        network_dropin.unlink(missing_ok=True)
+        try:
+            network_dropin.parent.rmdir()
+        except OSError:
+            pass
+
         self._chroot(["systemctl", "enable", "systemd-timesyncd.service"], phase="configure-enable-timesyncd")
         self._chroot(
             [
@@ -1591,8 +1599,11 @@ class ProductionIsoBuilder:
                 "systemctl is-enabled --quiet systemd-timesyncd.service; "
                 "test -s /etc/systemd/timesyncd.conf.d/20-xaac.conf; "
                 "grep -F 'FallbackNTP=' /etc/systemd/timesyncd.conf.d/20-xaac.conf >/dev/null; "
-                "grep -F 'After=NetworkManager.service network-online.target' "
-                "/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf >/dev/null",
+                "test ! -e /etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf; "
+                "verify_output=$(TERM=linux /usr/bin/systemd-analyze verify "
+                "/usr/lib/systemd/system/systemd-timesyncd.service 2>&1 || true); "
+                "! printf '%s\\n' \"$verify_output\" | "
+                "grep -Eiq 'ordering cycle|dependency cycle'",
             ],
             phase="configure-verify-timesyncd",
         )
@@ -2921,6 +2932,14 @@ exit 0
             shutil.copy2(helper_source, helper_target)
             helper_target.chmod(0o755)
 
+            # xaac-admin's SSH PATH intentionally does not include sbin.  Keep
+            # the canonical administrative executable in /usr/local/sbin, but
+            # expose a stable command name for get/list/help and sudo set.
+            helper_link = self._inside(f"/usr/local/bin/{helper_name}")
+            helper_link.parent.mkdir(parents=True, exist_ok=True)
+            helper_link.unlink(missing_ok=True)
+            helper_link.symlink_to(f"../sbin/{helper_name}")
+
 
         agent_debian_version = self._validate_xaac_agent_artifact()
         debs = self._copy_valid_debs()
@@ -2937,10 +2956,16 @@ exit 0
                     "/bin/sh", "-ec",
                     "test -x /usr/local/sbin/xaac-admin-change-language; "
                     "test -x /usr/local/sbin/xaac-admin-change-keyboard; "
+                    "test -L /usr/local/bin/xaac-admin-change-language; "
+                    "test -L /usr/local/bin/xaac-admin-change-keyboard; "
+                    "test \"$(readlink /usr/local/bin/xaac-admin-change-language)\" = "
+                    "'../sbin/xaac-admin-change-language'; "
+                    "test \"$(readlink /usr/local/bin/xaac-admin-change-keyboard)\" = "
+                    "'../sbin/xaac-admin-change-keyboard'; "
                     "/bin/sh -n /usr/local/sbin/xaac-admin-change-language; "
                     "/bin/sh -n /usr/local/sbin/xaac-admin-change-keyboard; "
-                    "/usr/local/sbin/xaac-admin-change-language --help >/dev/null; "
-                    "/usr/local/sbin/xaac-admin-change-keyboard --help >/dev/null",
+                    "/usr/local/bin/xaac-admin-change-language --help >/dev/null; "
+                    "/usr/local/bin/xaac-admin-change-keyboard --help >/dev/null",
                 ],
                 phase="configure-localization-admin-tools",
             )

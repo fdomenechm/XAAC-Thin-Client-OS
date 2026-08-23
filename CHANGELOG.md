@@ -1,3 +1,11 @@
+## 2026-08-23 — Tancament de XAAC Thin Client OS 1.0.0 després de validació física
+
+- Eliminat definitivament `/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf`: el `Wants/After=network-online.target` introduïa un cicle d'ordenació amb `sysinit.target` i NetworkManager. `systemd-timesyncd` torna a usar la unitat estàndard i el constructor rebutja regressions amb `systemd-analyze verify`.
+- `xaac-admin-change-language` normalitza correctament `ca_ES.UTF-8`/`locale -a`, genera el locale admés si cal, manté `LANG` i `LANGUAGE` coherents i continua sincronitzant XAAC Thin Client.
+- `xaac-admin-change-language` i `xaac-admin-change-keyboard` mantenen el binari canònic en `/usr/local/sbin` i disposen d'enllaç estable en `/usr/local/bin`, de manera que `xaac-admin` els pot invocar directament des d'SSH.
+- Integrats els `.deb` 1.0.0 corregits de XAAC Thin Client VPN i XAAC Thin Client; els tests inspeccionen també el feedback visual d'`Omitir VPN` i `Apagar`, a més de `Continuar` i `Connectar`.
+- Documentada la validació Intel SST del Wyse 3040: ALSA i WirePlumber detecten el hardware; la prova acústica queda pendent per absència d'altaveus/micròfon al banc de proves i no s'aplica cap workaround preventiu.
+
 ## 2026-08-22 — Iteració final de validació en maquinari real
 
 - SSH conserva `ssh.service` actiu per defecte i ara permet a `xaac-admin` autenticar-se amb contrasenya o clau pública abans del provisionament; `AuthenticationMethods any`, `PermitRootLogin no` i la resta del hardening continuen actius. El mode només-clau queda reservat a la política posterior aplicada per XAAC Management Server mitjançant XAAC Thin Client Agent.

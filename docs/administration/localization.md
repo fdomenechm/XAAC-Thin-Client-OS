@@ -21,7 +21,7 @@ Valors admesos:
 | `es` | `es_ES.UTF-8` |
 | `en` | `en_US.UTF-8` |
 
-`get` mostra el valor actual en forma curta; `list` mostra els valors acceptats; `set` valida el valor, comprova que el locale estiga disponible i actualitza de manera atòmica `/etc/default/locale` i `/etc/locale.conf`. Si existeix el sincronitzador de XAAC Thin Client, també actualitza la llengua configurada de l'aplicació.
+`get` mostra el valor actual en forma curta; `list` mostra els valors acceptats; `set` valida el valor, genera el locale si encara no està disponible i actualitza de manera atòmica `/etc/default/locale` i `/etc/locale.conf`. El canvi manté coherents tant `LANG` com `LANGUAGE` (`ca_ES:ca`, `es_ES:es` o `en_US:en`). Si existeix el sincronitzador de XAAC Thin Client, també actualitza la llengua configurada de l'aplicació.
 
 Exemples:
 
@@ -78,3 +78,17 @@ sudo xaac-admin-change-keyboard set es
 ```
 
 No cal reinstal·lar XAAC Thin Client OS per canviar cap dels dos valors. Les ordres `get`, `list` i `--help` es poden executar sense `sudo`; `set` requereix privilegis de root.
+
+
+## Ubicació i ús des de SSH
+
+Els executables canònics resideixen en `/usr/local/sbin`, però XAAC Thin Client OS crea també enllaços estables en `/usr/local/bin`. Això permet que `xaac-admin` els invoque pel nom des d'una sessió SSH normal, sense conéixer la ruta física:
+
+```bash
+xaac-admin-change-language get
+xaac-admin-change-keyboard get
+sudo xaac-admin-change-language set es
+sudo xaac-admin-change-keyboard set es
+```
+
+El canvi d'idioma actualitza `LANG` i `LANGUAGE` conjuntament; el canvi de teclat no modifica el locale. Ambdós valors continuen sent independents i persistents després del reinici.

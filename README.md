@@ -248,6 +248,8 @@ En mode instal·lador, abans de seleccionar cap disc, l'administrador tria la ll
 
 La configuració declarativa inicial es troba en `config/localization.yaml`. El constructor instal·la `keyboard-configuration`, `console-setup` i `console-setup-linux`. Durant la instal·lació final els valors triats s'escriuen directament als fitxers persistents, evitant reexecutar `dpkg-reconfigure` dins del chroot de destinació. Els tres locales suportats (`ca_ES.UTF-8`, `es_ES.UTF-8` i `en_US.UTF-8`) ja estan generats al rootfs i no depenen de `live-config` ni de la xarxa. La zona horària continua fixada a `Europe/Madrid`.
 
+Després de la instal·lació, `xaac-admin` pot consultar o canviar els dos valors de manera independent amb `xaac-admin-change-language` i `xaac-admin-change-keyboard` (`get`, `list`, `set <valor>`, `--help`). Les comandes són accessibles directament des d'SSH; `set` requereix `sudo`. El canvi d'idioma manté coherents `LANG` i `LANGUAGE` i genera un locale suportat si cal. La referència completa és `docs/administration/localization.md`.
+
 Després de construir la ISO es pot verificar amb:
 
 ```bash

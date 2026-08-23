@@ -19,11 +19,11 @@ administració remota restringida mitjançant OpenSSH, hardening, actualització
 ## Correccions validades en maquinari real
 
 - SSH actiu per defecte; durant el desplegament inicial `xaac-admin` admet contrasenya o clau pública i queda preparat perquè XAAC Management Server/Agent aplique després el mode només-clau.
-- sincronització NTP automàtica amb `systemd-timesyncd`;
+- sincronització NTP automàtica amb la unitat estàndard de `systemd-timesyncd`, sense dependència circular amb `network-online.target`;
 - gestió robusta d'eMMC i perfils OpenVPN 3;
 - distribució de teclat de la instal·lació propagada a Wayland/labwc i menú contextual del quiosc bloquejat;
-- scripts administratius `xaac-admin-change-language` i `xaac-admin-change-keyboard`;
-- XAAC Thin Client VPN i XAAC Thin Client 1.0.0 incorporen cursor d'espera i bloqueig temporal dels controls durant les operacions de connexió.
+- scripts administratius `xaac-admin-change-language` i `xaac-admin-change-keyboard`, invocables directament per SSH, amb locale/`LANGUAGE` coherent i idioma/teclat independents;
+- XAAC Thin Client VPN i XAAC Thin Client 1.0.0 incorporen cursor d'espera i bloqueig temporal dels controls en `Continuar`, `Omitir VPN`, `Connectar` i `Apagar`, amb restauració segura en error o cancel·lació.
 
 ## Consideracions
 

@@ -1143,7 +1143,11 @@ def test_production_enables_timesyncd_and_masks_unused_openvpn3_autoload() -> No
 
     assert "systemd-timesyncd" in packages
     assert 'systemctl", "enable", "systemd-timesyncd.service' in timesync
-    assert "After=NetworkManager.service network-online.target" in timesync
+    assert "After=NetworkManager.service network-online.target" not in timesync
+    assert "20-xaac-network.conf" in timesync
+    assert "network_dropin.unlink(missing_ok=True)" in timesync
+    assert "systemd-analyze verify" in timesync
+    assert "ordering cycle|dependency cycle" in timesync
     assert "_configure_time_synchronization()" in configure
     assert "systemctl mask openvpn3-autoload.service" in openvpn
     assert "openvpn3-admin init-config --write-configs --force" in openvpn
