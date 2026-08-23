@@ -1,5 +1,6 @@
 ## 2026-08-23 — Tancament de XAAC Thin Client OS 1.0.0 després de validació física
 
+- Corregit el harness de proves de `xaac-admin-change-language`: les proves funcionals de `set` simulen localment només les operacions privilegiades (`id -u`/`chown`) sobre un arbre temporal, de manera que `scripts/run-tests.sh` passa igualment quan s'executa com un usuari de desenvolupament no privilegiat (PyCharm) i no requereix executar pytest amb `sudo`.
 - Eliminat definitivament `/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf`: el `Wants/After=network-online.target` introduïa un cicle d'ordenació amb `sysinit.target` i NetworkManager. `systemd-timesyncd` torna a usar la unitat estàndard i el constructor rebutja regressions amb `systemd-analyze verify`.
 - `xaac-admin-change-language` normalitza correctament `ca_ES.UTF-8`/`locale -a`, genera el locale admés si cal, manté `LANG` i `LANGUAGE` coherents i continua sincronitzant XAAC Thin Client.
 - `xaac-admin-change-language` i `xaac-admin-change-keyboard` mantenen el binari canònic en `/usr/local/sbin` i disposen d'enllaç estable en `/usr/local/bin`, de manera que `xaac-admin` els pot invocar directament des d'SSH.

@@ -80,8 +80,17 @@ def _fake_locale_commands(tmp_path: Path, locales: list[str], *, forbid_generati
             "printf '%s\\n' 'ca_ES.utf8' >> \"$XAAC_TEST_LOCALES\"\n"
         )
     (fakebin / "locale-gen").write_text(locale_gen, encoding="utf-8")
-    (fakebin / "locale").chmod(0o755)
-    (fakebin / "locale-gen").chmod(0o755)
+    # The production command intentionally requires root.  These functional
+    # tests run the rendered helper against a temporary filesystem tree, so
+    # emulate only the two privileged operations instead of requiring pytest
+    # itself to run as root.
+    (fakebin / "id").write_text(
+        "#!/bin/sh\n[ \"${1:-}\" = '-u' ] && { echo 0; exit 0; }\nexec /usr/bin/id \"$@\"\n",
+        encoding="utf-8",
+    )
+    (fakebin / "chown").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    for command in ("locale", "locale-gen", "id", "chown"):
+        (fakebin / command).chmod(0o755)
     return fakebin, state
 
 
