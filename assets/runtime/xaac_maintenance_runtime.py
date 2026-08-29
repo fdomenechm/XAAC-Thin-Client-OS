@@ -35,6 +35,8 @@ UPDATE_STATE_PATHS = (
 _COMPONENT_PACKAGES = (
     "xaac-thinclient",
     "xaac-thin-client-vpn",
+    "xaac-thin-client-network",
+    "xaac-thin-client-dock",
     "xaac-agent",
 )
 

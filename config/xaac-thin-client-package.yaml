@@ -2,14 +2,16 @@ schema_version: 1
 package:
   name: xaac-thinclient
   architecture: all
-  version: "1.0.0"
-  artifact: packages/xaac-thinclient_1.0.0_all.deb
-  sha256: null
+  version: 1.1.0
+  artifact: packages/xaac-thinclient_1.1.0_all.deb
+  sha256: a8240c8c2643af7dab028e748959348e4215ca726665aa31f097ce46390650fd
   allow_newer_patch: true
   dependencies:
-    - python3
-    - python3-gi
-    - gir1.2-gtk-4.0
+  - python3
+  - python3-gi
+  - gir1.2-gtk-4.0
+  - python3-cryptography
+  - freerdp3-x11
 installation:
   cache_path: /var/cache/xaac/packages/xaac-thinclient.deb
   configuration_path: /etc/xaac/thin-client/package.json

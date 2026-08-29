@@ -156,23 +156,26 @@ def validate_packaged_block7_integration(project_root: Path) -> Block7Integratio
             _fail("agent_enabled_unconditionally")
         checks.append("enrollment-lifecycle")
 
-        runtime_root = data_root / "opt/xaac-agent/runtime"
-        runtime_python = runtime_root / "bin/python3.13"
-        runtime_agent = runtime_root / "bin/xaac-agent"
-        runtime_admin = runtime_root / "bin/xaac-agent-admin"
-        for runtime_path in (runtime_python, runtime_agent, runtime_admin):
+        # Since 1.1.0 the Agent deliberately uses Debian's system Python 3.13;
+        # it must not ship a private interpreter/runtime tree.
+        if (data_root / "opt/xaac-agent/runtime").exists():
+            _fail("agent_private_runtime_forbidden")
+        agent_exec = data_root / "usr/bin/xaac-agent"
+        admin_exec = data_root / "usr/sbin/xaac-agent-admin"
+        for runtime_path in (agent_exec, admin_exec):
             try:
                 mode = runtime_path.stat().st_mode
             except OSError:
-                _fail("agent_private_runtime_missing")
+                _fail("agent_system_runtime_entrypoint_missing")
             if not runtime_path.is_file() or mode & 0o111 == 0:
-                _fail("agent_private_runtime_missing")
-        if (runtime_root / "runtime").exists():
-            _fail("agent_private_runtime_nested")
-
-        admin_link = data_root / "usr/sbin/xaac-agent-admin"
-        if not admin_link.is_symlink() or admin_link.readlink().as_posix() != "/opt/xaac-agent/runtime/bin/xaac-agent-admin":
-            _fail("agent_admin_link_invalid")
+                _fail("agent_system_runtime_entrypoint_missing")
+        if admin_exec.is_symlink():
+            _fail("agent_admin_entrypoint_must_be_regular")
+        if not admin_exec.read_text(encoding="utf-8", errors="replace").startswith("#!/usr/bin/python3\n"):
+            _fail("agent_admin_system_python_invalid")
+        service_text = (data_root / "usr/lib/systemd/system/xaac-agent.service").read_text(encoding="utf-8")
+        if "ExecStartPre=/usr/bin/python3 -I -c" not in service_text or "ExecStart=/usr/bin/xaac-agent" not in service_text:
+            _fail("agent_system_python_contract_invalid")
         agent = _agent_ini(data_root / "etc/xaac-agent/agent.ini")
         if agent.get("enabled", "").strip().lower() != "false":
             _fail("agent_default_activation_invalid")
@@ -247,7 +250,7 @@ set -eu
 test \"$(dpkg-query -W -f='${{Status}}' xaac-agent)\" = 'install ok installed'
 test \"$(dpkg-query -W -f='${{Version}}' xaac-agent)\" = '{version}'
 test \"$(dpkg-query -W -f='${{Status}}' xaac-thinclient)\" = 'install ok installed'
-test \"$(dpkg-query -W -f='${{Version}}' xaac-thinclient)\" = '1.0.0'
+test \"$(dpkg-query -W -f='${{Version}}' xaac-thinclient)\" = '1.1.0'
 
 getent passwd xaac-agent >/dev/null
 getent passwd xaac-kiosk >/dev/null

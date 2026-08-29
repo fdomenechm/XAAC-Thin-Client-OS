@@ -18,7 +18,7 @@ from xaac_thin_client_os.xaac_thin_client_package import (
 
 
 def _artifact(project_root: Path) -> Path:
-    path = project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+    path = project_root / "packages/xaac-thinclient_1.1.0_all.deb"
     path.parent.mkdir(exist_ok=True)
     if not path.exists():
         path.write_bytes(b"fake-deb-for-tests")
@@ -26,7 +26,7 @@ def _artifact(project_root: Path) -> Path:
 
 
 def _runner(command, **kwargs):  # type: ignore[no-untyped-def]
-    return subprocess.CompletedProcess(command, 0, "xaac-thinclient\n1.0.0\nall\npython3, python3-gi, gir1.2-gtk-4.0\n", "")
+    return subprocess.CompletedProcess(command, 0, "xaac-thinclient\n1.1.0\nall\npython3, python3-gi, gir1.2-gtk-4.0, python3-cryptography, freerdp3-x11\n", "")
 
 
 def test_load_profile(project_root: Path) -> None:
@@ -45,25 +45,25 @@ def test_inspect_package_uses_dpkg_deb(project_root: Path) -> None:
 def test_plan_validates_and_is_auditable(project_root: Path, tmp_path: Path) -> None:
     _artifact(project_root)
     plan = create_xaac_thin_client_package_plan(tmp_path / "rootfs", project_root, project_root / "config/xaac-thin-client-package.yaml", runner=_runner)
-    assert plan.to_manifest()["version"] == "1.0.0"
+    assert plan.to_manifest()["version"] == "1.1.0"
     assert plan.install_commands()[0][-2:] == ("--install", "/var/cache/xaac/packages/xaac-thinclient.deb")
 
 
 def test_validation_accepts_newer_patch(project_root: Path) -> None:
     profile = load_xaac_thin_client_package_profile(project_root / "config/xaac-thin-client-package.yaml")
-    validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.0.2", "all", ("gir1.2-gtk-4.0", "python3", "python3-gi"), "0" * 64), profile)
+    validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.1.2", "all", ("gir1.2-gtk-4.0", "python3", "python3-gi", "python3-cryptography", "freerdp3-x11"), str(profile["package"]["sha256"])), profile)
 
 
 def test_validation_rejects_wrong_architecture(project_root: Path) -> None:
     profile = load_xaac_thin_client_package_profile(project_root / "config/xaac-thin-client-package.yaml")
     with pytest.raises(XaacThinClientPackageError, match="arquitectura"):
-        validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.0.0", "arm64", ("gir1.2-gtk-4.0", "python3", "python3-gi"), "0" * 64), profile)
+        validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.1.0", "arm64", ("gir1.2-gtk-4.0", "python3", "python3-gi", "python3-cryptography", "freerdp3-x11"), str(profile["package"]["sha256"])), profile)
 
 
 def test_validation_rejects_missing_dependency(project_root: Path) -> None:
     profile = load_xaac_thin_client_package_profile(project_root / "config/xaac-thin-client-package.yaml")
     with pytest.raises(XaacThinClientPackageError, match="dependències"):
-        validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.0.0", "all", ("python3",), "0" * 64), profile)
+        validate_package_metadata(DebianPackageMetadata("xaac-thinclient", "1.1.0", "all", ("python3",), str(profile["package"]["sha256"])), profile)
 
 
 def test_plan_rejects_missing_artifact(project_root: Path, tmp_path: Path) -> None:
@@ -114,10 +114,10 @@ def test_cli_parser_exposes_install_command() -> None:
 
 
 def test_real_debian_package_matches_profile(project_root: Path) -> None:
-    artifact = project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+    artifact = project_root / "packages/xaac-thinclient_1.1.0_all.deb"
     metadata = inspect_debian_package(artifact)
     profile = load_xaac_thin_client_package_profile(project_root / "config/xaac-thin-client-package.yaml")
     validate_package_metadata(metadata, profile)
     assert metadata.package == "xaac-thinclient"
-    assert metadata.version == "1.0.0"
+    assert metadata.version == "1.1.0"
     assert metadata.architecture == "all"

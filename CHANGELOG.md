@@ -1,3 +1,14 @@
+# 2026-08-29 — XAAC Thin Client OS 1.1.0: actualització de composició
+
+- Elevada la versió del sistema i del tooling d'integració a 1.1.0.
+- XAAC Thin Client passa a presentar-se com **XAAC Thin Client Remote**; es conserva el nom tècnic del paquet Debian `xaac-thinclient` per compatibilitat.
+- Integrats com a artefactes obligatoris XAAC Thin Client Remote, VPN, Network, Dock i Agent 1.1.0.
+- Afegits perfils de paquet, inventari, health checks i model d'actualització per a Network i Dock.
+- Actualitzades les referències als paquets 1.1.0 i eliminat l'artefacte corrupte residual de Thin Client 1.0.0.
+- Integrat el Dock en l’entrada de sessió: `disabled` conserva el flux VPN/Remote anterior i `optional`/`required` entren per XAAC Thin Client Dock.
+- Afegits àlies estables d’execució per a Network i Remote que satisfan el contracte de descoberta del Dock sense canviar els noms tècnics dels paquets.
+- Actualitzat XAAC Thin Client Agent al contracte 1.1.0-1 amb Python 3.13 del sistema, sense runtime Python privat.
+
 ## 2026-08-23 — Tancament de XAAC Thin Client OS 1.0.0 després de validació física
 
 - Corregit el harness de proves de `xaac-admin-change-language`: les proves funcionals de `set` simulen localment només les operacions privilegiades (`id -u`/`chown`) sobre un arbre temporal, de manera que `scripts/run-tests.sh` passa igualment quan s'executa com un usuari de desenvolupament no privilegiat (PyCharm) i no requereix executar pytest amb `sudo`.

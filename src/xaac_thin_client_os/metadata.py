@@ -17,7 +17,7 @@ def _read_version() -> str:
         value = repository_version.read_text(encoding="utf-8").strip()
         if value:
             return value
-    return "1.0.0"
+    return "1.1.0"
 
 
 __version__ = _read_version()

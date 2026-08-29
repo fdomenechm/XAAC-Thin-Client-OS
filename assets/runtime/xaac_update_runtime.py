@@ -352,6 +352,8 @@ def _health_check(
     executable_map = {
         "xaac-thinclient": Path("/usr/bin/xaac-thinclient"),
         "xaac-thin-client-vpn": Path("/usr/bin/xaac-thin-client-vpn"),
+        "xaac-thin-client-network": Path("/usr/bin/xaac-network-gui"),
+        "xaac-thin-client-dock": Path("/usr/bin/xaac-thin-client-dock"),
         "xaac-agent": Path("/usr/bin/xaac-agent"),
     }
     executable_ok = True

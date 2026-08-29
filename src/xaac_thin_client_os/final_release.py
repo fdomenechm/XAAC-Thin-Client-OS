@@ -1,4 +1,4 @@
-"""Final 1.0.0 release plan and publication assets for phase 12.12."""
+"""Final 1.1.0 release plan and publication assets for phase 12.12."""
 from __future__ import annotations
 
 import json
@@ -37,7 +37,7 @@ def load_final_release_profile(path: Path) -> dict[str, Any]:
         raise FinalReleaseError(f"No s'ha pogut carregar el perfil final: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 1:
         raise FinalReleaseError("Perfil de release final invàlid")
-    if raw.get("product") != "XAAC Thin Client OS" or raw.get("version") != "1.0.0":
+    if raw.get("product") != "XAAC Thin Client OS" or raw.get("version") != "1.1.0":
         raise FinalReleaseError("Producte o versió final invàlids")
     if raw.get("status") != "stable" or raw.get("channel") != "production":
         raise FinalReleaseError("La release final ha de ser stable i production")
@@ -119,13 +119,13 @@ class FinalReleaseBuilder:
             return targets
         manifest = json.dumps(plan.manifest(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         notes = (
-            "# XAAC Thin Client OS 1.0.0\n\n"
+            "# XAAC Thin Client OS 1.1.0\n\n"
             "Primera versió estable de producció per al Dell Wyse 3040. Inclou ISO, IMG, "
             "imatge de recuperació, PXE, paquets Debian, hashes, signatures i documentació.\n"
         )
         announcement = (
-            "# Publicació de XAAC Thin Client OS 1.0.0\n\n"
-            "XAAC Thin Client OS 1.0.0 està preparat per a instal·lació, clonació, "
+            "# Publicació de XAAC Thin Client OS 1.1.0\n\n"
+            "XAAC Thin Client OS 1.1.0 està preparat per a instal·lació, clonació, "
             "administració, actualització i recuperació en Dell Wyse 3040.\n\n"
             "Abans del desplegament, verifiqueu `SHA256SUMS` i les signatures `.asc`.\n"
         )
@@ -148,7 +148,7 @@ PYAPPROVAL
 for artifact in {artifacts}; do
     test -e "$artifact" || {{ echo "Falta l’artefacte: $artifact" >&2; exit 1; }}
 done
-OUT=.build/release-1.0.0
+OUT=.build/release-1.1.0
 mkdir -p "$OUT"
 sha256sum {artifacts} > "$OUT/SHA256SUMS"
 gpg --batch --yes --local-user "${{{key_env}}}" --armor --detach-sign "$OUT/SHA256SUMS"
@@ -163,8 +163,8 @@ cp .build/final-release/ANNOUNCEMENT.md "$OUT/ANNOUNCEMENT.md"
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$ROOT"
-OUT=.build/release-1.0.0
-test "$(cat VERSION)" = "1.0.0"
+OUT=.build/release-1.1.0
+test "$(cat VERSION)" = "1.1.0"
 sha256sum -c "$OUT/SHA256SUMS"
 gpg --verify "$OUT/SHA256SUMS.asc" "$OUT/SHA256SUMS"
 for artifact in {artifacts}; do

@@ -1,6 +1,6 @@
 schema_version: 1
 update_id: xaac-base-os-update
-phase: "10.6"
+phase: '10.6'
 hardware_profile: wyse3040
 platform:
   os_id: xaac-thin-client-os
@@ -8,14 +8,21 @@ platform:
   suite: trixie
   architecture: amd64
 repositories:
-  - uri: https://deb.debian.org/debian
-    suites: [trixie, trixie-updates]
-    components: [main, non-free-firmware]
-    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
-  - uri: https://security.debian.org/debian-security
-    suites: [trixie-security]
-    components: [main, non-free-firmware]
-    signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+- uri: https://deb.debian.org/debian
+  suites:
+  - trixie
+  - trixie-updates
+  components:
+  - main
+  - non-free-firmware
+  signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+- uri: https://security.debian.org/debian-security
+  suites:
+  - trixie-security
+  components:
+  - main
+  - non-free-firmware
+  signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
 policy:
   apt_operation: upgrade-with-new-pkgs
   allow_release_change: false
@@ -32,31 +39,37 @@ policy:
   maximum_changed_packages: 256
   maximum_new_packages: 48
   protected_packages:
-    - xaac-thinclient
-    - xaac-thin-client-vpn
-    - xaac-agent
+  - xaac-thinclient
+  - xaac-thin-client-vpn
+  - xaac-agent
+  - xaac-thin-client-network
+  - xaac-thin-client-dock
   reboot_package_prefixes:
-    - linux-image
-    - linux-base
-    - initramfs-tools
-    - grub-
-    - shim-
-    - systemd
-    - libc6
+  - linux-image
+  - linux-base
+  - initramfs-tools
+  - grub-
+  - shim-
+  - systemd
+  - libc6
 health:
   require_dpkg_audit_clean: true
   require_apt_check: true
   required_services:
-    - NetworkManager.service
-    - nftables.service
-    - apparmor.service
-    - greetd.service
+  - NetworkManager.service
+  - nftables.service
+  - apparmor.service
+  - greetd.service
+  - xaac-network-manager.service
   installed_services:
-    - ssh.service
+  - ssh.service
   required_executables:
-    - /usr/bin/xaac-thinclient
-    - /usr/bin/xaac-thin-client-vpn
-    - /usr/bin/xaac-agent
+  - /usr/bin/xaac-thinclient
+  - /usr/bin/xaac-thin-client-vpn
+  - /usr/bin/xaac-agent
+  - /usr/bin/xaac-network-gui
+  - /usr/bin/xaac-network-manager
+  - /usr/bin/xaac-thin-client-dock
 outputs:
   policy: /etc/xaac/update/base-os-policy.json
   state: /var/lib/xaac-update/base-os-state.json

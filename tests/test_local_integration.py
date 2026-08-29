@@ -63,7 +63,7 @@ def test_installer_writes_configuration_tmpfiles_and_manifest(tmp_path: Path) ->
     assert "d /run/xaac/thin-client/events 2750 xaac-kiosk xaac-ipc -" in tmpfiles
     manifest = json.loads(plan.manifest.read_text())
     assert manifest["contract"] == "xaac-local-integration/v1"
-    assert manifest["thin_client"] == {"package": "xaac-thinclient", "version": "1.0.0"}
+    assert manifest["thin_client"] == {"package": "xaac-thinclient", "version": "1.1.0"}
     assert manifest["separation"]["events"] == "xaac-kiosk-writes-xaac-agent-reads"
 
 

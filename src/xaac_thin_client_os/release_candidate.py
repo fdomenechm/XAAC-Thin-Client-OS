@@ -42,7 +42,7 @@ def load_release_candidate_profile(path: Path) -> dict[str, Any]:
         raise ReleaseCandidateError(f"No s'ha pogut carregar el perfil RC: {exc}") from exc
     if not isinstance(raw, dict) or raw.get("schema_version") != 1:
         raise ReleaseCandidateError("Perfil RC invàlid")
-    if raw.get("product") != "XAAC Thin Client OS" or raw.get("version") != "1.0.0-rc.1":
+    if raw.get("product") != "XAAC Thin Client OS" or raw.get("version") != "1.1.0-rc.1":
         raise ReleaseCandidateError("Producte o versió RC invàlids")
     freeze = raw.get("freeze")
     if not isinstance(freeze, dict) or freeze.get("enabled") is not True:
@@ -129,7 +129,7 @@ class ReleaseCandidateBuilder:
             return targets
         manifest = json.dumps(plan.manifest(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         notes = (
-            "# XAAC Thin Client OS 1.0.0-rc.1\n\n"
+            "# XAAC Thin Client OS 1.1.0-rc.1\n\n"
             "Primera release candidate congelada del sistema. Només s'admeten correccions "
             "crítiques, de seguretat, documentació imprescindible i regressions demostrades.\n\n"
             "## Validació requerida\n\n"

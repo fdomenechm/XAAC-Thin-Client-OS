@@ -50,6 +50,8 @@ def test_phase_10_6_policy_forbids_release_change_removal_downgrade_and_automati
     assert set(policy["protected_packages"]) == {
         "xaac-thinclient",
         "xaac-thin-client-vpn",
+        "xaac-thin-client-network",
+        "xaac-thin-client-dock",
         "xaac-agent",
     }
 

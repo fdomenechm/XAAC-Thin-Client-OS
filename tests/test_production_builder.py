@@ -763,7 +763,7 @@ def test_installer_hostname_accepts_uppercase_letters() -> None:
 
 
 def test_production_builder_requires_real_xaac_thinclient_package(project_root: Path) -> None:
-    package = project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+    package = project_root / "packages/xaac-thinclient_1.1.0_all.deb"
     assert package.is_file()
     assert package.read_bytes()[:8] == b"!<arch>\n"
     source = (project_root / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
@@ -791,16 +791,16 @@ def test_block5_is_verified_in_rootfs_squashfs_and_installed_system() -> None:
     configure = inspect.getsource(ProductionIsoBuilder.phase_configure)
     squashfs = inspect.getsource(ProductionIsoBuilder.phase_squashfs)
     verify = inspect.getsource(ProductionIsoBuilder._verify_thinclient_rootfs)
-    assert 'packages/xaac-thinclient_1.0.0_all.deb' in configure
+    assert 'packages/xaac-thinclient_1.1.0_all.deb' in configure
     assert '/etc/xaac/block5-integration' in configure
     assert '/usr/bin/xaac-thinclient' in verify
     assert 'Package: xaac-thinclient' in verify
-    assert 'Version: 1.0.0' in verify
+    assert 'Version: 1.1.0' in verify
     assert 'squashfs-verify-xaac-thinclient' in squashfs
     assert 'squashfs-verify-block5-marker' in squashfs
     source = inspect.getsource(ProductionIsoBuilder.phase_configure)
     assert 'XAAC Thin Client no existeix al sistema instal·lat.' in source
-    assert 'xaac-thinclient 1.0.0 no consta instal·lat.' in source
+    assert 'xaac-thinclient 1.1.0 no consta instal·lat.' in source
 
 
 def test_production_build_script_forces_current_checkout_source() -> None:
@@ -933,7 +933,7 @@ def test_production_configure_calls_freerdp_store_after_kiosk_account_creation()
 def test_production_builder_requires_real_xaac_agent_package(project_root: Path) -> None:
     import inspect
 
-    package = project_root / "packages/xaac-agent_1.0.0-8_amd64.deb"
+    package = project_root / "packages/xaac-agent_1.1.0-1_amd64.deb"
     assert package.is_file()
     assert package.stat().st_size > 1024
     assert package.read_bytes()[:8] == b"!<arch>\n"
@@ -941,7 +941,9 @@ def test_production_builder_requires_real_xaac_agent_package(project_root: Path)
     assert "agent_debian_version = self._validate_xaac_agent_artifact()" in source
     assert "configure-verify-xaac-agent" in source
     assert "agent_debian_version" in source
-    assert "/opt/xaac-agent/runtime/bin/python3.13" in source
+    assert "/usr/bin/python3" in source
+    assert "/usr/bin/xaac-agent" in source
+    assert "/opt/xaac-agent/runtime/bin/python3.13" not in source
     assert "/usr/sbin/xaac-agent-admin" in source
     assert "xaac-enrollment-token:-/etc/xaac-agent/enrollment.token" in source
     assert "configure-xaac-xms-enrollment" in source
@@ -953,7 +955,7 @@ def test_production_builder_requires_real_xaac_agent_package(project_root: Path)
 def test_agent_preflight_accepts_current_canonical_release_provenance(project_root: Path) -> None:
     builder = object.__new__(ProductionIsoBuilder)
     builder.paths = BuildPaths.create(project_root)  # type: ignore[misc]
-    assert builder._validate_xaac_agent_artifact() == "1.0.0-8"
+    assert builder._validate_xaac_agent_artifact() == "1.1.0-1"
 
 
 def test_phase_10_1_update_architecture_is_integrated_into_production_builder() -> None:
@@ -1111,7 +1113,7 @@ def test_phase_10_7_live_installer_matches_audited_post_diagnostics_snapshot() -
 
     script = _render_production_installer()
     assert hashlib.sha256(script.encode("utf-8")).hexdigest() == (
-        "1c57e021c637114e2dd11dd6e8d25dad5824fe3a2d39d0d1f4e92e015dc79cb2"
+        "c9a5bcc93a97f5a93ea35274a4023831ef22999471615b47bfc36fcddd700a65"
     )
 
 def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:

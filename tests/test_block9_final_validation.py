@@ -40,9 +40,9 @@ def test_block94_release_gate_validates_only_effective_production_debs() -> None
     gate = (ROOT / "scripts/validate-block9-release.sh").read_text(encoding="utf-8")
 
     for artifact in (
-        "packages/xaac-agent_1.0.0-8_amd64.deb",
-        "packages/xaac-thin-client-vpn_1.0.0_all.deb",
-        "packages/xaac-thinclient_1.0.0_all.deb",
+        "packages/xaac-agent_1.1.0-1_amd64.deb",
+        "packages/xaac-thin-client-vpn_1.1.0_all.deb",
+        "packages/xaac-thinclient_1.1.0_all.deb",
     ):
         assert artifact in gate
     assert "dpkg-deb --info" in gate
@@ -105,7 +105,7 @@ def test_phase_verify_writes_traceable_block94_release_manifest(tmp_path: Path) 
     builder.paths = BuildPaths.create(root)  # type: ignore[misc]
     builder.settings = SimpleNamespace(
         output_name="xaac.iso",
-        version="1.0.0",
+        version="1.1.0",
         profile="wyse3040",
         channel="production",
         architecture="amd64",
@@ -124,7 +124,7 @@ def test_phase_verify_writes_traceable_block94_release_manifest(tmp_path: Path) 
 
     manifest = json.loads((builder.paths.artifacts / "xaac.iso.release.json").read_text(encoding="utf-8"))
     assert manifest["schema"] == "xaac-block10-release-manifest/v1"
-    assert manifest["version"] == "1.0.0"
+    assert manifest["version"] == "1.1.0"
     assert manifest["profile"] == "wyse3040"
     assert manifest["iso"]["name"] == "xaac.iso"
     assert len(manifest["iso"]["sha256"]) == 64

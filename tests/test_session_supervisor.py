@@ -142,6 +142,27 @@ def test_supervisor_uses_numeric_xdg_runtime_and_waits_for_wayland(tmp_path: Pat
     assert '[ -S "$socket" ]' in script
 
 
+
+def test_session_entry_honours_dock_policy(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
+    files = {str(path): (content, mode) for path, content, mode in plan.files}
+    script, mode = files["/usr/local/libexec/xaac-session-entry"]
+    assert mode == 0o755
+    assert "DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini" in script
+    assert "disabled)" in script and 'exec "$LEGACY"' in script
+    assert "optional|required)" in script and 'exec "$DOCK"' in script
+    assert "exit 78" in script
+    path = tmp_path / "session-entry.sh"
+    path.write_text(script)
+    completed = subprocess.run(["/bin/sh", "-n", str(path)], check=False, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_supervisor_waits_for_dock_surface(tmp_path: Path, project_root: Path) -> None:
+    script = _script(tmp_path, project_root)
+    assert "DOCK_APP_ID=org.xaac.ThinClientDock" in script
+    assert 'wlrctl toplevel find "app_id:$DOCK_APP_ID"' in script
+
 def test_cli_exposes_supervisor_command() -> None:
     from xaac_thin_client_os.cli import build_parser
     args = build_parser().parse_args(["configure-session-supervisor", "--dry-run"])

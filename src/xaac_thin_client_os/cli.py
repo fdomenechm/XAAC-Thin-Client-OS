@@ -423,7 +423,7 @@ def build_parser() -> argparse.ArgumentParser:
     production_packaging.add_argument("--dry-run", action="store_true")
     release_candidate = subparsers.add_parser("build-release-candidate", help="Prepara i congela la release candidate")
     release_candidate.add_argument("--dry-run", action="store_true")
-    final_release = subparsers.add_parser("build-final-release", help="Prepara la release estable 1.0.0")
+    final_release = subparsers.add_parser("build-final-release", help="Prepara la release estable 1.1.0")
     final_release.add_argument("--dry-run", action="store_true")
     apt_repository = subparsers.add_parser("configure-xaac-apt-repository", help="Configura l’estructura del repositori APT XAAC")
     apt_repository.add_argument("--dry-run", action="store_true")
@@ -2022,7 +2022,7 @@ def _build_release_candidate(root: Path, *, dry_run: bool, as_json: bool) -> int
 def _build_final_release(root: Path, *, dry_run: bool, as_json: bool) -> int:
     plan = create_final_release_plan(root, root / "config/final-release.yaml")
     paths = FinalReleaseBuilder().prepare(plan, dry_run=dry_run)
-    payload = {"status": "planned" if dry_run else "ok", "message": "Release final planificada" if dry_run else "Release estable 1.0.0 preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
+    payload = {"status": "planned" if dry_run else "ok", "message": "Release final planificada" if dry_run else "Release estable 1.1.0 preparada", "executed": not dry_run, **plan.manifest(), "files": [str(path) for path in paths]}
     _emit(payload, as_json=as_json)
     return 0
 

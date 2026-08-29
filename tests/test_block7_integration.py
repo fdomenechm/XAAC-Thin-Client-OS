@@ -25,7 +25,7 @@ def test_packaged_block7_contract_is_cross_project_consistent() -> None:
 
 
 def test_rootfs_gate_checks_directionality_and_unenrolled_lifecycle() -> None:
-    script = rootfs_verification_script("1.0.0-8")
+    script = rootfs_verification_script("1.1.0-1")
     assert "/var/lib/xaac/thin-client/config /run/xaac/commands" in script
     assert "/var/lib/xaac/thin-client/state|/run/xaac/thin-client/events" in script
     assert "! systemctl is-enabled --quiet xaac-agent.service" in script
@@ -51,4 +51,4 @@ def test_validation_script_is_posix_sh_and_machine_readable() -> None:
     )
     payload = __import__("json").loads(completed.stdout)
     assert payload["passed"] is True
-    assert payload["package_version"] == "1.0.0-8"
+    assert payload["package_version"] == "1.1.0-1"

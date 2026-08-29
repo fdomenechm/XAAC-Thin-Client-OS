@@ -8,13 +8,13 @@ from xaac_thin_client_os.final_release import (
 )
 ROOT=Path(__file__).resolve().parents[1]
 def project(tmp_path):
- p=tmp_path/'p'; (p/'config').mkdir(parents=True); (p/'config/final-release.yaml').write_text((ROOT/'config/final-release.yaml').read_text()); (p/'VERSION').write_text('1.0.0\n'); return p
+ p=tmp_path/'p'; (p/'config').mkdir(parents=True); (p/'config/final-release.yaml').write_text((ROOT/'config/final-release.yaml').read_text()); (p/'VERSION').write_text('1.1.0\n'); return p
 def test_profile():
- x=load_final_release_profile(ROOT/'config/final-release.yaml'); assert tuple(x['artifacts'])==REQUIRED_ARTIFACTS and x['version']=='1.0.0'
+ x=load_final_release_profile(ROOT/'config/final-release.yaml'); assert tuple(x['artifacts'])==REQUIRED_ARTIFACTS and x['version']=='1.1.0'
 def test_manifest():
  x=create_final_release_plan(ROOT,ROOT/'config/final-release.yaml').manifest(); assert x['status']=='stable' and x['documentation_included']
 def test_prepare(tmp_path):
- p=project(tmp_path); paths=FinalReleaseBuilder().prepare(create_final_release_plan(p,p/'config/final-release.yaml')); assert len(paths)==5; assert json.loads(paths[0].read_text())['version']=='1.0.0'; assert 'SHA256SUMS' in paths[3].read_text()
+ p=project(tmp_path); paths=FinalReleaseBuilder().prepare(create_final_release_plan(p,p/'config/final-release.yaml')); assert len(paths)==5; assert json.loads(paths[0].read_text())['version']=='1.1.0'; assert 'SHA256SUMS' in paths[3].read_text()
 def test_permissions(tmp_path):
  p=project(tmp_path); paths=FinalReleaseBuilder().prepare(create_final_release_plan(p,p/'config/final-release.yaml')); assert paths[3].stat().st_mode&0o777==0o750; assert paths[4].stat().st_mode&0o777==0o750
 def test_idempotent(tmp_path):
@@ -22,7 +22,7 @@ def test_idempotent(tmp_path):
 def test_dry_run(tmp_path):
  p=project(tmp_path); paths=FinalReleaseBuilder().prepare(create_final_release_plan(p,p/'config/final-release.yaml'),dry_run=True); assert not any(x.exists() for x in paths)
 def test_wrong_version(tmp_path):
- p=project(tmp_path); c=p/'config/final-release.yaml'; c.write_text(c.read_text().replace('version: 1.0.0','version: 1.0.1'))
+ p=project(tmp_path); c=p/'config/final-release.yaml'; c.write_text(c.read_text().replace('version: 1.1.0','version: 1.0.1'))
  with pytest.raises(FinalReleaseError,match='versió'): load_final_release_profile(c)
 def test_missing_artifact(tmp_path):
  p=project(tmp_path); c=p/'config/final-release.yaml'; c.write_text(c.read_text().replace('  documentation: docs/manual\n',''))

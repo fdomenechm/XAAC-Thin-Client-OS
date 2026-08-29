@@ -541,9 +541,9 @@ class ProductionIsoBuilder:
                 f"{context}: falta /etc/xaac-thinclient al rootfs"
             )
         text = status.read_text(encoding="utf-8", errors="replace") if status.is_file() else ""
-        if "Package: xaac-thinclient\n" not in text or "Version: 1.0.0\n" not in text:
+        if "Package: xaac-thinclient\n" not in text or "Version: 1.1.0\n" not in text:
             raise ProductionBuildError(
-                f"{context}: xaac-thinclient 1.0.0 no consta en la base de dades dpkg"
+                f"{context}: xaac-thinclient 1.1.0 no consta en la base de dades dpkg"
             )
 
     def _inside(self, absolute: str) -> Path:
@@ -891,6 +891,58 @@ class ProductionIsoBuilder:
             ["/bin/sh", "-ec", rootfs_verification_script(version)],
             phase=f"{context}-verify-block7-integration",
         )
+
+    def _validate_required_component_artifacts(self) -> dict[str, str]:
+        """Validate the complete XAAC 1.1.0 component set before touching the rootfs."""
+        profiles = (
+            "xaac-thin-client-package.yaml",
+            "xaac-thin-client-vpn-package.yaml",
+            "xaac-thin-client-network-package.yaml",
+            "xaac-thin-client-dock-package.yaml",
+            "xaac-agent-package.yaml",
+        )
+        versions: dict[str, str] = {}
+        for profile_name in profiles:
+            profile_path = self.paths.project_root / "config" / profile_name
+            try:
+                profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
+                package = profile["package"]
+                name = str(package["name"])
+                version = str(package["version"])
+                architecture = str(package["architecture"])
+                expected_sha256 = str(package["sha256"])
+                artifact = (self.paths.project_root / str(package["artifact"])).resolve()
+                artifact.relative_to(self.paths.project_root.resolve())
+            except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError) as exc:
+                raise ProductionBuildError(
+                    f"Perfil de component XAAC invàlid ({profile_name}): {exc}"
+                ) from exc
+            if not artifact.is_file() or artifact.is_symlink():
+                raise ProductionBuildError(f"Falta l'artefacte obligatori {artifact}")
+            try:
+                if artifact.read_bytes()[:8] != b"!<arch>\n":
+                    raise ProductionBuildError(f"L'artefacte no és un .deb real: {artifact}")
+                result = subprocess.run(
+                    (
+                        "dpkg-deb", "--show",
+                        "--showformat=${Package}\n${Version}\n${Architecture}\n",
+                        str(artifact),
+                    ),
+                    check=True, capture_output=True, text=True,
+                )
+            except (OSError, subprocess.CalledProcessError) as exc:
+                raise ProductionBuildError(f"No s'ha pogut inspeccionar {artifact}: {exc}") from exc
+            lines = result.stdout.splitlines()
+            if len(lines) < 3 or (lines[0], lines[1], lines[2]) != (name, version, architecture):
+                raise ProductionBuildError(
+                    f"Metadades inesperades en {artifact.name}: "
+                    f"esperat {name} {version} {architecture}"
+                )
+            actual_sha256 = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            if actual_sha256 != expected_sha256:
+                raise ProductionBuildError(f"SHA-256 incorrecte per a {artifact.name}")
+            versions[name] = version
+        return versions
 
     def _copy_valid_debs(self) -> list[str]:
         source_dir = self.paths.project_root / "packages"
@@ -2157,7 +2209,7 @@ exit 0
                 "        ca:no_ac) printf '%s' 'No s'\\''ha detectat alimentació externa. Instal·lació rebutjada.' ;;\n"
                 "        ca:no_disk) printf '%s' 'No s'\\''ha detectat cap disc escrivible.' ;;\n"
                 "        ca:out_range) printf '%s' 'Selecció fora de rang.' ;;\n"
-                "        ca:package_missing) printf '%s' 'xaac-thinclient 1.0.0 no consta instal·lat.' ;;\n"
+                "        ca:package_missing) printf '%s' 'xaac-thinclient 1.1.0 no consta instal·lat.' ;;\n"
                 "        ca:pam_fail) printf '%s' 'PAM ha rebutjat la contrasenya de xaac-admin.' ;;\n"
                 "        ca:partition_fail) printf '%s' 'No s'\\''ha creat la partició:' ;;\n"
                 "        ca:password) printf '%s' 'Contrasenya: ' ;;\n"
@@ -2265,7 +2317,7 @@ exit 0
                 "        es:no_ac) printf '%s' 'No se ha detectado alimentación externa. Instalación rechazada.' ;;\n"
                 "        es:no_disk) printf '%s' 'No se ha detectado ningún disco escribible.' ;;\n"
                 "        es:out_range) printf '%s' 'Selección fuera de rango.' ;;\n"
-                "        es:package_missing) printf '%s' 'xaac-thinclient 1.0.0 no consta como instalado.' ;;\n"
+                "        es:package_missing) printf '%s' 'xaac-thinclient 1.1.0 no consta como instalado.' ;;\n"
                 "        es:pam_fail) printf '%s' 'PAM ha rechazado la contraseña de xaac-admin.' ;;\n"
                 "        es:partition_fail) printf '%s' 'No se ha creado la partición:' ;;\n"
                 "        es:password) printf '%s' 'Contraseña: ' ;;\n"
@@ -2371,7 +2423,7 @@ exit 0
                 "        en:no_ac) printf '%s' 'External power was not detected. Installation rejected.' ;;\n"
                 "        en:no_disk) printf '%s' 'No writable disk was detected.' ;;\n"
                 "        en:out_range) printf '%s' 'Selection out of range.' ;;\n"
-                "        en:package_missing) printf '%s' 'xaac-thinclient 1.0.0 is not installed.' ;;\n"
+                "        en:package_missing) printf '%s' 'xaac-thinclient 1.1.0 is not installed.' ;;\n"
                 "        en:pam_fail) printf '%s' 'PAM rejected the xaac-admin password.' ;;\n"
                 "        en:partition_fail) printf '%s' 'Partition was not created:' ;;\n"
                 "        en:password) printf '%s' 'Password: ' ;;\n"
@@ -2815,7 +2867,7 @@ exit 0
                 "test -s \"$mount_root/boot/grub/grub.cfg\"\n"
                 "test -x \"$mount_root/usr/bin/xaac-thinclient\" || { xaac_say thinclient_missing; exit 1; }\n"
                 "test -f \"$mount_root/etc/xaac/block5-integration\" || { xaac_say block5_missing; exit 1; }\n"
-                "chroot \"$mount_root\" dpkg-query -W -f='${Status} ${Version}\\n' xaac-thinclient | grep -Fq 'install ok installed 1.0.0' || { xaac_say package_missing; exit 1; }\n"
+                "chroot \"$mount_root\" dpkg-query -W -f='${Status} ${Version}\\n' xaac-thinclient | grep -Fq 'install ok installed 1.1.0' || { xaac_say package_missing; exit 1; }\n"
                 "grep -Fq \"PRETTY_NAME=\\\"XAAC Thin Client OS\" \"$mount_root/etc/os-release\" || { xaac_say identity_fail; exit 1; }\n"
                 "test ! -e \"$mount_root/usr/local/sbin/xaac-installer-welcome\" || { xaac_say installer_remains; exit 1; }\n"
                 "test ! -e \"$mount_root/etc/systemd/system/multi-user.target.wants/xaac-installer-welcome.service\" || { xaac_say installer_service_remains; exit 1; }\n"
@@ -2941,6 +2993,7 @@ exit 0
             helper_link.symlink_to(f"../sbin/{helper_name}")
 
 
+        component_versions = self._validate_required_component_artifacts()
         agent_debian_version = self._validate_xaac_agent_artifact()
         debs = self._copy_valid_debs()
         with self._chroot_mounts():
@@ -3002,13 +3055,38 @@ exit 0
                 ], phase="configure-xaac-packages")
             self._chroot([
                 "/bin/sh", "-ec",
+                "mkdir -p /usr/local/bin; "
+                "ln -sfn /usr/bin/xaac-network-gui /usr/local/bin/xaac-thin-client-network; "
+                "ln -sfn /usr/bin/xaac-thinclient /usr/local/bin/xaac-thin-client-remote; "
+                "test \"$(readlink /usr/local/bin/xaac-thin-client-network)\" = '/usr/bin/xaac-network-gui'; "
+                "test \"$(readlink /usr/local/bin/xaac-thin-client-remote)\" = '/usr/bin/xaac-thinclient'",
+            ], phase="configure-xaac-1.1-command-aliases")
+            self._chroot([
+                "/bin/sh", "-ec",
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thinclient)\" = 'install ok installed'; "
+                f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thinclient)\" = '{component_versions['xaac-thinclient']}'; "
+                "test -x /usr/bin/xaac-thinclient; test -L /usr/local/bin/xaac-thin-client-remote; "
+                "test -d /etc/xaac-thinclient; "
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-vpn)\" = 'install ok installed'; "
+                f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-vpn)\" = '{component_versions['xaac-thin-client-vpn']}'; "
+                "test -x /usr/bin/xaac-thin-client-vpn; "
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-network)\" = 'install ok installed'; "
+                f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-network)\" = '{component_versions['xaac-thin-client-network']}'; "
+                "test -x /usr/bin/xaac-network-gui; test -x /usr/bin/xaac-network-manager; test -L /usr/local/bin/xaac-thin-client-network; "
+                "test -f /lib/systemd/system/xaac-network-manager.service; "
+                "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-dock)\" = 'install ok installed'; "
+                f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-dock)\" = '{component_versions['xaac-thin-client-dock']}'; "
+                "test -x /usr/bin/xaac-thin-client-dock",
+            ], phase="configure-verify-xaac-components-1.1")
+            self._chroot([
+                "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-agent)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-agent)\" = '{agent_debian_version}'; "
-                "test -x /opt/xaac-agent/runtime/bin/python3.13; "
-                "test -x /opt/xaac-agent/runtime/bin/xaac-agent; "
-                "test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin; "
+                "test -x /usr/bin/python3; "
+                "/usr/bin/python3 -I -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 13) else 1)'; "
+                "test -x /usr/bin/xaac-agent; "
                 "test -x /usr/sbin/xaac-agent-admin; "
-                "test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/xaac-agent-admin'; "
+                "head -n1 /usr/sbin/xaac-agent-admin | grep -Fx '#!/usr/bin/python3' >/dev/null; "
                 "test -f /etc/xaac-agent/agent.ini; "
                 "test -f /usr/lib/systemd/system/xaac-agent.service; "
                 "test -f /usr/lib/systemd/system/xaac-privileged-helper.socket; "
@@ -3075,7 +3153,7 @@ exit 0
                 "/bin/sh", "-ec",
                 "command -v xaac-thinclient >/dev/null; "
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thinclient)\" = 'install ok installed'; "
-                "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.0.0'",
+                "test \"$(dpkg-query -W -f='${Version}' xaac-thinclient)\" = '1.1.0'",
             ], phase="configure-verify-xaac-thinclient")
             self._verify_thinclient_rootfs(context="configure")
             # XAAC Thin Client VPN is installed exclusively from its .deb.
@@ -3127,13 +3205,13 @@ exit 0
             self._install_zorin_gtk_theme()
             self._customize_xaac_thinclient_theme()
             self._configure_xaac_thinclient_production_runtime()
-            thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.0.0_all.deb"
+            thinclient_deb = self.paths.project_root / "packages/xaac-thinclient_1.1.0_all.deb"
             if not thinclient_deb.is_file():
-                raise ProductionBuildError("Falta packages/xaac-thinclient_1.0.0_all.deb")
+                raise ProductionBuildError("Falta packages/xaac-thinclient_1.1.0_all.deb")
             thinclient_sha = hashlib.sha256(thinclient_deb.read_bytes()).hexdigest()
             self._atomic_write(
                 self._inside("/etc/xaac/block5-integration"),
-                f"thinclient_package=xaac-thinclient\nversion=1.0.0\nsha256={thinclient_sha}\n",
+                f"thinclient_package=xaac-thinclient\nversion=1.1.0\nsha256={thinclient_sha}\n",
             )
             # The .deb enables its user service globally for generic Debian
             # desktops.  XAAC Thin Client OS has its own bounded supervisor, so

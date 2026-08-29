@@ -1,6 +1,6 @@
 schema_version: 1
 project: XAAC Thin Client OS
-version: 1.0.0
+version: 1.1.0
 architecture: amd64
 channel: development
 profile: wyse3040

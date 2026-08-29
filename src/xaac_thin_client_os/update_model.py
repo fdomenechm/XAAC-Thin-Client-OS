@@ -18,7 +18,7 @@ class UpdateModelError(RuntimeError):
 
 _SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$")
 _ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
-_ALLOWED_KINDS = {"application", "vpn", "agent"}
+_ALLOWED_KINDS = {"application", "vpn", "network", "shell", "agent"}
 _ALLOWED_ARCHITECTURES = {"all", "amd64"}
 _BUILD_CHANNELS = {"development", "testing", "candidate", "stable", "long-term"}
 _REQUIRED_OUTPUTS = {"policy", "state", "current_release", "admin"}
@@ -81,8 +81,8 @@ def load_update_model(path: Path) -> dict[str, Any]:
         raise UpdateModelError("Estratègia d'actualització no suportada")
 
     components = raw.get("components")
-    if not isinstance(components, list) or len(components) != 3:
-        raise UpdateModelError("Cal definir exactament els tres components XAAC actualitzables")
+    if not isinstance(components, list) or len(components) != 5:
+        raise UpdateModelError("Cal definir exactament els cinc components XAAC actualitzables")
     ids: list[str] = []
     packages: list[str] = []
     for index, item in enumerate(components):
@@ -105,7 +105,7 @@ def load_update_model(path: Path) -> dict[str, Any]:
         packages.append(package)
     if len(ids) != len(set(ids)) or len(packages) != len(set(packages)):
         raise UpdateModelError("Identificadors o paquets de component duplicats")
-    expected_packages = {"xaac-thinclient", "xaac-thin-client-vpn", "xaac-agent"}
+    expected_packages = {"xaac-thinclient", "xaac-thin-client-vpn", "xaac-thin-client-network", "xaac-thin-client-dock", "xaac-agent"}
     if set(packages) != expected_packages:
         raise UpdateModelError("El model no coincideix amb els paquets de producció XAAC")
 

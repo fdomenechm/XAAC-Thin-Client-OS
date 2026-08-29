@@ -73,9 +73,9 @@ command -v dpkg-deb >/dev/null 2>&1 || {
 }
 
 for artifact in \
-    packages/xaac-agent_1.0.0-8_amd64.deb \
-    packages/xaac-thin-client-vpn_1.0.0_all.deb \
-    packages/xaac-thinclient_1.0.0_all.deb
+    packages/xaac-agent_1.1.0-1_amd64.deb \
+    packages/xaac-thin-client-vpn_1.1.0_all.deb \
+    packages/xaac-thinclient_1.1.0_all.deb
 do
     if [ ! -f "$artifact" ] || ! dpkg-deb --info "$artifact" >/dev/null 2>&1; then
         printf 'Error: artefacte de producció absent o invàlid: %s\n' "$artifact" >&2

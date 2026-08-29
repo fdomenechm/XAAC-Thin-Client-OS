@@ -1,13 +1,22 @@
 # XAAC Thin Client OS
 
-**XAAC Thin Client OS 1.0.0** és una distribució especialitzada basada en Debian 13,
+**XAAC Thin Client OS 1.1.0** és una distribució especialitzada basada en Debian 13,
 optimitzada per al Dell Wyse 3040 amb 2 GB de RAM i 8 GB d'eMMC. Proporciona una
-sessió gràfica segura en mode quiosc per executar XAAC Thin Client i XAAC Thin Client
-Agent, amb administració remota restringida mitjançant OpenSSH.
+sessió gràfica segura en mode quiosc per executar XAAC Thin Client Dock, Network, VPN,
+XAAC Thin Client Remote i XAAC Thin Client Agent, amb administració remota restringida mitjançant OpenSSH.
+
+### Components XAAC integrats en 1.1.0
+
+- XAAC Thin Client Remote 1.1.0 (paquet Debian tècnic `xaac-thinclient`).
+- XAAC Thin Client VPN 1.1.0.
+- XAAC Thin Client Network 1.1.0.
+- XAAC Thin Client Dock 1.1.0.
+- XAAC Thin Client Agent 1.1.0.
+
 
 ## Estat del projecte
 
-- Versió estable: **1.0.0**
+- Versió de desenvolupament: **1.1.0**
 - Plataforma base: **Debian 13**
 - Arquitectura objectiu: **amd64**
 - Maquinari principal: **Dell Wyse 3040**
@@ -20,11 +29,13 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 ## Característiques principals
 
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
+- Entrada de sessió 1.1.0 governada per la política del Dock (`disabled`, `optional`, `required`), amb compatibilitat amb el flux VPN/Remote anterior quan el Dock està desactivat.
+- Àlies d’integració estables `xaac-thin-client-network` i `xaac-thin-client-remote` perquè el Dock no depenga dels noms interns dels executables dels paquets.
 - Experiència d'appliance XAAC de punta a punta: arrencada silenciosa amb splash a pantalla completa, transicions controlades, fons granit de sessió, feedback animat d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
-- Integració amb XAAC Thin Client i XAAC Thin Client Agent.
-- XAAC Agent 1.0.0 integrat com a paquet Debian `1.0.0-8`, amb runtime Python 3.13 privat i validació SHA-256 abans de construir la ISO.
+- Integració amb XAAC Thin Client Remote, Network, VPN, Dock i XAAC Thin Client Agent.
+- XAAC Thin Client Agent 1.1.0 integrat com a paquet Debian `1.1.0-1`, sobre Python 3.13 del sistema i amb validació SHA-256 abans de construir la ISO.
 - Administració i enrolament XMS de l'Agent mitjançant `xaac-agent-admin`, amb token bootstrap d'un sol ús i sense secrets en arguments de procés.
 - Contracte local OS ↔ Agent `xaac-local-integration/v1`, amb estat `xaac-state/v2`, events del supervisor i permisos direccionals via `xaac-ipc`.
 - XAAC Thin Client VPN amb provisionament administratiu simplificat mitjançant `xaac-vpn-admin`.

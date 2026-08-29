@@ -34,6 +34,8 @@ def test_loads_phase_10_2_update_architecture() -> None:
     assert [component["package"] for component in model["components"]] == [
         "xaac-thinclient",
         "xaac-thin-client-vpn",
+        "xaac-thin-client-network",
+        "xaac-thin-client-dock",
         "xaac-agent",
     ]
     assert model["manifest"]["require_detached_signature"] is True
@@ -49,7 +51,7 @@ def test_manifest_is_stable(tmp_path: Path) -> None:
         "phase": "10.2",
         "hardware_profile": "wyse3040",
         "architecture": "amd64",
-        "component_count": 3,
+        "component_count": 5,
         "manifest_schema": "xaac-update-manifest/v1",
         "downgrades_allowed": False,
     }
@@ -104,7 +106,7 @@ def test_rejects_relaxed_downgrade_policy(tmp_path: Path) -> None:
 
 
 def test_rejects_incomplete_atomic_set(tmp_path: Path) -> None:
-    path = altered(tmp_path, "    - xaac-agent\n", "")
+    path = altered(tmp_path, "  - xaac-thin-client-dock\n", "")
     with pytest.raises(UpdateModelError, match="atòmic"):
         load_update_model(path)
 

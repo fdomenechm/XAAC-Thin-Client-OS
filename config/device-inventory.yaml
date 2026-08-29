@@ -7,6 +7,9 @@ inventory:
   maximum_packages: 4096
 xaac_packages:
 - xaac-thinclient
+- xaac-thin-client-vpn
+- xaac-thin-client-network
+- xaac-thin-client-dock
 - xaac-agent
 paths:
   output: /var/lib/xaac-agent/inventory/inventory.json

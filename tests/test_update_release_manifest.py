@@ -20,7 +20,7 @@ def test_builds_manifest_from_exact_production_debs() -> None:
     manifest = build_release_manifest(
         ROOT,
         ROOT / "config/update-model.yaml",
-        target_os_version="1.0.0",
+        target_os_version="1.1.0",
         channel="production",
     )
     assert manifest["schema"] == "xaac-update-manifest/v1"
@@ -28,6 +28,8 @@ def test_builds_manifest_from_exact_production_debs() -> None:
     assert [item["package"] for item in manifest["components"]] == [
         "xaac-thinclient",
         "xaac-thin-client-vpn",
+        "xaac-thin-client-network",
+        "xaac-thin-client-dock",
         "xaac-agent",
     ]
     assert all(len(item["sha256"]) == 64 for item in manifest["components"])
@@ -35,15 +37,15 @@ def test_builds_manifest_from_exact_production_debs() -> None:
 
 
 def test_manifest_is_deterministic() -> None:
-    first = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.0.0", channel="production")
-    second = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.0.0", channel="production")
+    first = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.1.0", channel="production")
+    second = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.1.0", channel="production")
     assert first == second
 
 
 def test_written_manifest_detects_tampering(tmp_path: Path) -> None:
-    manifest = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.0.0", channel="production")
+    manifest = build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.1.0", channel="production")
     path = write_release_manifest(tmp_path / "manifest.json", manifest)
-    assert load_release_manifest(path)["release"]["os_version"] == "1.0.0"
+    assert load_release_manifest(path)["release"]["os_version"] == "1.1.0"
     payload = json.loads(path.read_text())
     payload["release"]["os_version"] = "9.9.9"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -58,7 +60,7 @@ def test_rejects_invalid_target_version() -> None:
 
 def test_rejects_unknown_channel() -> None:
     with pytest.raises(UpdateReleaseManifestError, match="Canal no autoritzat"):
-        build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.0.0", channel="unknown")
+        build_release_manifest(ROOT, ROOT / "config/update-model.yaml", target_os_version="1.1.0", channel="unknown")
 
 
 def test_cli_creates_update_manifest(tmp_path: Path) -> None:
@@ -67,6 +69,6 @@ def test_cli_creates_update_manifest(tmp_path: Path) -> None:
     destination = ROOT / output
     try:
         assert main(["--root", str(ROOT), "create-update-manifest", "--output", output]) == 0
-        assert load_release_manifest(destination)["release"]["os_version"] == "1.0.0"
+        assert load_release_manifest(destination)["release"]["os_version"] == "1.1.0"
     finally:
         destination.unlink(missing_ok=True)

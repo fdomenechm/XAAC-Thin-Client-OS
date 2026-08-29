@@ -1,13 +1,13 @@
 schema_version: 1
 product: XAAC Thin Client OS
-version: 1.0.0
+version: 1.1.0
 status: stable
 channel: production
 artifacts:
-  iso: .build/iso/xaac-thin-client-os-1.0.0.iso
-  img: .build/img/xaac-thin-client-os-1.0.0.img.xz
+  iso: .build/iso/xaac-thin-client-os-1.1.0.iso
+  img: .build/img/xaac-thin-client-os-1.1.0.img.xz
   recovery_img: .build/recovery/xaac-thin-client-os-recovery-1.0.0.img.xz
-  pxe: .build/pxe/xaac-thin-client-os-1.0.0
+  pxe: .build/pxe/xaac-thin-client-os-1.1.0
   packages: .build/packaging/repository
   documentation: docs/manual
 security:

@@ -13,7 +13,7 @@ def test_parser_program_name() -> None:
 def test_version_command(capsys) -> None:  # type: ignore[no-untyped-def]
     assert main(["version"]) == 0
     output = capsys.readouterr().out
-    assert "XAAC Thin Client OS 1.0.0" in output
+    assert "XAAC Thin Client OS 1.1.0" in output
 
 
 def test_check_python_command(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -58,7 +58,7 @@ def test_json_version(capsys) -> None:  # type: ignore[no-untyped-def]
     assert main(["--json", "version"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "ok"
-    assert payload["version"] == "1.0.0"
+    assert payload["version"] == "1.1.0"
 
 
 def test_clean_requires_force(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]

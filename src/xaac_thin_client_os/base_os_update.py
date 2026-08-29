@@ -24,9 +24,9 @@ _REQUIRED_OUTPUTS = {
     "apt_conf",
     "runtime",
 }
-_REQUIRED_PROTECTED = {"xaac-thinclient", "xaac-thin-client-vpn", "xaac-agent"}
+_REQUIRED_PROTECTED = {"xaac-thinclient", "xaac-thin-client-vpn", "xaac-thin-client-network", "xaac-thin-client-dock", "xaac-agent"}
 _REQUIRED_SUITES = {"trixie", "trixie-updates", "trixie-security"}
-_REQUIRED_SERVICES = {"NetworkManager.service", "nftables.service", "apparmor.service", "greetd.service"}
+_REQUIRED_SERVICES = {"NetworkManager.service", "nftables.service", "apparmor.service", "greetd.service", "xaac-network-manager.service"}
 
 
 def _absolute_path(value: object, field: str) -> str:
@@ -129,7 +129,7 @@ def load_base_os_update(path: Path) -> dict[str, Any]:
     if installed != ["ssh.service"]:
         raise BaseOsUpdateError("Política SSH 10.6 invàlida")
     executables = health.get("required_executables")
-    expected_executables = {"/usr/bin/xaac-thinclient", "/usr/bin/xaac-thin-client-vpn", "/usr/bin/xaac-agent"}
+    expected_executables = {"/usr/bin/xaac-thinclient", "/usr/bin/xaac-thin-client-vpn", "/usr/bin/xaac-network-gui", "/usr/bin/xaac-network-manager", "/usr/bin/xaac-thin-client-dock", "/usr/bin/xaac-agent"}
     if not isinstance(executables, list) or set(executables) != expected_executables:
         raise BaseOsUpdateError("Executables XAAC obligatoris 10.6 invàlids")
     for executable in executables:

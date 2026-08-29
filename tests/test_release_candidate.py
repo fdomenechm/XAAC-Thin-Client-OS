@@ -12,7 +12,7 @@ def project(tmp_path):
 def test_profile():
  x=load_release_candidate_profile(ROOT/'config/release-candidate.yaml'); assert tuple(x['gates'])==REQUIRED_GATES and x['freeze']['enabled']
 def test_manifest():
- x=create_release_candidate_plan(ROOT,ROOT/'config/release-candidate.yaml').manifest(); assert x['version']=='1.0.0-rc.1' and x['status']=='candidate'
+ x=create_release_candidate_plan(ROOT,ROOT/'config/release-candidate.yaml').manifest(); assert x['version']=='1.1.0-rc.1' and x['status']=='candidate'
 def test_prepare(tmp_path):
  p=project(tmp_path); paths=ReleaseCandidateBuilder().prepare(create_release_candidate_plan(p,p/'config/release-candidate.yaml')); assert len(paths)==4; assert json.loads(paths[0].read_text())['frozen']; assert 'pending' in paths[2].read_text()
 def test_permissions(tmp_path):

@@ -2,7 +2,7 @@ schema_version: 2
 profile: xaac-session-supervisor
 supervision:
   user: xaac-kiosk
-  client_command: /usr/local/libexec/xaac-vpn-session-gate
+  client_command: /usr/local/libexec/xaac-session-entry
   supervisor_command: /usr/local/libexec/xaac-session-supervisor
   error_screen_command: /usr/local/libexec/xaac-session-error
   startup_screen_command: /usr/local/libexec/xaac-startup-screen
@@ -35,6 +35,7 @@ visual_session:
   interactive_window_timeout_seconds: 20
   thin_client_app_id: org.xaac.thinclient
   vpn_app_id: es.canals.xaac.ThinClientVPN
+  dock_app_id: org.xaac.ThinClientDock
 visual_recovery:
   background_color: "#ffffff"
   background_image: /usr/share/plymouth/themes/xaac/XAAC_TC_OS.png
@@ -63,6 +64,7 @@ packages:
     - swaybg
     - wlrctl
 files:
+  session_entry: /usr/local/libexec/xaac-session-entry
   supervisor: /usr/local/libexec/xaac-session-supervisor
   error_screen: /usr/local/libexec/xaac-session-error
   startup_screen: /usr/local/libexec/xaac-startup-screen

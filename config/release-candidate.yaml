@@ -1,6 +1,6 @@
 schema_version: 1
 product: XAAC Thin Client OS
-version: 1.0.0-rc.1
+version: 1.1.0-rc.1
 freeze:
   enabled: true
   allowed_changes:
@@ -20,9 +20,9 @@ gates:
   documentation: python -m pytest -q tests/test_documentation.py
   packaging: python -m pytest -q tests/test_production_packaging.py
 artifacts:
-  iso: .build/iso/xaac-thin-client-os-1.0.0-rc.1.iso
-  img: .build/img/xaac-thin-client-os-1.0.0-rc.1.img.xz
-  pxe: .build/pxe/xaac-thin-client-os-1.0.0-rc.1
+  iso: .build/iso/xaac-thin-client-os-1.1.0-rc.1.iso
+  img: .build/img/xaac-thin-client-os-1.1.0-rc.1.img.xz
+  pxe: .build/pxe/xaac-thin-client-os-1.1.0-rc.1
   packages: .build/packaging/repository
 approval:
   required: true

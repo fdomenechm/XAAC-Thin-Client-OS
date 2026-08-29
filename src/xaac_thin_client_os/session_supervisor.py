@@ -81,7 +81,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     session_visual_keys = {
         "stable_background_color", "cursor_theme", "cursor_size",
         "busy_cursor_name", "normal_cursor_name",
-        "interactive_window_timeout_seconds", "thin_client_app_id", "vpn_app_id",
+        "interactive_window_timeout_seconds", "thin_client_app_id", "vpn_app_id", "dock_app_id",
     }
     if set(session_visual) != session_visual_keys:
         raise SessionSupervisorError("Contracte visual de sessió incomplet")
@@ -100,7 +100,7 @@ def load_session_supervisor_profile(path: Path) -> dict[str, Any]:
     interactive_timeout = session_visual.get("interactive_window_timeout_seconds")
     if not isinstance(interactive_timeout, int) or not 2 <= interactive_timeout <= 60:
         raise SessionSupervisorError("Timeout de finestra interactiva invàlid")
-    for key in ("thin_client_app_id", "vpn_app_id"):
+    for key in ("thin_client_app_id", "vpn_app_id", "dock_app_id"):
         value = session_visual.get(key)
         if not isinstance(value, str) or not value.strip() or any(ch.isspace() for ch in value):
             raise SessionSupervisorError(f"App-id visual invàlid: {key}")
@@ -181,6 +181,7 @@ STABLE_BACKGROUND={session_visual["stable_background_color"]}
 INTERACTIVE_TIMEOUT={session_visual["interactive_window_timeout_seconds"]}
 THIN_CLIENT_APP_ID={session_visual["thin_client_app_id"]}
 VPN_APP_ID={session_visual["vpn_app_id"]}
+DOCK_APP_ID={session_visual["dock_app_id"]}
 STATUS_NAME={status_name}
 RUNTIME_DIR=${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}
 HANDOFF_BG_PID="$RUNTIME_DIR/xaac-handoff-background.pid"
@@ -205,7 +206,7 @@ iso_now() {{
 }}
 
 thin_client_version() {{
-  /usr/bin/dpkg-query -W -f='${{Version}}' "$THIN_CLIENT_PACKAGE" 2>/dev/null || printf '1.0.0'
+  /usr/bin/dpkg-query -W -f='${{Version}}' "$THIN_CLIENT_PACKAGE" 2>/dev/null || printf '1.1.0'
 }}
 
 write_status() {{
@@ -331,6 +332,7 @@ wait_for_interactive_surface() {{
     while [ "$waited" -lt "$steps" ]; do
       /usr/bin/wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID" >/dev/null 2>&1 && return 0
       /usr/bin/wlrctl toplevel find "app_id:$VPN_APP_ID" >/dev/null 2>&1 && return 0
+      /usr/bin/wlrctl toplevel find "app_id:$DOCK_APP_ID" >/dev/null 2>&1 && return 0
       sleep 0.1
       waited=$((waited + 1))
     done
@@ -431,6 +433,50 @@ while :; do
   fi
   BACKOFF=$((BACKOFF * 2)); [ "$BACKOFF" -gt "$MAX_BACKOFF" ] && BACKOFF=$MAX_BACKOFF
 done
+'''
+    session_entry = r'''#!/bin/sh
+set -eu
+
+DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini
+DOCK=/usr/bin/xaac-thin-client-dock
+LEGACY=/usr/local/libexec/xaac-vpn-session-gate
+mode=optional
+
+if [ -r "$DOCK_CONFIG" ]; then
+  parsed=$(/usr/bin/awk '
+    BEGIN { section="" }
+    /^[[:space:]]*\[/ {
+      section=$0
+      gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", section)
+      next
+    }
+    section == "dock" && /^[[:space:]]*mode[[:space:]]*=/ {
+      value=$0
+      sub(/^[^=]*=[[:space:]]*/, "", value)
+      sub(/[[:space:]]*[;#].*$/, "", value)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print value
+      exit
+    }
+  ' "$DOCK_CONFIG")
+  [ -z "$parsed" ] || mode=$parsed
+fi
+
+case "$mode" in
+  disabled)
+    [ -x "$LEGACY" ] || exit 69
+    exec "$LEGACY"
+    ;;
+  optional|required)
+    [ -x "$DOCK" ] || exit 69
+    exec "$DOCK"
+    ;;
+  *)
+    # Invalid policy is not silently weakened. The session supervisor will
+    # enter its bounded recovery path and expose an incident code.
+    exit 78
+    ;;
+esac
 '''
     startup_screen = r'''#!/usr/bin/python3.13
 import os
@@ -811,6 +857,7 @@ printf '%s\\n' "$!" > "$runtime_dir/xaac-handoff-background.pid"
 {cfg["supervisor_command"]} &
 '''
     planned = (
+        (_safe_absolute(files["session_entry"], "session_entry"), session_entry, 0o755),
         (_safe_absolute(files["supervisor"], "supervisor"), supervisor, 0o755),
         (_safe_absolute(files["error_screen"], "error_screen"), error_screen, 0o755),
         (_safe_absolute(files["startup_screen"], "startup_screen"), startup_screen, 0o755),

@@ -43,7 +43,7 @@ def load_local_integration_profile(path: Path) -> dict[str, Any]:
     contract = raw["contract"]
     if not isinstance(contract, dict) or set(contract) != {"name", "version", "thin_client_version", "formats"}:
         raise LocalIntegrationError("Contracte local incomplet")
-    if contract["name"] != "xaac-local-integration" or contract["version"] != 1 or contract["thin_client_version"] != "1.0.0":
+    if contract["name"] != "xaac-local-integration" or contract["version"] != 1 or contract["thin_client_version"] != "1.1.0":
         raise LocalIntegrationError("Identitat o versió del contracte local invàlida")
     formats = contract["formats"]
     expected_formats = {

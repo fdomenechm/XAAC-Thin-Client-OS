@@ -35,6 +35,8 @@ categories:
     - dpkg-query -W xaac-thinclient
     - dpkg-query -W xaac-thin-client-vpn
     - dpkg-query -W xaac-agent
+    - dpkg-query -W xaac-thin-client-network
+    - dpkg-query -W xaac-thin-client-dock
     - dpkg --audit
   security:
     enabled: true
