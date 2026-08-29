@@ -30,7 +30,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
 - Entrada de sessió 1.1.0 governada per la política del Dock (`disabled`, `optional`, `required`), amb compatibilitat amb el flux VPN/Remote anterior quan el Dock està desactivat.
-- Àlies d’integració estables `xaac-thin-client-network` i `xaac-thin-client-remote` perquè el Dock no depenga dels noms interns dels executables dels paquets.
+- Àlies d’integració estables `xaac-thin-client-network`, `xaac-thin-client-vpn` i `xaac-thin-client-remote` dins `/usr/local/libexec/xaac`, el `PATH` restringit del quiosc, perquè el Dock puga descobrir els components sense exposar `/usr/bin`.
 - Experiència d'appliance XAAC de punta a punta: arrencada silenciosa amb splash a pantalla completa, transicions controlades, fons granit de sessió, feedback animat d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.

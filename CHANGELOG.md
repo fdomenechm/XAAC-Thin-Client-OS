@@ -1,5 +1,6 @@
 # 2026-08-29 — XAAC Thin Client OS 1.1.0: actualització de composició
 
+- Correcció d’integració del Dock: els tres launchers autoritzats (`xaac-thin-client-network`, `xaac-thin-client-vpn`, `xaac-thin-client-remote`) es publiquen ara en `/usr/local/libexec/xaac`, que és el `PATH` deliberadament restringit de la sessió quiosc. Això evita que el Dock marque tots els components com a no disponibles sense ampliar el `PATH` a `/usr/bin`.
 - Correcció 1.1.0: actualitzat el gate `configure-verify-block7-integration` i el contracte XMS al nou paquet de XAAC Thin Client Agent basat en Python 3.13 del sistema. Ja no s'exigeix ni s'admet el runtime privat `/opt/xaac-agent/runtime`; `/usr/sbin/xaac-agent-admin` ha de ser un executable regular.
 
 - Elevada la versió del sistema i del tooling d'integració a 1.1.0.
@@ -8,7 +9,7 @@
 - Afegits perfils de paquet, inventari, health checks i model d'actualització per a Network i Dock.
 - Actualitzades les referències als paquets 1.1.0 i eliminat l'artefacte corrupte residual de Thin Client 1.0.0.
 - Integrat el Dock en l’entrada de sessió: `disabled` conserva el flux VPN/Remote anterior i `optional`/`required` entren per XAAC Thin Client Dock.
-- Afegits àlies estables d’execució per a Network i Remote que satisfan el contracte de descoberta del Dock sense canviar els noms tècnics dels paquets.
+- Afegits àlies estables d’execució per a Network, VPN i Remote dins del `PATH` restringit del quiosc, satisfent el contracte de descoberta del Dock sense canviar els noms tècnics dels paquets.
 - Actualitzat XAAC Thin Client Agent al contracte 1.1.0-1 amb Python 3.13 del sistema, sense runtime Python privat.
 
 ## 2026-08-23 — Tancament de XAAC Thin Client OS 1.0.0 després de validació física

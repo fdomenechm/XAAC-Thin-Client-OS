@@ -3055,24 +3055,26 @@ exit 0
                 ], phase="configure-xaac-packages")
             self._chroot([
                 "/bin/sh", "-ec",
-                "mkdir -p /usr/local/bin; "
-                "ln -sfn /usr/bin/xaac-network-gui /usr/local/bin/xaac-thin-client-network; "
-                "ln -sfn /usr/bin/xaac-thinclient /usr/local/bin/xaac-thin-client-remote; "
-                "test \"$(readlink /usr/local/bin/xaac-thin-client-network)\" = '/usr/bin/xaac-network-gui'; "
-                "test \"$(readlink /usr/local/bin/xaac-thin-client-remote)\" = '/usr/bin/xaac-thinclient'",
+                "mkdir -p /usr/local/libexec/xaac; "
+                "ln -sfn /usr/bin/xaac-network-gui /usr/local/libexec/xaac/xaac-thin-client-network; "
+                "ln -sfn /usr/bin/xaac-thin-client-vpn /usr/local/libexec/xaac/xaac-thin-client-vpn; "
+                "ln -sfn /usr/bin/xaac-thinclient /usr/local/libexec/xaac/xaac-thin-client-remote; "
+                "test \"$(readlink /usr/local/libexec/xaac/xaac-thin-client-network)\" = '/usr/bin/xaac-network-gui'; "
+                "test \"$(readlink /usr/local/libexec/xaac/xaac-thin-client-vpn)\" = '/usr/bin/xaac-thin-client-vpn'; "
+                "test \"$(readlink /usr/local/libexec/xaac/xaac-thin-client-remote)\" = '/usr/bin/xaac-thinclient'",
             ], phase="configure-xaac-1.1-command-aliases")
             self._chroot([
                 "/bin/sh", "-ec",
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thinclient)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thinclient)\" = '{component_versions['xaac-thinclient']}'; "
-                "test -x /usr/bin/xaac-thinclient; test -L /usr/local/bin/xaac-thin-client-remote; "
+                "test -x /usr/bin/xaac-thinclient; test -L /usr/local/libexec/xaac/xaac-thin-client-remote; "
                 "test -d /etc/xaac-thinclient; "
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-vpn)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-vpn)\" = '{component_versions['xaac-thin-client-vpn']}'; "
-                "test -x /usr/bin/xaac-thin-client-vpn; "
+                "test -x /usr/bin/xaac-thin-client-vpn; test -L /usr/local/libexec/xaac/xaac-thin-client-vpn; "
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-network)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-network)\" = '{component_versions['xaac-thin-client-network']}'; "
-                "test -x /usr/bin/xaac-network-gui; test -x /usr/bin/xaac-network-manager; test -L /usr/local/bin/xaac-thin-client-network; "
+                "test -x /usr/bin/xaac-network-gui; test -x /usr/bin/xaac-network-manager; test -L /usr/local/libexec/xaac/xaac-thin-client-network; "
                 "test -f /lib/systemd/system/xaac-network-manager.service; "
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-dock)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-dock)\" = '{component_versions['xaac-thin-client-dock']}'; "

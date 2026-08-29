@@ -1153,3 +1153,15 @@ def test_production_enables_timesyncd_and_masks_unused_openvpn3_autoload() -> No
     assert "_configure_time_synchronization()" in configure
     assert "systemctl mask openvpn3-autoload.service" in openvpn
     assert "openvpn3-admin init-config --write-configs --force" in openvpn
+
+def test_dock_component_aliases_live_inside_restricted_kiosk_path() -> None:
+    source = Path("src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    lockdown = Path("config/terminal-lockdown.yaml").read_text(encoding="utf-8")
+
+    assert "/usr/local/libexec/xaac:/usr/libexec/xaac" in lockdown
+    assert "ln -sfn /usr/bin/xaac-network-gui /usr/local/libexec/xaac/xaac-thin-client-network" in source
+    assert "ln -sfn /usr/bin/xaac-thin-client-vpn /usr/local/libexec/xaac/xaac-thin-client-vpn" in source
+    assert "ln -sfn /usr/bin/xaac-thinclient /usr/local/libexec/xaac/xaac-thin-client-remote" in source
+    assert "/usr/local/bin/xaac-thin-client-network" not in source
+    assert "/usr/local/bin/xaac-thin-client-remote" not in source
+
