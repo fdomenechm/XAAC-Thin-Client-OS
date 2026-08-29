@@ -1,0 +1,12 @@
+{
+  "format": "xaac-debian-build-evidence/v1",
+  "package": "xaac-thin-client-vpn",
+  "version": "1.1.0",
+  "architecture": "all",
+  "artifact": {
+    "filename": "xaac-thin-client-vpn_1.1.0_all.deb",
+    "media_type": "application/vnd.debian.binary-package",
+    "sha256": "c8fd3b0850dd1975ea55ee9a30f3e73a72bae9ab9fdf7d89741e9c7857fdfc9e",
+    "size": 924702
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "application_version": "1.1.0",
+  "architecture": "amd64",
+  "artifact": "xaac-agent_1.1.0-1_amd64.deb",
+  "build_command": "dpkg-buildpackage -us -uc -b",
+  "build_method": "dpkg-buildpackage",
+  "canonical": true,
+  "debian_version": "1.1.0-1",
+  "package": "xaac-agent",
+  "release_manifest_sha256": "0be21093f92da0db9007a18aad952a3e600704a0731314c785a7cc0c07756a52",
+  "schema": "xaac-block7-release-provenance/v1",
+  "sha256": "074879d6babc8607e84b9d158d78e1587d9f29310744ebaa6c313e588bac54e2",
+  "source_date_epoch": 1787840820
+}
