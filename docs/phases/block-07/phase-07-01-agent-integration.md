@@ -19,7 +19,7 @@ Thin Client Agent abans d'abordar IPC, política VPN i enrolament XMS.
 
 ## Runtime
 
-El paquet incorpora Python 3.13 privat sota `/opt/xaac-agent/runtime` i no
+Des de la versió 1.1.0, el paquet utilitza Python 3.13 del sistema Debian i no
 modifica `/usr/bin/python3`. La configuració real és `/etc/xaac-agent/agent.ini`.
 Les unitats de paquet són `xaac-agent.service` i
 `xaac-privileged-helper.socket`.

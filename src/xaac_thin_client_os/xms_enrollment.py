@@ -45,7 +45,7 @@ def load_xms_enrollment_profile(path: Path) -> dict[str, Any]:
         _absolute(enrollment[field], f"enrollment.{field}")
     if enrollment["admin_command"] != "/usr/sbin/xaac-agent-admin":
         raise XmsEnrollmentError("L'eina administrativa XMS no és la suportada")
-    if enrollment["admin_target"] != "/opt/xaac-agent/runtime/bin/xaac-agent-admin":
+    if enrollment["admin_target"] != "/usr/sbin/xaac-agent-admin":
         raise XmsEnrollmentError("El target de xaac-agent-admin no és el suportat")
     if enrollment["service_unit"] != "xaac-agent.service":
         raise XmsEnrollmentError("La unitat de l'Agent no és la suportada")
@@ -90,21 +90,13 @@ class XmsEnrollmentManager:
             return (manifest_path,)
 
         admin = self._path(enrollment["admin_command"])
-        admin_target = self._path(enrollment["admin_target"])
         config = self._path(enrollment["configuration"])
         service = self.root / "usr/lib/systemd/system" / enrollment["service_unit"]
-        if admin.is_symlink():
-            try:
-                link_target = os.readlink(admin)
-            except OSError as exc:
-                raise XmsEnrollmentError("No s'ha pogut inspeccionar xaac-agent-admin") from exc
-            if link_target != enrollment["admin_target"]:
-                raise XmsEnrollmentError("xaac-agent-admin apunta fora del runtime autoritzat")
-            admin_ok = admin_target.is_file() and os.access(admin_target, os.X_OK)
-        else:
-            admin_ok = admin.is_file() and os.access(admin, os.X_OK)
-        if not admin_ok:
-            raise XmsEnrollmentError("xaac-agent-admin no està instal·lat o no és executable")
+        # Since XAAC Agent 1.1.0 the Debian package installs the administrative
+        # entry point directly as a regular executable using the system Python.
+        # Symlinks to a private runtime are deliberately forbidden.
+        if admin.is_symlink() or not admin.is_file() or not os.access(admin, os.X_OK):
+            raise XmsEnrollmentError("xaac-agent-admin no està instal·lat com a executable regular")
         if not config.is_file():
             raise XmsEnrollmentError("La configuració de XAAC Agent no està instal·lada")
         if not service.is_file():

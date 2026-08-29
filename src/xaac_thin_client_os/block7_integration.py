@@ -270,12 +270,13 @@ grep -Fx 'CapabilityBoundingSet=CAP_SYS_BOOT' /usr/lib/systemd/system/xaac-privi
 
 systemctl is-enabled --quiet xaac-privileged-helper.socket
 ! systemctl is-enabled --quiet xaac-agent.service
-test -x /opt/xaac-agent/runtime/bin/python3.13
-test -x /opt/xaac-agent/runtime/bin/xaac-agent
-test -x /opt/xaac-agent/runtime/bin/xaac-agent-admin
-! test -e /opt/xaac-agent/runtime/runtime
+test -x /usr/bin/python3
+test "$(/usr/bin/python3 -c 'import sys; print(\"%d.%d\" % sys.version_info[:2])')" = '3.13'
+test -x /usr/bin/xaac-agent
 test -x /usr/sbin/xaac-agent-admin
-test \"$(readlink /usr/sbin/xaac-agent-admin)\" = '/opt/xaac-agent/runtime/bin/xaac-agent-admin'
+! test -L /usr/sbin/xaac-agent-admin
+head -n 1 /usr/sbin/xaac-agent-admin | grep -Fx '#!/usr/bin/python3' >/dev/null
+! test -e /opt/xaac-agent/runtime
 grep -Eq '^[[:space:]]*enabled[[:space:]]*=[[:space:]]*false[[:space:]]*$' /etc/xaac-agent/agent.ini
 ! test -e /etc/xaac-agent/enrollment.token
 

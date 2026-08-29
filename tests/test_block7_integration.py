@@ -32,8 +32,13 @@ def test_rootfs_gate_checks_directionality_and_unenrolled_lifecycle() -> None:
     assert "systemctl is-enabled --quiet xaac-privileged-helper.socket" in script
     assert "xaac-kiosk | tr ' '" in script
     assert "grep -Fx xaac-command" in script
-    assert "test -x /opt/xaac-agent/runtime/bin/python3.13" in script
-    assert "! test -e /opt/xaac-agent/runtime/runtime" in script
+    assert "test -x /usr/bin/python3" in script
+    assert "= '3.13'" in script
+    assert "test -x /usr/bin/xaac-agent" in script
+    assert "test -x /usr/sbin/xaac-agent-admin" in script
+    assert "! test -L /usr/sbin/xaac-agent-admin" in script
+    assert "#!/usr/bin/python3" in script
+    assert "! test -e /opt/xaac-agent/runtime" in script
     # /run is tmpfs and must not be required to exist in the static squashfs.
     assert "stat -c '%U:%G:%a' /run/xaac" not in script
     assert "d /run/xaac/thin-client/events 2750 xaac-kiosk xaac-ipc -" in script

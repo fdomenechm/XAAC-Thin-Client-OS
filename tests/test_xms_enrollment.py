@@ -20,13 +20,10 @@ def _profile(tmp_path: Path) -> Path:
 
 def _root(tmp_path: Path) -> Path:
     root = tmp_path / "rootfs"
-    target = root / "opt/xaac-agent/runtime/bin/xaac-agent-admin"
-    target.parent.mkdir(parents=True)
-    target.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    target.chmod(0o755)
     admin = root / "usr/sbin/xaac-agent-admin"
     admin.parent.mkdir(parents=True)
-    admin.symlink_to("/opt/xaac-agent/runtime/bin/xaac-agent-admin")
+    admin.write_text("#!/usr/bin/python3\n", encoding="utf-8")
+    admin.chmod(0o755)
     config = root / "etc/xaac-agent/agent.ini"
     config.parent.mkdir(parents=True)
     config.write_text("[agent]\nenabled=false\n", encoding="utf-8")
@@ -41,7 +38,7 @@ def test_profile_defines_agent_admin_as_the_only_enrollment_owner(tmp_path: Path
     enrollment = profile["enrollment"]
     assert enrollment["format"] == "xaac-agent-admin"
     assert enrollment["admin_command"] == "/usr/sbin/xaac-agent-admin"
-    assert enrollment["admin_target"] == "/opt/xaac-agent/runtime/bin/xaac-agent-admin"
+    assert enrollment["admin_target"] == "/usr/sbin/xaac-agent-admin"
     assert enrollment["commands"] == ["provision", "enable", "disable", "status", "unenroll"]
     assert enrollment["bootstrap_token_one_time"] is True
     assert enrollment["explicit_reenrollment"] is True
@@ -70,7 +67,7 @@ def test_install_writes_only_a_non_secret_contract_manifest(tmp_path: Path) -> N
     (manifest,) = manager.install()
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     assert payload["contract"] == "xaac-agent-admin/v1"
-    assert payload["admin_target"] == "/opt/xaac-agent/runtime/bin/xaac-agent-admin"
+    assert payload["admin_target"] == "/usr/sbin/xaac-agent-admin"
     assert payload["bootstrap"]["one_time"] is True
     assert payload["bootstrap"]["accepted_cli_secret_argument"] is False
     assert payload["commands"] == ["provision", "enable", "disable", "status", "unenroll"]
@@ -114,11 +111,11 @@ def test_cli_exposes_xms_enrollment_contract_command() -> None:
     assert args.dry_run is True
 
 
-def test_enrollment_rejects_admin_symlink_outside_packaged_runtime(tmp_path: Path) -> None:
+def test_enrollment_rejects_admin_symlink(tmp_path: Path) -> None:
     root = _root(tmp_path)
     admin = root / "usr/sbin/xaac-agent-admin"
     admin.unlink()
     admin.symlink_to("/tmp/not-authorized")
     manager = XmsEnrollmentManager(root, _profile(tmp_path))
-    with pytest.raises(XmsEnrollmentError, match="runtime autoritzat"):
+    with pytest.raises(XmsEnrollmentError, match="executable regular"):
         manager.install()

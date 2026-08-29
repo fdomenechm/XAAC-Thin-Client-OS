@@ -3,7 +3,7 @@ enrollment:
   format: xaac-agent-admin
   version: 1
   admin_command: /usr/sbin/xaac-agent-admin
-  admin_target: /opt/xaac-agent/runtime/bin/xaac-agent-admin
+  admin_target: /usr/sbin/xaac-agent-admin
   service_unit: xaac-agent.service
   configuration: /etc/xaac-agent/agent.ini
   bootstrap_token: /etc/xaac-agent/enrollment.token

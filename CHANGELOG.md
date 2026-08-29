@@ -1,5 +1,7 @@
 # 2026-08-29 — XAAC Thin Client OS 1.1.0: actualització de composició
 
+- Correcció 1.1.0: actualitzat el gate `configure-verify-block7-integration` i el contracte XMS al nou paquet de XAAC Thin Client Agent basat en Python 3.13 del sistema. Ja no s'exigeix ni s'admet el runtime privat `/opt/xaac-agent/runtime`; `/usr/sbin/xaac-agent-admin` ha de ser un executable regular.
+
 - Elevada la versió del sistema i del tooling d'integració a 1.1.0.
 - XAAC Thin Client passa a presentar-se com **XAAC Thin Client Remote**; es conserva el nom tècnic del paquet Debian `xaac-thinclient` per compatibilitat.
 - Integrats com a artefactes obligatoris XAAC Thin Client Remote, VPN, Network, Dock i Agent 1.1.0.
