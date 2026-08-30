@@ -1,3 +1,12 @@
+# 2026-08-30 — Correcció d'integració Dock/Remote i geometria local
+
+- El `PATH` restringit (`/usr/local/libexec/xaac:/usr/libexec/xaac`) queda exportat tant pel launcher de sessió com per l'entorn de quiosc, de manera que el Dock descobreix els àlies autoritzats de Network, VPN i Remote sense exposar `/usr/bin`.
+- Integrat un nou paquet Dock 1.1.0 que consulta Network pel **system D-Bus** real, consumeix l'API VPN 1.1.0 `org.xaac.ThinClient.VpnManager1` (`GetCapabilities`/`GetStatus`) i no bloqueja mai Remote per l'estat de Network/VPN.
+- Integrat un nou paquet Remote 1.1.0 que publica `org.xaac.ThinClient1` al bus de sessió per proporcionar l'estat funcional al Dock. La publicació és best-effort i no pot impedir l'aparició de Remote.
+- Corregida la geometria local: eliminat el marge inferior de 112 px, Remote queda centrat i Dock es mou fins a l'extrem inferior central. El fallback X11/Openbox aplica la mateixa disposició i deixa FreeRDP controlar el fullscreen real.
+- El Dock refresca periòdicament els estats per recuperar-se de carreres d'arranc dels serveis.
+- Afegides proves d'integració que inspeccionen els `.deb` incrustats de Dock i Remote i els seus contractes D-Bus/camins canònics de configuració.
+
 # 2026-08-30 — Unificació de directoris de configuració
 
 - Unificat el layout de configuració dels components 1.1.0: Agent `/etc/xaac-agent`, Network `/etc/xaac-network`, VPN `/etc/xaac-vpn`, Remote `/etc/xaac-remote` i Dock `/etc/xaac-dock`. Els paths antics dels paquets es mantenen només com a symlinks de compatibilitat i `xaac-component-config-layout.service` restaura el layout canònic abans de Network/VPN/greetd.

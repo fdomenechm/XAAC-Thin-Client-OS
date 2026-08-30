@@ -89,7 +89,7 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     root = rootfs.resolve()
     if root == Path("/") or root.parent == Path("/"): raise CompositorError(f"Rootfs insegur: {root}")
     p = load_compositor_profile(profile_path); files = p["files"]
-    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <margin bottom=\"112\" />\n  <keyboard>
+    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <keyboard>
     <keybind key=\"A-F4\" />
   </keyboard>
   <mouse>
@@ -104,7 +104,7 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
       <action name=\"AutoPlace\" policy=\"center\" />
     </windowRule>
     <windowRule identifier=\"org.xaac.thinclient\" serverDecoration=\"no\">
-      <action name=\"Maximize\" direction=\"both\" />
+      <action name=\"AutoPlace\" policy=\"center\" />
     </windowRule>
     <windowRule identifier=\"*xfreerdp*\" serverDecoration=\"no\" />
     <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\">
@@ -113,7 +113,25 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     </windowRule>
   </windowRules>\n</labwc_config>\n"""
     autostart = "/usr/local/libexec/xaac-session-supervisor &\n"
-    openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<openbox_config xmlns=\"http://openbox.org/3.4/rc\">\n  <applications><application class=\"*\"><decor>no</decor><fullscreen>yes</fullscreen></application></applications>\n  <keyboard />\n  <mouse><context name=\"Root\" /></mouse>\n  <desktops><number>1</number></desktops>\n</openbox_config>\n"""
+    openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<openbox_config xmlns=\"http://openbox.org/3.4/rc\">
+  <applications>
+    <application class=\"*\"><decor>no</decor></application>
+    <application class=\"org.xaac.thinclient\">
+      <decor>no</decor>
+      <position force=\"yes\"><x>center</x><y>center</y></position>
+    </application>
+    <application class=\"org.xaac.ThinClientDock\">
+      <decor>no</decor>
+      <position force=\"yes\"><x>center</x><y>-0</y></position>
+    </application>
+    <application class=\"*xfreerdp*\"><decor>no</decor></application>
+  </applications>
+  <keyboard />
+  <mouse><context name=\"Root\" /></mouse>
+  <desktops><number>1</number></desktops>
+</openbox_config>
+"""
     policy = json.dumps({"primary": p["wayland"], "fallback": p["x11"], "kiosk": p["kiosk"], "outputs": p["outputs"], "restart": p["restart"]}, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     planned = ((_safe_absolute(files["labwc_rc"], "labwc_rc"), labwc, 0o644), (_safe_absolute(files["labwc_autostart"], "labwc_autostart"), autostart, 0o755), (_safe_absolute(files["openbox_rc"], "openbox_rc"), openbox, 0o644), (_safe_absolute(files["policy"], "policy"), policy, 0o644))
     return CompositorPlan(root, tuple(dict.fromkeys(p["packages"]["required"])), tuple(dict.fromkeys(p["packages"].get("forbidden", []))), planned)

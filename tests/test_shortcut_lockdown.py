@@ -35,15 +35,21 @@ def test_plan_disables_compositor_defaults_and_exports_policy(tmp_path: Path, pr
     assert "<decoration>server</decoration>" in contents["/etc/xaac/labwc/rc.xml"]
     assert "<layout>:</layout>" in contents["/etc/xaac/labwc/rc.xml"]
     assert 'serverDecoration="yes"' in contents["/etc/xaac/labwc/rc.xml"]
-    assert '<margin bottom="112" />' in contents["/etc/xaac/labwc/rc.xml"]
+    assert '<margin bottom=' not in contents["/etc/xaac/labwc/rc.xml"]
     assert 'identifier="org.xaac.thinclient"' in contents["/etc/xaac/labwc/rc.xml"]
-    assert 'name="Maximize" direction="both"' in contents["/etc/xaac/labwc/rc.xml"]
+    assert 'name="Maximize" direction="both"' not in contents["/etc/xaac/labwc/rc.xml"]
+    assert 'name="AutoPlace" policy="center"' in contents["/etc/xaac/labwc/rc.xml"]
     assert '<windowRule identifier="*xfreerdp*" serverDecoration="no" />' in contents["/etc/xaac/labwc/rc.xml"]
     assert 'identifier="org.xaac.ThinClientDock"' in contents["/etc/xaac/labwc/rc.xml"]
     assert 'fixedPosition="yes"' in contents["/etc/xaac/labwc/rc.xml"]
     assert 'name="MoveToEdge" direction="down" snapWindows="no"' in contents["/etc/xaac/labwc/rc.xml"]
     assert 'name="ToggleAlwaysOnTop"' not in contents["/etc/xaac/labwc/rc.xml"]
-    assert "<keyboard />" in contents["/etc/xaac/openbox/rc.xml"]
+    openbox = contents["/etc/xaac/openbox/rc.xml"]
+    assert "<keyboard />" in openbox
+    assert '<fullscreen>yes</fullscreen>' not in openbox
+    assert 'class="org.xaac.thinclient"' in openbox
+    assert 'class="org.xaac.ThinClientDock"' in openbox
+    assert '<y>-0</y>' in openbox
     policy = json.loads(contents["/etc/xaac/kiosk/shortcut-policy.json"])
     assert policy["policy"]["default_decision"] == "deny"
     assert plan.to_manifest()["blocked_count"] >= 15

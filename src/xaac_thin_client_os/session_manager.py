@@ -137,6 +137,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "export GDK_BACKEND=wayland,x11\n"
         "export XCURSOR_THEME=Adwaita\n"
         "export XCURSOR_SIZE=24\n"
+        "export PATH=/usr/local/libexec/xaac:/usr/libexec/xaac\n"
         "# Propagate the installer/admin keyboard choice to labwc/libxkbcommon.\n"
         "if [ -r /etc/default/keyboard ]; then\n"
         "    xaac_xkb_layout=$(awk -F'\"' '$1 ~ /^XKBLAYOUT=/ {print $2; exit}' /etc/default/keyboard)\n"
@@ -191,6 +192,7 @@ def create_session_manager_plan(rootfs: Path, profile_path: Path) -> SessionMana
         "GDK_BACKEND=wayland,x11\n"
         "XCURSOR_THEME=Adwaita\n"
         "XCURSOR_SIZE=24\n"
+        "PATH=/usr/local/libexec/xaac:/usr/libexec/xaac\n"
     )
     policy = json.dumps({"manager": p["manager"], "session": p["session"], "autologin": p["autologin"], "restrictions": p["restrictions"]}, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     planned = (

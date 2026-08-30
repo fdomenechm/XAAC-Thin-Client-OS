@@ -55,6 +55,7 @@ def test_plan_generates_restricted_autologin(tmp_path: Path, project_root: Path)
     assert mode == 0o600
     launcher, launcher_mode = files["/usr/local/libexec/xaac-session"]
     assert "exec /usr/bin/labwc" in launcher
+    assert "export PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in launcher
     assert "/etc/default/keyboard" in launcher
     assert "XKB_DEFAULT_LAYOUT=$xaac_xkb_layout" in launcher
     assert "XKB_DEFAULT_VARIANT=$xaac_xkb_variant" in launcher
@@ -132,4 +133,5 @@ def test_wayland_session_points_labwc_at_xaac_config_home(tmp_path: Path, projec
     environment = files["/etc/xaac/session/session-manager.env"]
     assert "export XDG_CONFIG_HOME=/etc/xaac" in launcher
     assert "XDG_CONFIG_HOME=/etc/xaac" in environment
+    assert "PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in environment
     assert "exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml" in launcher

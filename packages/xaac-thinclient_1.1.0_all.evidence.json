@@ -7,9 +7,9 @@
   "architecture": "all",
   "artifact": "xaac-thinclient_1.1.0_all.deb",
   "artifact_path": "dist/xaac-thinclient_1.1.0_all.deb",
-  "sha256": "a8240c8c2643af7dab028e748959348e4215ca726665aa31f097ce46390650fd",
-  "size_bytes": 2430892,
-  "built_at_utc": "2026-08-29T11:38:13Z",
+  "sha256": "c078e929cb8345b2b509e727134a808112359fc4b3d5977c95c1503bcaaaec12",
+  "size_bytes": 2451712,
+  "built_at_utc": "2026-08-30T10:52:17Z",
   "build_script": "scripts/build-deb.sh",
   "validator": "scripts/validate-debian-package.sh",
   "validation": {
