@@ -435,7 +435,7 @@ done
     session_entry = r'''#!/bin/sh
 set -u
 
-DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini
+DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini
 REMOTE=/usr/bin/xaac-thinclient
 DOCK=/usr/bin/xaac-thin-client-dock
 REMOTE_APP_ID=org.xaac.thinclient
@@ -522,7 +522,7 @@ if [ "$mode" = disabled ]; then
 fi
 
 wait_for_remote_surface || true
-"$DOCK" &
+XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &
 dock_pid=$!
 
 if wait "$dock_pid"; then

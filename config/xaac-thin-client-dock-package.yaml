@@ -10,4 +10,4 @@ package:
   sha256: 8f4746e5c9ef5bd58afb20f8e8df74a87fb05d49d32499a5a3f5780cbe119582
 runtime:
   gui_command: /usr/bin/xaac-thin-client-dock
-  configuration_path: /etc/xaac/xaac-thin-client-dock.ini
+  configuration_path: /etc/xaac-dock/xaac-thin-client-dock.ini

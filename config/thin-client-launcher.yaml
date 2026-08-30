@@ -3,7 +3,7 @@ profile: xaac-thin-client-launcher
 application:
   user: xaac-kiosk
   executable: /usr/bin/xaac-thinclient
-  configuration_directory: /etc/xaac-thinclient
+  configuration_directory: /etc/xaac-remote
 launch:
   command: /usr/local/libexec/xaac-thin-client-launch
   lock_file: /run/user/xaac-kiosk/xaac-thin-client.lock

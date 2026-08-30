@@ -4,7 +4,7 @@
 This tool deliberately keeps VPN user credentials out of persistent storage.
 It only provisions the administrator-supplied OpenVPN profile and client
 certificate material, and manages the administrative policy in
-/etc/xaac/vpn-manager.toml.
+/etc/xaac-vpn/vpn-manager.toml.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-CONFIG_PATH = Path("/etc/xaac/vpn-manager.toml")
+CONFIG_PATH = Path("/etc/xaac-vpn/vpn-manager.toml")
 PROFILE_NAME = "XAAC VPN"
 OPENVPN3 = "/usr/bin/openvpn3"
 OPENSSL = "/usr/bin/openssl"

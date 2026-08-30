@@ -13,6 +13,17 @@ XAAC Thin Client Remote i XAAC Thin Client Agent, amb administració remota rest
 - XAAC Thin Client Dock 1.1.0.
 - XAAC Thin Client Agent 1.1.0.
 
+## Directoris de configuració dels components
+
+XAAC Thin Client OS 1.1.0 manté una arrel de configuració pròpia per a cada component:
+
+- XAAC Thin Client Agent: `/etc/xaac-agent/`
+- XAAC Thin Client Network: `/etc/xaac-network/`
+- XAAC Thin Client VPN: `/etc/xaac-vpn/`
+- XAAC Thin Client Remote: `/etc/xaac-remote/`
+- XAAC Thin Client Dock: `/etc/xaac-dock/`
+
+`/etc/xaac/` queda reservat per a configuració i polítiques pròpies de XAAC Thin Client OS. Durant la transició 1.1.0, els antics paths dels paquets es conserven únicament com a enllaços simbòlics de compatibilitat; els fitxers reals resideixen sempre en el directori del component. Un servei `xaac-component-config-layout.service` reforça aquest layout abans de Network/VPN/greetd després de reinicis o actualitzacions de paquets.
 
 ## Estat del projecte
 

@@ -23,7 +23,7 @@ profiles:
     executable: /usr/bin/xaac-thinclient
     mode: complain
     abstractions: [base, nameservice, fonts]
-    read_paths: [/etc/xaac/**, /etc/xaac-thinclient/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**, /sys/class/drm/**, /var/lib/xaac/thin-client/config/**]
+    read_paths: [/etc/xaac/**, /etc/xaac-remote/**, /etc/xaac-thinclient/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**, /sys/class/drm/**, /var/lib/xaac/thin-client/config/**]
     write_paths: [/var/lib/xaac/thin-client/state/**, /run/xaac/thin-client/events/**]
     network: [inet, inet6]
     capabilities: []
@@ -32,7 +32,7 @@ profiles:
     executable: /usr/bin/xaac-thin-client-vpn
     mode: complain
     abstractions: [base, nameservice, fonts]
-    read_paths: [/etc/xaac/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**]
+    read_paths: [/etc/xaac/**, /etc/xaac-vpn/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**]
     write_paths: []
     network: [inet, inet6]
     capabilities: []

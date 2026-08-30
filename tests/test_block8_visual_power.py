@@ -20,7 +20,7 @@ def _session_files(tmp_path: Path, project_root: Path) -> dict[str, str]:
 
 def _power_runtime(tmp_path: Path) -> dict[str, str]:
     rootfs = tmp_path / "rootfs"
-    config = rootfs / "etc/xaac-thinclient/config.ini"
+    config = rootfs / "etc/xaac-remote/config.ini"
     config.parent.mkdir(parents=True)
     config.write_text("[application]\nmode = development\n", encoding="utf-8")
     builder = object.__new__(ProductionIsoBuilder)
@@ -38,7 +38,7 @@ def _power_runtime(tmp_path: Path) -> dict[str, str]:
 
 def test_production_runtime_enforces_freerdp_fullscreen(tmp_path: Path) -> None:
     rootfs = tmp_path / "rootfs"
-    config = rootfs / "etc/xaac-thinclient/config.ini"
+    config = rootfs / "etc/xaac-remote/config.ini"
     config.parent.mkdir(parents=True)
     config.write_text(
         "[application]\nmode = development\n\n"

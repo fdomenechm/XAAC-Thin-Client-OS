@@ -1,3 +1,7 @@
+# 2026-08-30 — Unificació de directoris de configuració
+
+- Unificat el layout de configuració dels components 1.1.0: Agent `/etc/xaac-agent`, Network `/etc/xaac-network`, VPN `/etc/xaac-vpn`, Remote `/etc/xaac-remote` i Dock `/etc/xaac-dock`. Els paths antics dels paquets es mantenen només com a symlinks de compatibilitat i `xaac-component-config-layout.service` restaura el layout canònic abans de Network/VPN/greetd.
+
 # 2026-08-30 — Correcció: sessió RDP a pantalla completa
 
 - Restaurat el contracte d’appliance: XAAC Thin Client OS és només la via d’accés al sistema remot; una sessió RDP establida ha d’ocupar el 100% de la pantalla.

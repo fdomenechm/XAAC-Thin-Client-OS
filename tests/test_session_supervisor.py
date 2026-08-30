@@ -148,7 +148,7 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     files = {str(path): (content, mode) for path, content, mode in plan.files}
     script, mode = files["/usr/local/libexec/xaac-session-entry"]
     assert mode == 0o755
-    assert "DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini" in script
+    assert "DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini" in script
     assert "REMOTE=/usr/bin/xaac-thinclient" in script
     assert "DOCK=/usr/bin/xaac-thin-client-dock" in script
     assert "disabled|optional|required" in script
@@ -157,7 +157,7 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     assert "xaac-network-gui" not in script
     remote_start = script.index('"$REMOTE" &')
     remote_surface = script.index("wait_for_remote_surface || true")
-    dock_start = script.index('"$DOCK" &')
+    dock_start = script.index('XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &')
     assert remote_start < remote_surface < dock_start
     assert 'if [ "$mode" = disabled ]; then' in script
     assert 'if [ "$mode" = required ]; then' in script

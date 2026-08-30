@@ -525,20 +525,183 @@ class ProductionIsoBuilder:
                 os.unlink(temporary)
 
 
+    def _configure_xaac_component_configuration_layout(self) -> None:
+        """Make component-specific /etc directories canonical and durable.
+
+        Some 1.1.0 packages still install conffiles in historical shared paths.
+        The OS moves the real files into component-owned roots and leaves only
+        compatibility symlinks. The normaliser also runs at boot before the
+        Network/VPN services, so package upgrades cannot restore the old layout.
+        """
+        runtime = r'''#!/bin/sh
+set -eu
+
+install -d -o root -g root -m 0755 \
+  /etc/xaac-network /etc/xaac-vpn /etc/xaac-remote /etc/xaac-dock
+
+move_config() {
+  old=$1
+  new=$2
+  if [ -L "$old" ]; then
+    target=$(readlink "$old" || true)
+    [ "$target" = "$new" ] && { test -f "$new"; return 0; }
+    rm -f "$old"
+  elif [ -f "$old" ]; then
+    if [ -e "$new" ]; then
+      cmp -s "$old" "$new" || {
+        echo "Configuracions divergents: $old i $new" >&2
+        exit 1
+      }
+      rm -f "$old"
+    else
+      mv "$old" "$new"
+    fi
+  fi
+  test -f "$new"
+  ln -s "$new" "$old"
+}
+
+move_config /etc/xaac/xaac-network.ini /etc/xaac-network/xaac-network.ini
+move_config /etc/xaac/vpn-manager.toml /etc/xaac-vpn/vpn-manager.toml
+move_config /etc/xaac/xaac-thin-client-vpn.ini /etc/xaac-vpn/xaac-thin-client-vpn.ini
+move_config /etc/xaac/xaac-thin-client-dock.ini /etc/xaac-dock/xaac-thin-client-dock.ini
+
+if [ -L /etc/xaac-thinclient ]; then
+  target=$(readlink /etc/xaac-thinclient || true)
+  if [ "$target" != /etc/xaac-remote ]; then
+    rm -f /etc/xaac-thinclient
+  fi
+elif [ -d /etc/xaac-thinclient ]; then
+  for name in config.ini device.ini servers.ini user.ini; do
+    if [ -f "/etc/xaac-thinclient/$name" ]; then
+      if [ -e "/etc/xaac-remote/$name" ]; then
+        cmp -s "/etc/xaac-thinclient/$name" "/etc/xaac-remote/$name" || {
+          echo "Configuració Remote divergent: $name" >&2
+          exit 1
+        }
+        rm -f "/etc/xaac-thinclient/$name"
+      else
+        mv "/etc/xaac-thinclient/$name" "/etc/xaac-remote/$name"
+      fi
+    fi
+  done
+  rmdir /etc/xaac-thinclient
+fi
+for name in config.ini device.ini servers.ini user.ini; do
+  test -f "/etc/xaac-remote/$name"
+done
+[ -L /etc/xaac-thinclient ] || ln -s /etc/xaac-remote /etc/xaac-thinclient
+
+chown root:root \
+  /etc/xaac-network/xaac-network.ini \
+  /etc/xaac-vpn/vpn-manager.toml \
+  /etc/xaac-vpn/xaac-thin-client-vpn.ini \
+  /etc/xaac-dock/xaac-thin-client-dock.ini \
+  /etc/xaac-remote/config.ini /etc/xaac-remote/device.ini \
+  /etc/xaac-remote/servers.ini /etc/xaac-remote/user.ini
+chmod 0644 \
+  /etc/xaac-network/xaac-network.ini \
+  /etc/xaac-vpn/vpn-manager.toml \
+  /etc/xaac-vpn/xaac-thin-client-vpn.ini \
+  /etc/xaac-dock/xaac-thin-client-dock.ini \
+  /etc/xaac-remote/config.ini /etc/xaac-remote/device.ini \
+  /etc/xaac-remote/servers.ini /etc/xaac-remote/user.ini
+
+test -d /etc/xaac-agent
+test -d /etc/xaac-network
+test -d /etc/xaac-vpn
+test -d /etc/xaac-remote
+test -d /etc/xaac-dock
+test -L /etc/xaac/xaac-network.ini
+test -L /etc/xaac/vpn-manager.toml
+test -L /etc/xaac/xaac-thin-client-vpn.ini
+test -L /etc/xaac/xaac-thin-client-dock.ini
+test -L /etc/xaac-thinclient
+'''
+        self._atomic_write(
+            self._inside("/usr/local/libexec/xaac-component-config-layout"),
+            runtime,
+            0o755,
+        )
+        self._atomic_write(
+            self._inside("/etc/systemd/system/xaac-component-config-layout.service"),
+            "[Unit]\n"
+            "Description=Normalise XAAC component configuration directories\n"
+            "After=local-fs.target\n"
+            "Before=xaac-network-manager.service xaac-vpn-manager.service greetd.service\n\n"
+            "[Service]\n"
+            "Type=oneshot\n"
+            "ExecStart=/usr/local/libexec/xaac-component-config-layout\n"
+            "RemainAfterExit=yes\n\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n",
+            0o644,
+        )
+        self._atomic_write(
+            self._inside(
+                "/etc/systemd/system/xaac-network-manager.service.d/20-xaac-component-config.conf"
+            ),
+            "[Unit]\n"
+            "Requires=xaac-component-config-layout.service\n"
+            "After=xaac-component-config-layout.service\n\n"
+            "[Service]\n"
+            "ExecStart=\n"
+            "ExecStart=/usr/bin/xaac-network-manager --config "
+            "/etc/xaac-network/xaac-network.ini --backend networkmanager serve --bus system\n",
+            0o644,
+        )
+        self._atomic_write(
+            self._inside(
+                "/etc/systemd/system/xaac-vpn-manager.service.d/20-xaac-component-config.conf"
+            ),
+            "[Unit]\n"
+            "Requires=xaac-component-config-layout.service\n"
+            "After=xaac-component-config-layout.service\n\n"
+            "[Service]\n"
+            "ExecStart=\n"
+            "ExecStart=/usr/bin/python3 -m xaac_thin_client_vpn.manager "
+            "--config /etc/xaac-vpn/vpn-manager.toml\n",
+            0o644,
+        )
+        self._atomic_write(
+            self._inside(
+                "/etc/systemd/system/xaac-privileged-helper.service.d/20-xaac-vpn-config.conf"
+            ),
+            "[Unit]\n"
+            "Requires=xaac-component-config-layout.service\n"
+            "After=xaac-component-config-layout.service\n\n"
+            "[Service]\n"
+            "ReadWritePaths=\n"
+            "ReadWritePaths=/etc/xaac-vpn\n",
+            0o644,
+        )
+        self._chroot(
+            ["/usr/local/libexec/xaac-component-config-layout"],
+            phase="configure-xaac-component-config-layout",
+        )
+        self._chroot(
+            ["systemctl", "daemon-reload"],
+            phase="configure-reload-component-config-layout",
+        )
+        self._chroot(
+            ["systemctl", "enable", "xaac-component-config-layout.service"],
+            phase="configure-enable-component-config-layout",
+        )
+
     def _verify_thinclient_rootfs(self, *, context: str) -> None:
         """Fail closed unless the real XAAC Thin Client package is present."""
         if self.dry_run:
             return
         binary = self._inside("/usr/bin/xaac-thinclient")
         status = self._inside("/var/lib/dpkg/status")
-        config_dir = self._inside("/etc/xaac-thinclient")
+        config_dir = self._inside("/etc/xaac-remote")
         if not binary.is_file() or not os.access(binary, os.X_OK):
             raise ProductionBuildError(
                 f"{context}: falta /usr/bin/xaac-thinclient executable al rootfs"
             )
         if not config_dir.is_dir():
             raise ProductionBuildError(
-                f"{context}: falta /etc/xaac-thinclient al rootfs"
+                f"{context}: falta /etc/xaac-remote al rootfs"
             )
         text = status.read_text(encoding="utf-8", errors="replace") if status.is_file() else ""
         if "Package: xaac-thinclient\n" not in text or "Version: 1.1.0\n" not in text:
@@ -1751,9 +1914,9 @@ class ProductionIsoBuilder:
         helpers and an exact sudoers allow-list; xaac-kiosk receives no general
         sudo capability.
         """
-        config = self._inside("/etc/xaac-thinclient/config.ini")
+        config = self._inside("/etc/xaac-remote/config.ini")
         if not config.is_file():
-            raise ProductionBuildError("Falta /etc/xaac-thinclient/config.ini")
+            raise ProductionBuildError("Falta /etc/xaac-remote/config.ini")
         content = config.read_text(encoding="utf-8")
         original_content = content
         if "mode = development" not in content:
@@ -2835,8 +2998,8 @@ exit 0
                 "printf 'LANG=%s\\nLANGUAGE=%s\\n' \"$install_locale\" \"$install_language_env\" > \"$mount_root/etc/locale.conf\"\n"
                 "printf 'LANG=%s\\nLANGUAGE=%s\\n' \"$install_locale\" \"$install_language_env\" > \"$mount_root/etc/default/locale\"\n"
                 "printf 'XKBMODEL=\"pc105\"\\nXKBLAYOUT=\"%s\"\\nXKBVARIANT=\"\"\\nXKBOPTIONS=\"\"\\nBACKSPACE=\"guess\"\\n' \"$install_keyboard_layout\" > \"$mount_root/etc/default/keyboard\"\n"
-                "if [ -f \"$mount_root/etc/xaac-thinclient/device.ini\" ]; then sed -i \"s/^device_name[[:space:]]*=.*/device_name = $install_hostname/\" \"$mount_root/etc/xaac-thinclient/device.ini\"; fi\n"
-                "if [ -f \"$mount_root/etc/xaac-thinclient/servers.ini\" ]; then sed -i \"s/^host[[:space:]]*=.*/host = $install_rdp_host/; s/^domain[[:space:]]*=.*/domain = $install_rdp_domain/; s/^enabled[[:space:]]*=.*/enabled = true/\" \"$mount_root/etc/xaac-thinclient/servers.ini\"; fi\n"
+                "if [ -f \"$mount_root/etc/xaac-remote/device.ini\" ]; then sed -i \"s/^device_name[[:space:]]*=.*/device_name = $install_hostname/\" \"$mount_root/etc/xaac-remote/device.ini\"; fi\n"
+                "if [ -f \"$mount_root/etc/xaac-remote/servers.ini\" ]; then sed -i \"s/^host[[:space:]]*=.*/host = $install_rdp_host/; s/^domain[[:space:]]*=.*/domain = $install_rdp_domain/; s/^enabled[[:space:]]*=.*/enabled = true/\" \"$mount_root/etc/xaac-remote/servers.ini\"; fi\n"
                 "mkdir -p \"$mount_root/etc/NetworkManager/system-connections\"\n"
                 "cat > \"$mount_root/etc/NetworkManager/system-connections/xaac-wired.nmconnection\" <<EOF\n"
                 "[connection]\n"
@@ -2955,7 +3118,7 @@ exit 0
             "set -eu\n"
             "locale_file=/etc/locale.conf\n"
             "[ -r \"$locale_file\" ] || locale_file=/etc/default/locale\n"
-            "config=/etc/xaac-thinclient/config.ini\n"
+            "config=/etc/xaac-remote/config.ini\n"
             "[ -r \"$locale_file\" ] || exit 0\n"
             "[ -f \"$config\" ] || exit 0\n"
             "locale_value=$(sed -n 's/^[[:space:]]*LANG[[:space:]]*=[[:space:]]*//p' \"$locale_file\" | head -n1 | tr -d '\"')\n"
@@ -2976,7 +3139,7 @@ exit 0
             "After=local-fs.target\n"
             "Before=greetd.service\n"
             "ConditionKernelCommandLine=!xaac.mode=installer\n"
-            "ConditionPathExists=/etc/xaac-thinclient/config.ini\n\n"
+            "ConditionPathExists=/etc/xaac-remote/config.ini\n\n"
             "[Service]\n"
             "Type=oneshot\n"
             "ExecStart=/usr/local/sbin/xaac-sync-thinclient-language\n"
@@ -3068,6 +3231,7 @@ exit 0
                     "-o", "Dpkg::Options::=--force-confold",
                     *debs,
                 ], phase="configure-xaac-packages")
+            self._configure_xaac_component_configuration_layout()
             self._chroot([
                 "/bin/sh", "-ec",
                 "mkdir -p /usr/local/libexec/xaac; "
@@ -3083,7 +3247,7 @@ exit 0
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thinclient)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thinclient)\" = '{component_versions['xaac-thinclient']}'; "
                 "test -x /usr/bin/xaac-thinclient; test -L /usr/local/libexec/xaac/xaac-thin-client-remote; "
-                "test -d /etc/xaac-thinclient; "
+                "test -d /etc/xaac-remote; test -L /etc/xaac-thinclient; "
                 "test \"$(dpkg-query -W -f='${Status}' xaac-thin-client-vpn)\" = 'install ok installed'; "
                 f"test \"$(dpkg-query -W -f='${{Version}}' xaac-thin-client-vpn)\" = '{component_versions['xaac-thin-client-vpn']}'; "
                 "test -x /usr/bin/xaac-thin-client-vpn; test -L /usr/local/libexec/xaac/xaac-thin-client-vpn; "
@@ -3238,8 +3402,8 @@ exit 0
             self._chroot(
                 [
                     "/bin/sh", "-ec",
-                    "chown root:root /etc/xaac/vpn-manager.toml; "
-                    "chmod 0644 /etc/xaac/vpn-manager.toml; "
+                    "chown root:root /etc/xaac-vpn/vpn-manager.toml; "
+                    "chmod 0644 /etc/xaac-vpn/vpn-manager.toml; "
                     "test -x /usr/local/sbin/xaac-vpn-admin; "
                     "/usr/local/sbin/xaac-vpn-admin --help >/dev/null",
                 ],

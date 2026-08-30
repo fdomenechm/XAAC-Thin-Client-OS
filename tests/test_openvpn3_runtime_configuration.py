@@ -24,5 +24,5 @@ def test_vpn_admin_config_is_root_owned() -> None:
     source = (
         ROOT / "src/xaac_thin_client_os/production_builder.py"
     ).read_text(encoding="utf-8")
-    assert "chown root:root /etc/xaac/vpn-manager.toml" in source
-    assert "chmod 0644 /etc/xaac/vpn-manager.toml" in source
+    assert "chown root:root /etc/xaac-vpn/vpn-manager.toml" in source
+    assert "chmod 0644 /etc/xaac-vpn/vpn-manager.toml" in source

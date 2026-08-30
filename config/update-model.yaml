@@ -89,7 +89,10 @@ preflight:
   preserve_configuration:
   - /etc/xaac
   - /etc/xaac-agent
-  - /etc/xaac-thinclient
+  - /etc/xaac-network
+  - /etc/xaac-vpn
+  - /etc/xaac-remote
+  - /etc/xaac-dock
   - /etc/NetworkManager/system-connections
   - /etc/ssh
   - /etc/hostname

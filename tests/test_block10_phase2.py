@@ -32,7 +32,10 @@ def test_phase_10_2_preserves_actual_xaac_configuration() -> None:
     paths = set(policy["recovery_point"]["configuration_paths"])
     assert "/etc/xaac" in paths
     assert "/etc/xaac-agent" in paths
-    assert "/etc/xaac-thinclient" in paths
+    assert "/etc/xaac-network" in paths
+    assert "/etc/xaac-vpn" in paths
+    assert "/etc/xaac-remote" in paths
+    assert "/etc/xaac-dock" in paths
     assert "/etc/NetworkManager/system-connections" in paths
     assert policy["recovery_point"]["max_points"] == 2
 

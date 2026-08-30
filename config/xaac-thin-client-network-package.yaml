@@ -12,5 +12,5 @@ runtime:
   manager_service: xaac-network-manager.service
   manager_command: /usr/bin/xaac-network-manager
   gui_command: /usr/bin/xaac-network-gui
-  configuration_path: /etc/xaac/xaac-network.ini
+  configuration_path: /etc/xaac-network/xaac-network.ini
   dbus_interface: org.xaac.ThinClient.Network1

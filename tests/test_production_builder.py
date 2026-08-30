@@ -1035,13 +1035,13 @@ def test_phase_10_7_thinclient_language_sync_is_outside_live_installer(tmp_path:
     for locale, language in (("ca_ES.UTF-8", "ca"), ("es_ES.UTF-8", "es"), ("en_US.UTF-8", "en")):
         root = tmp_path / language
         locale_file = root / 'etc/locale.conf'
-        config = root / 'etc/xaac-thinclient/config.ini'
+        config = root / 'etc/xaac-remote/config.ini'
         config.parent.mkdir(parents=True)
         locale_file.parent.mkdir(parents=True, exist_ok=True)
         locale_file.write_text(f'LANG={locale}\n', encoding='utf-8')
         config.write_text('[application]\nlanguage = ca\nmode = production\n', encoding='utf-8')
         # Rewrite absolute paths only for the isolated test root.
-        test_helper = helper.replace('/etc/locale.conf', str(locale_file)).replace('/etc/default/locale', str(root / 'etc/default/locale')).replace('/etc/xaac-thinclient/config.ini', str(config))
+        test_helper = helper.replace('/etc/locale.conf', str(locale_file)).replace('/etc/default/locale', str(root / 'etc/default/locale')).replace('/etc/xaac-remote/config.ini', str(config))
         result = subprocess.run(['sh'], input=test_helper, text=True, capture_output=True, check=False)
         assert result.returncode == 0, result.stderr
         assert f'language = {language}\n' in config.read_text(encoding='utf-8')
@@ -1113,7 +1113,7 @@ def test_phase_10_7_live_installer_matches_audited_post_diagnostics_snapshot() -
 
     script = _render_production_installer()
     assert hashlib.sha256(script.encode("utf-8")).hexdigest() == (
-        "c9a5bcc93a97f5a93ea35274a4023831ef22999471615b47bfc36fcddd700a65"
+        "0b69cfeb50c4b87c04ec320fb778b7b3cbe8419030e0228e45dba606d77d8d88"
     )
 
 def test_phase_10_7_generated_installer_is_posix_shell_syntax() -> None:
