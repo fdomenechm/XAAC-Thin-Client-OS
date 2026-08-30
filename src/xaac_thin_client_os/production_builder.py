@@ -1755,11 +1755,26 @@ class ProductionIsoBuilder:
         if not config.is_file():
             raise ProductionBuildError("Falta /etc/xaac-thinclient/config.ini")
         content = config.read_text(encoding="utf-8")
+        original_content = content
         if "mode = development" not in content:
             if "mode = production" not in content:
                 raise ProductionBuildError("No s’ha pogut determinar application.mode de XAAC Thin Client")
         else:
             content = content.replace("mode = development", "mode = production", 1)
+
+        # XAAC Thin Client OS is only the local path into the remote desktop.
+        # While the Remote login/error surface shares the screen with the Dock,
+        # an established RDP session must take over the complete display so the
+        # user experiences the remote operating system as the terminal desktop.
+        # Enforce FreeRDP fullscreen in the production image. Other RDP display
+        # properties (including dynamic resolution) remain owned by Remote.
+        if "[rdp]" in content:
+            if "fullscreen = false" in content:
+                content = content.replace("fullscreen = false", "fullscreen = true", 1)
+            elif "fullscreen = true" not in content:
+                raise ProductionBuildError("No s’ha pogut determinar rdp.fullscreen de XAAC Thin Client")
+
+        if content != original_content:
             self._atomic_write(config, content, 0o644)
 
         transition_launcher = r'''#!/bin/sh
@@ -3167,12 +3182,6 @@ exit 0
                 "getent group xaac-vpn >/dev/null || addgroup --system xaac-vpn; "
                 "usermod --append --groups xaac-vpn xaac-kiosk",
             ], phase="configure-verify-xaac-vpn")
-            vpn_gate_source = self.paths.project_root / "assets/runtime/xaac-vpn-session-gate"
-            vpn_gate_target = self._inside("/usr/local/libexec/xaac-vpn-session-gate")
-            vpn_gate_target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(vpn_gate_source, vpn_gate_target)
-            vpn_gate_target.chmod(0o755)
-
             vpn_admin_source = self.paths.project_root / "assets/runtime/xaac-vpn-admin"
             if not vpn_admin_source.is_file():
                 raise ProductionBuildError("Falta assets/runtime/xaac-vpn-admin")
@@ -3181,7 +3190,51 @@ exit 0
             shutil.copy2(vpn_admin_source, vpn_admin_target)
             vpn_admin_target.chmod(0o755)
 
+            # XAAC 1.1 kiosk startup contract: initialise Network first, then
+            # VPN, but never wait for actual connectivity before starting the
+            # graphical session.  The package-provided VPN unit waits for
+            # network-online.target; reset that dependency so an unplugged
+            # cable or unavailable Wi-Fi cannot delay Remote + Dock.
+            self._atomic_write(
+                self._inside("/etc/systemd/system/xaac-network-manager.service.d/10-xaac-kiosk-startup.conf"),
+                "[Unit]\n"
+                "Before=xaac-vpn-manager.service\n\n"
+                "[Service]\n"
+                "TimeoutStartSec=10s\n",
+            )
+            self._atomic_write(
+                self._inside("/etc/systemd/system/xaac-vpn-manager.service.d/10-xaac-kiosk-startup.conf"),
+                "[Unit]\n"
+                "Wants=\n"
+                "After=\n"
+                "Wants=xaac-network-manager.service\n"
+                "After=dbus.service NetworkManager.service xaac-network-manager.service\n",
+            )
+            self._atomic_write(
+                self._inside("/etc/systemd/system/greetd.service.d/10-xaac-connectivity-bootstrap.conf"),
+                "[Unit]\n"
+                "Wants=xaac-network-manager.service xaac-vpn-manager.service\n"
+                "After=xaac-network-manager.service xaac-vpn-manager.service\n",
+            )
+            self._chroot(["systemctl", "enable", "xaac-network-manager.service"], phase="configure-enable-xaac-network")
             self._chroot(["systemctl", "enable", "xaac-vpn-manager.service"], phase="configure-enable-xaac-vpn")
+            self._chroot(
+                [
+                    "/bin/sh", "-ec",
+                    "test -f /etc/systemd/system/xaac-network-manager.service.d/10-xaac-kiosk-startup.conf; "
+                    "grep -Fx 'Before=xaac-vpn-manager.service' /etc/systemd/system/xaac-network-manager.service.d/10-xaac-kiosk-startup.conf >/dev/null; "
+                    "grep -Fx 'TimeoutStartSec=10s' /etc/systemd/system/xaac-network-manager.service.d/10-xaac-kiosk-startup.conf >/dev/null; "
+                    "test -f /etc/systemd/system/xaac-vpn-manager.service.d/10-xaac-kiosk-startup.conf; "
+                    "grep -Fx 'Wants=xaac-network-manager.service' /etc/systemd/system/xaac-vpn-manager.service.d/10-xaac-kiosk-startup.conf >/dev/null; "
+                    "grep -Fx 'After=dbus.service NetworkManager.service xaac-network-manager.service' /etc/systemd/system/xaac-vpn-manager.service.d/10-xaac-kiosk-startup.conf >/dev/null; "
+                    "test -f /etc/systemd/system/greetd.service.d/10-xaac-connectivity-bootstrap.conf; "
+                    "grep -Fx 'Wants=xaac-network-manager.service xaac-vpn-manager.service' /etc/systemd/system/greetd.service.d/10-xaac-connectivity-bootstrap.conf >/dev/null; "
+                    "grep -Fx 'After=xaac-network-manager.service xaac-vpn-manager.service' /etc/systemd/system/greetd.service.d/10-xaac-connectivity-bootstrap.conf >/dev/null; "
+                    "systemctl is-enabled --quiet xaac-network-manager.service; "
+                    "systemctl is-enabled --quiet xaac-vpn-manager.service",
+                ],
+                phase="configure-verify-xaac-connectivity-startup-order",
+            )
             self._chroot(
                 [
                     "/bin/sh", "-ec",

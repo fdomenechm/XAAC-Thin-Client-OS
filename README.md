@@ -29,7 +29,8 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 ## Característiques principals
 
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
-- Entrada de sessió 1.1.0 governada per la política del Dock (`disabled`, `optional`, `required`), amb compatibilitat amb el flux VPN/Remote anterior quan el Dock està desactivat.
+- Arranc de quiosc 1.1.0 no bloquejant: s’inicialitza primer el backend de Network i després el de VPN, amb les dues GUI ocultes; a continuació s’inicia i es mostra XAAC Thin Client Remote i, finalment, el Dock quan la seua política és `optional` o `required`. La falta de xarxa, VPN o servidor remot no impedeix mostrar Remote + Dock.
+- Layout de quiosc 1.1.0: mentre no hi ha una sessió RDP activa, el Dock queda ancorat a la part inferior central i reserva una franja de 112 px; XAAC Thin Client Remote ocupa l’àrea superior disponible perquè l’usuari puga obrir Network o VPN davant incidències. Quan la sessió RDP s’estableix, FreeRDP entra obligatòriament en pantalla completa i cobreix tota la pantalla, inclòs el Dock: el sistema remot passa a ser l’única superfície de treball. En finalitzar o fallar la sessió, es recupera la vista local Remote + Dock. `dock=disabled` manté Remote visible sense Dock.
 - Àlies d’integració estables `xaac-thin-client-network`, `xaac-thin-client-vpn` i `xaac-thin-client-remote` dins `/usr/local/libexec/xaac`, el `PATH` restringit del quiosc, perquè el Dock puga descobrir els components sense exposar `/usr/bin`.
 - Experiència d'appliance XAAC de punta a punta: arrencada silenciosa amb splash a pantalla completa, transicions controlades, fons granit de sessió, feedback animat d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.

@@ -67,13 +67,13 @@ sudo xaac-vpn-admin policy required
 
 Semàntica:
 
-- `disabled`: no es mostra la GUI VPN i XAAC Thin Client arranca directament.
-- `optional`: es mostra la GUI VPN i l'usuari pot connectar o ometre-la.
-- `required`: XAAC Thin Client no arranca fins que la VPN està connectada.
+- `disabled`: el component VPN no està disponible per a l'usuari; XAAC Thin Client Remote i el Dock continuen arrancant amb normalitat.
+- `optional`: la VPN està disponible des del Dock i l'usuari pot connectar-la o continuar sense túnel. La seua GUI no s'obri automàticament en l'arranc.
+- `required`: la VPN és obligatòria per a les connexions que depenguen d'ella, però no bloqueja l'arranc gràfic. XAAC Thin Client Remote i el Dock es mostren igualment perquè l'usuari puga obrir VPN des del Dock i corregir la situació.
 
 L'actualització del fitxer és atòmica, manté `root:root 0644` i reinicia
 `xaac-vpn-manager`. La política nova s'aplica completament en iniciar la pròxima
-sessió de quiosc.
+sessió de quiosc. En 1.1.0 la política VPN no s'utilitza com a `gate` del procés Remote: separa obligatorietat funcional d'arranc de la interfície.
 
 ### Política remota via XMS
 

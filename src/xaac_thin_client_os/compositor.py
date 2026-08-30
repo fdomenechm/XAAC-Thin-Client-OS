@@ -89,7 +89,7 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     root = rootfs.resolve()
     if root == Path("/") or root.parent == Path("/"): raise CompositorError(f"Rootfs insegur: {root}")
     p = load_compositor_profile(profile_path); files = p["files"]
-    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <keyboard>
+    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <margin bottom=\"112\" />\n  <keyboard>
     <keybind key=\"A-F4\" />
   </keyboard>
   <mouse>
@@ -99,7 +99,19 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
       <mousebind button=\"Middle\" action=\"Press\" />
     </context>
   </mouse>
-  <windowRules><windowRule identifier=\"*\" serverDecoration=\"no\"><action name=\"AutoPlace\" policy=\"center\" /></windowRule></windowRules>\n</labwc_config>\n"""
+  <windowRules>
+    <windowRule identifier=\"*\" serverDecoration=\"no\">
+      <action name=\"AutoPlace\" policy=\"center\" />
+    </windowRule>
+    <windowRule identifier=\"org.xaac.thinclient\" serverDecoration=\"no\">
+      <action name=\"Maximize\" direction=\"both\" />
+    </windowRule>
+    <windowRule identifier=\"*xfreerdp*\" serverDecoration=\"no\" />
+    <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\">
+      <action name=\"AutoPlace\" policy=\"center\" />
+      <action name=\"MoveToEdge\" direction=\"down\" snapWindows=\"no\" />
+    </windowRule>
+  </windowRules>\n</labwc_config>\n"""
     autostart = "/usr/local/libexec/xaac-session-supervisor &\n"
     openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<openbox_config xmlns=\"http://openbox.org/3.4/rc\">\n  <applications><application class=\"*\"><decor>no</decor><fullscreen>yes</fullscreen></application></applications>\n  <keyboard />\n  <mouse><context name=\"Root\" /></mouse>\n  <desktops><number>1</number></desktops>\n</openbox_config>\n"""
     policy = json.dumps({"primary": p["wayland"], "fallback": p["x11"], "kiosk": p["kiosk"], "outputs": p["outputs"], "restart": p["restart"]}, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

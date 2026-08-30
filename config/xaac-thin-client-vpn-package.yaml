@@ -17,6 +17,5 @@ runtime:
   access_group: xaac-vpn
   manager_service: xaac-vpn-manager.service
   gui_command: /usr/bin/xaac-thin-client-vpn
-  session_gate: /usr/local/libexec/xaac-vpn-session-gate
   thin_client_command: /usr/local/libexec/xaac-thin-client-launch
   configuration_path: /etc/xaac/vpn-manager.toml

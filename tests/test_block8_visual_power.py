@@ -35,6 +35,25 @@ def _power_runtime(tmp_path: Path) -> dict[str, str]:
     return {path: (rootfs / path.lstrip("/")).read_text(encoding="utf-8") for path in paths}
 
 
+
+def test_production_runtime_enforces_freerdp_fullscreen(tmp_path: Path) -> None:
+    rootfs = tmp_path / "rootfs"
+    config = rootfs / "etc/xaac-thinclient/config.ini"
+    config.parent.mkdir(parents=True)
+    config.write_text(
+        "[application]\nmode = development\n\n"
+        "[rdp]\nfullscreen = false\ndynamic_resolution = false\n",
+        encoding="utf-8",
+    )
+    builder = object.__new__(ProductionIsoBuilder)
+    builder.paths = SimpleNamespace(rootfs=rootfs)
+    builder._configure_xaac_thinclient_production_runtime()
+    effective = config.read_text(encoding="utf-8")
+    assert "mode = production" in effective
+    assert "fullscreen = true" in effective
+    assert "dynamic_resolution = false" in effective
+
+
 def test_phase84_profile_defines_poweroff_and_reboot_surface(project_root: Path) -> None:
     profile = load_session_supervisor_profile(project_root / "config/session-supervisor.yaml")
     power = profile["visual_power"]

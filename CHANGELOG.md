@@ -1,3 +1,22 @@
+# 2026-08-30 — Correcció: sessió RDP a pantalla completa
+
+- Restaurat el contracte d’appliance: XAAC Thin Client OS és només la via d’accés al sistema remot; una sessió RDP establida ha d’ocupar el 100% de la pantalla.
+- El perfil de producció força `rdp.fullscreen=true` i deixa la resta de propietats de visualització sota responsabilitat de XAAC Thin Client Remote.
+- Eliminada la regla de `labwc` que maximitzava `xfreerdp` dins de l’àrea reservada per al Dock. FreeRDP controla el seu propi fullscreen.
+- El Dock deixa d’estar en la capa `always-on-top`: continua ancorat baix al centre durant la superfície local Remote + Dock, però una sessió FreeRDP fullscreen el cobreix completament.
+- La franja inferior de 112 px continua reservada per a la GUI local de Remote, Network i VPN quan no hi ha una sessió RDP activa.
+
+# 2026-08-30 — XAAC Thin Client OS 1.1.0: seqüència de quiosc Remote + Dock
+
+- Redefinida l’entrada de sessió 1.1.0 perquè XAAC Thin Client Remote siga sempre l’aplicació principal visible: Network s’inicialitza en segon pla, després VPN en segon pla, després es llança Remote i finalment es mostra Dock.
+- Eliminat `xaac-vpn-session-gate` del camí actiu d’arranc. `network`/`vpn` poden estar desconnectats o en error sense impedir que Remote i Dock apareguen.
+- L’ordre de serveis queda declarat amb systemd: `xaac-network-manager.service` precedeix `xaac-vpn-manager.service`; s’elimina del VPN manager la dependència de `network-online.target` perquè la falta de connectivitat no retarde el quiosc.
+- `greetd` sol·licita els dos backends abans de la sessió; són dependències `Wants`, no `Requires`, de manera que una fallada d’un backend no converteix la GUI en inaccessible.
+- [Substituït per la correcció superior] Inicialment el Dock es va configurar `always-on-top`; la correcció de fullscreen elimina aquesta capa perquè FreeRDP puga ocupar físicament tota la pantalla.
+- [Substituït per la correcció superior] La proposta de mantindre FreeRDP dins l’àrea útil del Dock queda descartada: producció torna a exigir `/f` (`fullscreen=true`).
+- La pantalla inicial del supervisor espera Remote com a superfície principal i accepta Dock com a fallback de recuperació; la GUI VPN ja no forma part de la detecció d’arranc.
+- `dock=disabled` mostra Remote sense Dock; `optional` i `required` mostren Remote primer i Dock després. Si un Dock `required` desapareix, el supervisor recupera la sessió completa.
+
 # 2026-08-29 — XAAC Thin Client OS 1.1.0: actualització de composició
 
 - Correcció d’integració del Dock: els tres launchers autoritzats (`xaac-thin-client-network`, `xaac-thin-client-vpn`, `xaac-thin-client-remote`) es publiquen ara en `/usr/local/libexec/xaac`, que és el `PATH` deliberadament restringit de la sessió quiosc. Això evita que el Dock marque tots els components com a no disponibles sense ampliar el `PATH` a `/usr/bin`.

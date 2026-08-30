@@ -57,8 +57,12 @@ pantalla d'espera i el Thin Client:
 - Si `gtk4-layer-shell` no està disponible en un backend no Wayland, es conserva
   el `fullscreen()` GTK com a fallback. El fallback X11 pinta també el root window
   amb el mateix antracita `#383e42` abans d'iniciar Openbox.
-- El contracte local OS ↔ Agent i la porta VPN continuen sense canvis: el client
-  segueix iniciant-se mitjançant `/usr/local/libexec/xaac-vpn-session-gate`.
+- En 1.1.0 ja no hi ha una porta VPN davant del client. Network i VPN s'inicialitzen
+  com a serveis de sistema, sense mostrar les seues GUI; després es mostra Remote i,
+  finalment, el Dock. Cap estat de connectivitat pot ocultar Remote + Dock.
+- `labwc` reserva 112 px en la part inferior per al Dock mentre l’usuari es troba en la superfície local de Remote. El Dock es col·loca al centre
+  inferior, sense decoracions i per damunt de les finestres normals; Remote es maximitza
+  en l'àrea útil restant perquè els controls de recuperació continuen accessibles.
 
 La validació ràpida es realitza amb `scripts/validate-block8-visual.sh` i comprova
 l'ordre del handoff, dependències, scripts POSIX i sintaxi Python sense construir
@@ -218,3 +222,5 @@ de regressió abans d'una release.
 
 **Bloc 8 tancat.** La correcció 8.7 no altera la funcionalitat ni la política de
 seguretat consolidada al Bloc 9.
+
+- Una sessió RDP activa ocupa tota la pantalla (`fullscreen=true`). El Dock és una superfície local de recuperació i navegació i no ha de quedar visible per damunt de FreeRDP. En tancar-se o fallar la sessió RDP, la superfície local Remote + Dock torna a quedar disponible.

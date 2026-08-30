@@ -87,12 +87,15 @@ def test_phase851_busy_overlay_waits_for_real_interactive_toplevel(tmp_path: Pat
     visual = profile["visual_session"]
     assert visual["thin_client_app_id"] == "org.xaac.thinclient"
     assert visual["vpn_app_id"] == "es.canals.xaac.ThinClientVPN"
+    assert visual["dock_app_id"] == "org.xaac.ThinClientDock"
     assert visual["interactive_window_timeout_seconds"] == 20
     assert "wlrctl" in profile["packages"]["required"]
 
     supervisor = _supervisor_files(tmp_path, project_root)["/usr/local/libexec/xaac-session-supervisor"]
-    assert '/usr/bin/wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID"' in supervisor
-    assert '/usr/bin/wlrctl toplevel find "app_id:$VPN_APP_ID"' in supervisor
+    interactive = supervisor[supervisor.index("wait_for_interactive_surface()") : supervisor.index("set_stable_background()") ]
+    assert '/usr/bin/wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID"' in interactive
+    assert '/usr/bin/wlrctl toplevel find "app_id:$DOCK_APP_ID"' in interactive
+    assert '/usr/bin/wlrctl toplevel find "app_id:$VPN_APP_ID"' not in interactive
     start_client = supervisor.index('"$CLIENT" &')
     wait_window = supervisor.index("wait_for_interactive_surface", start_client)
     stable = supervisor.index("set_stable_background", wait_window)

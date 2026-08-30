@@ -53,3 +53,15 @@ def test_production_builder_requires_complete_xaac_110_component_set() -> None:
         "xaac-thin-client-dock": "1.1.0",
         "xaac-agent": "1.1.0-1",
     }
+
+
+def test_kiosk_boot_orders_network_then_vpn_without_network_online_gate() -> None:
+    source = (ROOT / "src/xaac_thin_client_os/production_builder.py").read_text(encoding="utf-8")
+    assert 'configure-enable-xaac-network' in source
+    assert 'Before=xaac-vpn-manager.service' in source
+    assert '"Wants=\\n"' in source and '"After=\\n"' in source
+    assert 'Wants=xaac-network-manager.service' in source
+    assert 'After=dbus.service NetworkManager.service xaac-network-manager.service' in source
+    assert 'Wants=xaac-network-manager.service xaac-vpn-manager.service' in source
+    assert 'After=xaac-network-manager.service xaac-vpn-manager.service' in source
+    assert 'configure-verify-xaac-connectivity-startup-order' in source

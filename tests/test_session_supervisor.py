@@ -143,19 +143,38 @@ def test_supervisor_uses_numeric_xdg_runtime_and_waits_for_wayland(tmp_path: Pat
 
 
 
-def test_session_entry_honours_dock_policy(tmp_path: Path, project_root: Path) -> None:
+def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_supervisor_plan(tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml")
     files = {str(path): (content, mode) for path, content, mode in plan.files}
     script, mode = files["/usr/local/libexec/xaac-session-entry"]
     assert mode == 0o755
     assert "DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini" in script
-    assert "disabled)" in script and 'exec "$LEGACY"' in script
-    assert "optional|required)" in script and 'exec "$DOCK"' in script
+    assert "REMOTE=/usr/bin/xaac-thinclient" in script
+    assert "DOCK=/usr/bin/xaac-thin-client-dock" in script
+    assert "disabled|optional|required" in script
+    assert "xaac-vpn-session-gate" not in script
+    assert "xaac-thin-client-vpn" not in script
+    assert "xaac-network-gui" not in script
+    remote_start = script.index('"$REMOTE" &')
+    remote_surface = script.index("wait_for_remote_surface || true")
+    dock_start = script.index('"$DOCK" &')
+    assert remote_start < remote_surface < dock_start
+    assert 'if [ "$mode" = disabled ]; then' in script
+    assert 'if [ "$mode" = required ]; then' in script
+    assert "connectivity state MUST NOT gate the graphical session" in script
     assert "exit 78" in script
     path = tmp_path / "session-entry.sh"
     path.write_text(script)
     completed = subprocess.run(["/bin/sh", "-n", str(path)], check=False, capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
+
+
+def test_supervisor_startup_surface_is_remote_with_dock_fallback(tmp_path: Path, project_root: Path) -> None:
+    script = _script(tmp_path, project_root)
+    function = script[script.index("wait_for_interactive_surface()") : script.index("set_stable_background()") ]
+    assert 'wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID"' in function
+    assert 'wlrctl toplevel find "app_id:$DOCK_APP_ID"' in function
+    assert 'wlrctl toplevel find "app_id:$VPN_APP_ID"' not in function
 
 
 def test_supervisor_waits_for_dock_surface(tmp_path: Path, project_root: Path) -> None:

@@ -52,6 +52,13 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert "<decoration>client</decoration>" in rc
     assert 'serverDecoration="no"' in rc
     assert 'name="AutoPlace" policy="center"' in rc
+    assert '<margin bottom="112" />' in rc
+    assert 'identifier="org.xaac.thinclient"' in rc
+    assert '<windowRule identifier="*xfreerdp*" serverDecoration="no" />' in rc
+    assert 'identifier="org.xaac.ThinClientDock"' in rc
+    assert 'fixedPosition="yes"' in rc
+    assert 'name="MoveToEdge" direction="down" snapWindows="no"' in rc
+    assert 'name="ToggleAlwaysOnTop"' not in rc
     assert "ToggleFullscreen" not in rc
     assert "<keyboard />" in files["/etc/xaac/openbox/rc.xml"]
 

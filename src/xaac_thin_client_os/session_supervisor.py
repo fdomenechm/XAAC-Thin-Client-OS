@@ -323,15 +323,13 @@ wait_for_startup_surface() {{
 }}
 
 wait_for_interactive_surface() {{
-  # Under Wayland, keep the busy overlay until either the VPN UI or the actual
-  # Thin Client has a mapped toplevel. This makes the cursor reflect real work
-  # instead of an arbitrary two-second delay.
+  # Remote is the primary visible application. The Dock is a bounded fallback
+  # so a Remote startup failure can never hide the recovery/navigation controls.
   if [ -n "${{WAYLAND_DISPLAY:-}}" ] && command -v /usr/bin/wlrctl >/dev/null 2>&1; then
     steps=$((INTERACTIVE_TIMEOUT * 10))
     waited=0
     while [ "$waited" -lt "$steps" ]; do
       /usr/bin/wlrctl toplevel find "app_id:$THIN_CLIENT_APP_ID" >/dev/null 2>&1 && return 0
-      /usr/bin/wlrctl toplevel find "app_id:$VPN_APP_ID" >/dev/null 2>&1 && return 0
       /usr/bin/wlrctl toplevel find "app_id:$DOCK_APP_ID" >/dev/null 2>&1 && return 0
       sleep 0.1
       waited=$((waited + 1))
@@ -435,12 +433,15 @@ while :; do
 done
 '''
     session_entry = r'''#!/bin/sh
-set -eu
+set -u
 
 DOCK_CONFIG=/etc/xaac/xaac-thin-client-dock.ini
+REMOTE=/usr/bin/xaac-thinclient
 DOCK=/usr/bin/xaac-thin-client-dock
-LEGACY=/usr/local/libexec/xaac-vpn-session-gate
+REMOTE_APP_ID=org.xaac.thinclient
 mode=optional
+remote_pid=
+dock_pid=
 
 if [ -r "$DOCK_CONFIG" ]; then
   parsed=$(/usr/bin/awk '
@@ -463,20 +464,99 @@ if [ -r "$DOCK_CONFIG" ]; then
 fi
 
 case "$mode" in
-  disabled)
-    [ -x "$LEGACY" ] || exit 69
-    exec "$LEGACY"
-    ;;
-  optional|required)
-    [ -x "$DOCK" ] || exit 69
-    exec "$DOCK"
-    ;;
+  disabled|optional|required) ;;
   *)
     # Invalid policy is not silently weakened. The session supervisor will
     # enter its bounded recovery path and expose an incident code.
     exit 78
     ;;
 esac
+
+[ -x "$REMOTE" ] || exit 69
+if [ "$mode" != disabled ]; then
+  [ -x "$DOCK" ] || exit 69
+fi
+
+cleanup() {
+  trap - HUP INT TERM
+  [ -z "$dock_pid" ] || kill "$dock_pid" 2>/dev/null || true
+  [ -z "$remote_pid" ] || kill "$remote_pid" 2>/dev/null || true
+  [ -z "$dock_pid" ] || wait "$dock_pid" 2>/dev/null || true
+  [ -z "$remote_pid" ] || wait "$remote_pid" 2>/dev/null || true
+  exit 0
+}
+trap cleanup HUP INT TERM
+
+wait_for_remote_surface() {
+  # Remote is the primary visible application. Give it a bounded opportunity
+  # to map before the Dock appears, but never let a Remote failure hide the
+  # recovery controls provided by the Dock.
+  if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -x /usr/bin/wlrctl ]; then
+    waited=0
+    while [ "$waited" -lt 50 ]; do
+      /usr/bin/wlrctl toplevel find "app_id:$REMOTE_APP_ID" >/dev/null 2>&1 && return 0
+      kill -0 "$remote_pid" 2>/dev/null || return 1
+      sleep 0.1
+      waited=$((waited + 1))
+    done
+    return 1
+  fi
+  sleep 0.2
+  return 0
+}
+
+# Network and VPN are system services and have already been requested during
+# boot. Their connectivity state MUST NOT gate the graphical session: Remote is
+# always started first and remains usable to report network/VPN/server errors.
+"$REMOTE" &
+remote_pid=$!
+
+if [ "$mode" = disabled ]; then
+  if wait "$remote_pid"; then
+    remote_code=0
+  else
+    remote_code=$?
+  fi
+  remote_pid=
+  exit "$remote_code"
+fi
+
+wait_for_remote_surface || true
+"$DOCK" &
+dock_pid=$!
+
+if wait "$dock_pid"; then
+  dock_code=0
+else
+  dock_code=$?
+fi
+dock_pid=
+
+if [ "$mode" = required ]; then
+  # A required Dock is part of the kiosk shell. Its disappearance is a session
+  # failure so the bounded outer supervisor can restore the complete layout.
+  kill "$remote_pid" 2>/dev/null || true
+  wait "$remote_pid" 2>/dev/null || true
+  remote_pid=
+  exit 70
+fi
+
+# In optional mode the user may close the Dock. Keep the entry alive while any
+# Remote window is still mapped, including a Remote instance relaunched by the
+# Dock after the original process exited.
+if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -x /usr/bin/wlrctl ]; then
+  while /usr/bin/wlrctl toplevel find "app_id:$REMOTE_APP_ID" >/dev/null 2>&1; do
+    sleep 1
+  done
+fi
+if wait "$remote_pid"; then
+  remote_code=0
+else
+  remote_code=$?
+fi
+remote_pid=
+[ "$dock_code" -eq 0 ] && exit "$remote_code"
+exit "$dock_code"
 '''
     startup_screen = r'''#!/usr/bin/python3.13
 import os
