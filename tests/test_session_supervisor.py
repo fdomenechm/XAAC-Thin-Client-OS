@@ -135,6 +135,9 @@ def test_invalid_profiles_rejected(tmp_path: Path, project_root: Path, old: str,
 
 def test_supervisor_uses_numeric_xdg_runtime_and_waits_for_wayland(tmp_path: Path, project_root: Path) -> None:
     script = _script(tmp_path, project_root)
+    assert "SYSTEM_PATH=${XAAC_SYSTEM_PATH:-/usr/sbin:/usr/bin:/sbin:/bin}" in script
+    assert "KIOSK_PATH=${XAAC_KIOSK_PATH:-/usr/local/libexec/xaac:/usr/libexec/xaac}" in script
+    assert 'export PATH="$SYSTEM_PATH"' in script
     assert 'RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}' in script
     assert 'STATUS="$RUNTIME_DIR/$STATUS_NAME"' in script
     assert '/run/user/xaac-kiosk/xaac-session-supervisor.json' not in script
@@ -148,6 +151,9 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     files = {str(path): (content, mode) for path, content, mode in plan.files}
     script, mode = files["/usr/local/libexec/xaac-session-entry"]
     assert mode == 0o755
+    assert "SYSTEM_PATH=${XAAC_SYSTEM_PATH:-/usr/sbin:/usr/bin:/sbin:/bin}" in script
+    assert "KIOSK_PATH=${XAAC_KIOSK_PATH:-/usr/local/libexec/xaac:/usr/libexec/xaac}" in script
+    assert 'export PATH="$SYSTEM_PATH"' in script
     assert "DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini" in script
     assert "REMOTE=/usr/bin/xaac-thinclient" in script
     assert "DOCK=/usr/bin/xaac-thin-client-dock" in script
@@ -157,7 +163,7 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     assert "xaac-network-gui" not in script
     remote_start = script.index('"$REMOTE" &')
     remote_surface = script.index("wait_for_remote_surface || true")
-    dock_start = script.index('XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &')
+    dock_start = script.index('PATH="$KIOSK_PATH" XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &')
     assert remote_start < remote_surface < dock_start
     assert 'if [ "$mode" = disabled ]; then' in script
     assert 'if [ "$mode" = required ]; then' in script

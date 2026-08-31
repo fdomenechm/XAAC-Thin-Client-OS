@@ -42,7 +42,7 @@ conserva a [`docs/phases/`](docs/phases/README.md).
 - Sessió dedicada `xaac-kiosk` amb inici automàtic i restriccions de quiosc.
 - Arranc de quiosc 1.1.0 no bloquejant: s’inicialitza primer el backend de Network i després el de VPN, amb les dues GUI ocultes; a continuació s’inicia i es mostra XAAC Thin Client Remote i, finalment, el Dock quan la seua política és `optional` o `required`. La falta de xarxa, VPN o servidor remot no impedeix mostrar Remote + Dock.
 - Layout de quiosc 1.1.0: mentre no hi ha una sessió RDP activa, XAAC Thin Client Remote conserva la seua finestra local centrada i el Dock queda ancorat al centre de l'extrem inferior, sense solapar-se. No s'utilitza cap marge de workarea que desplace artificialment el Dock cap amunt. Quan la sessió RDP s'estableix, FreeRDP entra obligatòriament en pantalla completa i cobreix tota la pantalla, inclòs el Dock: el sistema remot passa a ser l'única superfície de treball. En finalitzar o fallar la sessió, es recupera la vista local Remote + Dock. `dock=disabled` manté Remote visible sense Dock.
-- Àlies d’integració estables `xaac-thin-client-network`, `xaac-thin-client-vpn` i `xaac-thin-client-remote` dins `/usr/local/libexec/xaac`, el `PATH` restringit del quiosc, perquè el Dock puga descobrir els components sense exposar `/usr/bin`.
+- Launchers d’integració estables `xaac-thin-client-network`, `xaac-thin-client-vpn` i `xaac-thin-client-remote` dins `/usr/local/libexec/xaac`. Són wrappers POSIX controlats per l'OS: el Dock rep només el `XAAC_KIOSK_PATH=/usr/local/libexec/xaac:/usr/libexec/xaac` per descobrir components, mentre la infraestructura interna de sessió usa `XAAC_SYSTEM_PATH=/usr/sbin:/usr/bin:/sbin:/bin`. Cada wrapper restaura el PATH de sistema abans d'executar el binari autoritzat; així el confinament del Dock no impedeix que `xaac-session`, supervisor, Network, VPN o Remote troben utilitats del sistema.
 - Experiència d'appliance XAAC de punta a punta: arrencada silenciosa amb splash a pantalla completa, transicions controlades, fons granit de sessió, feedback animat d'activitat i apagada/reinici amb branding propi.
 - Administració local separada mitjançant `xaac-admin`.
 - Accés OpenSSH restringit per usuari, clau i xarxes autoritzades.
@@ -429,6 +429,10 @@ El sistema instal·lat reserva `tty1` per a `greetd`, inicia la sessió `xaac-ki
 ### Garantia de codi font del constructor
 
 `./scripts/build-production-iso.sh` força la importació de `xaac_thin_client_os` des de `src/` del checkout actual i valida la ruta del mòdul abans de començar. D'aquesta manera una `.venv` antiga no pot produir silenciosament una ISO amb un constructor diferent del que s'està provant i revisant.
+
+#### Separació de PATH del quiosc
+
+La 1.1.0 separa explícitament el PATH intern de la infraestructura i el PATH de descoberta del Dock. `xaac-session`, `xaac-session-supervisor` i `xaac-session-entry` usen `/usr/sbin:/usr/bin:/sbin:/bin`, necessari per a utilitats root-owned com `sleep`, `date`, `mkdir` o `dpkg-query`. El Dock s'inicia amb `PATH=/usr/local/libexec/xaac:/usr/libexec/xaac` i, per tant, només descobreix launchers XAAC autoritzats. Els launchers restringits són wrappers `/bin/sh`, no symlinks, i restauren el PATH del sistema abans d'executar Network, VPN o Remote. El parseig inicial de `/etc/default/keyboard` de `xaac-session` usa només built-ins POSIX i no depén d'`awk` ni d'altres binaris abans d'iniciar el compositor.
 
 #### Runtime de la sessió de quiosc
 Els fitxers efímers de la sessió (`flock`, estat del supervisor i socket Wayland) es resolen a partir de `XDG_RUNTIME_DIR`, que en systemd/logind és `/run/user/<UID>`. No s'utilitzen rutes basades en el nom `xaac-kiosk` sota `/run/user`.

@@ -1,3 +1,11 @@
+## 2026-08-31 — Correcció del PATH de la sessió de quiosc 1.1.0
+
+- Corregida la regressió d'arranc `xaac-session: awk: not found` causada per aplicar el PATH restringit del Dock a tota la infraestructura de sessió.
+- `xaac-session`, `xaac-session-supervisor` i `xaac-session-entry` usen ara `XAAC_SYSTEM_PATH=/usr/sbin:/usr/bin:/sbin:/bin`; el Dock conserva `XAAC_KIOSK_PATH=/usr/local/libexec/xaac:/usr/libexec/xaac`.
+- El parseig inicial de `/etc/default/keyboard` usa exclusivament built-ins POSIX de `/bin/sh`, sense dependència d'`awk` abans d'arrancar el compositor.
+- Els launchers de Network, VPN i Remote dins `/usr/local/libexec/xaac` passen de symlinks a wrappers POSIX controlats, que restauren el PATH de sistema i executen únicament el binari autoritzat.
+- Afegides proves de regressió per a la separació PATH, sintaxi POSIX i confinament del Dock.
+
 # 2026-08-31 — Importadors uniformes de components 1.1.0
 
 - Afegits `import-xaac-network-package.sh`, `import-xaac-vpn-package.sh`, `import-xaac-remote-package.sh` i `import-xaac-dock-package.sh`, compatibles amb `/bin/sh`, per completar el flux ja existent de l'Agent.

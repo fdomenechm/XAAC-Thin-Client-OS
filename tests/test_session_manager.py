@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import pytest
 
 from xaac_thin_client_os.session_manager import (
@@ -55,7 +56,10 @@ def test_plan_generates_restricted_autologin(tmp_path: Path, project_root: Path)
     assert mode == 0o600
     launcher, launcher_mode = files["/usr/local/libexec/xaac-session"]
     assert "exec /usr/bin/labwc" in launcher
-    assert "export PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in launcher
+    assert "export XAAC_SYSTEM_PATH=/usr/sbin:/usr/bin:/sbin:/bin" in launcher
+    assert "export XAAC_KIOSK_PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in launcher
+    assert "export PATH=$XAAC_SYSTEM_PATH" in launcher
+    assert "awk" not in launcher
     assert "/etc/default/keyboard" in launcher
     assert "XKB_DEFAULT_LAYOUT=$xaac_xkb_layout" in launcher
     assert "XKB_DEFAULT_VARIANT=$xaac_xkb_variant" in launcher
@@ -63,6 +67,22 @@ def test_plan_generates_restricted_autologin(tmp_path: Path, project_root: Path)
     assert "XKB_DEFAULT_LAYOUT=es" not in launcher
     assert launcher_mode == 0o755
 
+
+
+def test_session_keyboard_parser_needs_no_external_commands(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
+    launcher = next(c for p, c, _ in plan.files if str(p).endswith("xaac-session"))
+    keyboard = tmp_path / "keyboard"
+    keyboard.write_text('XKBMODEL="pc105"\nXKBLAYOUT="es"\nXKBVARIANT=""\n', encoding="utf-8")
+    parser = launcher.replace("/etc/default/keyboard", str(keyboard))
+    parser = parser.split('if [ -x /usr/bin/labwc ]', 1)[0]
+    parser = parser.replace('export PATH=$XAAC_SYSTEM_PATH', 'export PATH=/nonexistent')
+    parser += 'printf "%s|%s|%s\n" "$XKB_DEFAULT_LAYOUT" "$XKB_DEFAULT_VARIANT" "$XKB_DEFAULT_MODEL"\n'
+    script = tmp_path / "parser.sh"
+    script.write_text(parser, encoding="utf-8")
+    completed = subprocess.run(["/bin/sh", str(script)], check=False, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "es||pc105"
 
 def test_execute_is_idempotent(tmp_path: Path, project_root: Path) -> None:
     plan = create_session_manager_plan(tmp_path / "build/rootfs", project_root / "config/session-manager.yaml")
@@ -133,5 +153,7 @@ def test_wayland_session_points_labwc_at_xaac_config_home(tmp_path: Path, projec
     environment = files["/etc/xaac/session/session-manager.env"]
     assert "export XDG_CONFIG_HOME=/etc/xaac" in launcher
     assert "XDG_CONFIG_HOME=/etc/xaac" in environment
-    assert "PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in environment
+    assert "XAAC_SYSTEM_PATH=/usr/sbin:/usr/bin:/sbin:/bin" in environment
+    assert "XAAC_KIOSK_PATH=/usr/local/libexec/xaac:/usr/libexec/xaac" in environment
+    assert "PATH=/usr/sbin:/usr/bin:/sbin:/bin" in environment
     assert "exec /usr/bin/labwc --config /etc/xaac/labwc/rc.xml" in launcher

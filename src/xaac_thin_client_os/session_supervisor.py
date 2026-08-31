@@ -170,6 +170,11 @@ def create_session_supervisor_plan(rootfs: Path, profile_path: Path) -> SessionS
     status_name = PurePosixPath(str(cfg["status_file"])).name
     supervisor = f'''#!/bin/sh
 set -u
+SYSTEM_PATH=${{XAAC_SYSTEM_PATH:-/usr/sbin:/usr/bin:/sbin:/bin}}
+KIOSK_PATH=${{XAAC_KIOSK_PATH:-/usr/local/libexec/xaac:/usr/libexec/xaac}}
+export XAAC_SYSTEM_PATH="$SYSTEM_PATH"
+export XAAC_KIOSK_PATH="$KIOSK_PATH"
+export PATH="$SYSTEM_PATH"
 CLIENT={cfg["client_command"]}
 ERROR_SCREEN={cfg["error_screen_command"]}
 STARTUP_SCREEN={cfg["startup_screen_command"]}
@@ -435,6 +440,12 @@ done
     session_entry = r'''#!/bin/sh
 set -u
 
+SYSTEM_PATH=${XAAC_SYSTEM_PATH:-/usr/sbin:/usr/bin:/sbin:/bin}
+KIOSK_PATH=${XAAC_KIOSK_PATH:-/usr/local/libexec/xaac:/usr/libexec/xaac}
+export XAAC_SYSTEM_PATH="$SYSTEM_PATH"
+export XAAC_KIOSK_PATH="$KIOSK_PATH"
+export PATH="$SYSTEM_PATH"
+
 DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini
 REMOTE=/usr/bin/xaac-thinclient
 DOCK=/usr/bin/xaac-thin-client-dock
@@ -522,7 +533,7 @@ if [ "$mode" = disabled ]; then
 fi
 
 wait_for_remote_surface || true
-XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &
+PATH="$KIOSK_PATH" XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &
 dock_pid=$!
 
 if wait "$dock_pid"; then
