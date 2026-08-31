@@ -4,7 +4,7 @@ package:
   architecture: all
   version: 1.1.0
   artifact: packages/xaac-thinclient_1.1.0_all.deb
-  sha256: c078e929cb8345b2b509e727134a808112359fc4b3d5977c95c1503bcaaaec12
+  sha256: 40e2a9de144f0c65f682d5228ae31e350c5cd7b9a2fc2d9c3ff9d14bcfcf235c
   allow_newer_patch: true
   dependencies:
   - python3

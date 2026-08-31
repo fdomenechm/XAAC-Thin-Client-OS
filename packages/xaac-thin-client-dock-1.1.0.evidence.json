@@ -2,8 +2,8 @@
   "package": "xaac-thin-client-dock",
   "version": "1.1.0",
   "artifact": "xaac-thin-client-dock_1.1.0_all.deb",
-  "sha256": "e530a2be83f593c06e2b3d9e39e429ac92a13e4b985b3a2e704e42535d0607d5",
-  "size_bytes": 294040,
-  "built_at_utc": "2026-08-30T10:55:04Z",
-  "builder": "root"
+  "sha256": "810d038d8799307ad875ddbdf18f9a8cfe88a107fffa82ce2ab063e01416d5ea",
+  "size_bytes": 294772,
+  "built_at_utc": "2026-08-31T07:07:57Z",
+  "builder": "fdomenechm"
 }

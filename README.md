@@ -451,7 +451,7 @@ Després, des del projecte XAAC Thin Client OS, s'incorpora eixe `.deb` ja const
 ```sh
 cd /ruta/al/xaac-thin-client-os
 ./scripts/create-venv.sh
-./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.0.0-8_amd64.deb
+./scripts/import-xaac-agent-package.sh ../artifacts/xaac-agent_1.1.0-1_amd64.deb
 ```
 
 L'importador exigeix el fitxer adjacent `.deb.provenance.json`, valida que el paquet siga canònic, actualitza automàticament versió, ruta i SHA-256 en `config/xaac-agent-package.yaml` i executa els gates del Bloc 7. A partir d'eixe moment la construcció habitual de l'OS torna a ser simplement:
@@ -462,3 +462,26 @@ sudo ./scripts/install-build-dependencies.sh   # només quan calga preparar el h
 ```
 
 Un `.deb` generat amb `dpkg-deb` per a proves locals continua marcat com a no canònic i `build-production-iso.sh` el rebutja.
+
+
+## Importació dels components XAAC 1.1.0
+
+Els cinc components integrats en la ISO disposen d'un importador explícit. L'objectiu és evitar copiar paquets manualment i, sobretot, evitar desajustos entre el `.deb`, la seua evidència de construcció i el `sha256` registrat en el perfil de l'OS.
+
+```sh
+./scripts/import-xaac-agent-package.sh /ruta/al/xaac-agent_1.1.0-1_amd64.deb
+./scripts/import-xaac-network-package.sh /ruta/al/xaac-thin-client-network_1.1.0-1_all.deb
+./scripts/import-xaac-vpn-package.sh /ruta/al/xaac-thin-client-vpn_1.1.0_all.deb
+./scripts/import-xaac-remote-package.sh /ruta/al/xaac-thinclient_1.1.0_all.deb
+./scripts/import-xaac-dock-package.sh /ruta/al/xaac-thin-client-dock_1.1.0_all.deb
+```
+
+Els importadors de Network, VPN, Remote i Dock exigeixen que al mateix directori del `.deb` existisca el JSON d'evidència generat pel projecte d'origen. Accepten els formats d'evidència actuals de cadascun dels quatre projectes, comproven `Package`, `Version`, `Architecture`, mida quan està disponible i SHA-256, copien transaccionalment el paquet i l'evidència a `packages/` i actualitzen el perfil corresponent en `config/`.
+
+Si l'evidència no correspon exactament al `.deb`, la importació falla sense modificar el projecte. Després de qualsevol importació s'ha d'executar:
+
+```sh
+./scripts/run-tests.sh
+```
+
+abans de construir una nova ISO. L'Agent manté el seu importador específic perquè, a més del SHA-256, valida la provenança canònica i els gates del Bloc 7.

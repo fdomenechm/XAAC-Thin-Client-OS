@@ -1,3 +1,11 @@
+# 2026-08-31 — Importadors uniformes de components 1.1.0
+
+- Afegits `import-xaac-network-package.sh`, `import-xaac-vpn-package.sh`, `import-xaac-remote-package.sh` i `import-xaac-dock-package.sh`, compatibles amb `/bin/sh`, per completar el flux ja existent de l'Agent.
+- Els nous importadors validen el `.deb` real amb `dpkg-deb`, exigeixen el JSON d'evidència adjacent del projecte d'origen, comproven versió, arquitectura, mida quan està disponible i SHA-256, i rebutgen evidències obsoletes o que corresponen a un altre artefacte.
+- La incorporació és transaccional: elimina únicament els artefactes anteriors del mateix component, copia `.deb` + evidència, sincronitza `artifact` i `sha256` del perfil i restaura l'estat anterior si la validació final falla.
+- Afegides proves de regressió per als quatre formats d'evidència actuals i per garantir que els scripts continuen sent POSIX `/bin/sh`.
+- Sincronitzada també l'evidència incrustada de Network amb el `.deb` real, i afegida una prova que garanteix que les evidències empaquetades dels quatre components són reutilitzables pels importadors.
+
 # 2026-08-30 — Correcció d'integració Dock/Remote i geometria local
 
 - El `PATH` restringit (`/usr/local/libexec/xaac:/usr/libexec/xaac`) queda exportat tant pel launcher de sessió com per l'entorn de quiosc, de manera que el Dock descobreix els àlies autoritzats de Network, VPN i Remote sense exposar `/usr/bin`.
