@@ -1,3 +1,11 @@
+## 2026-08-31 — accions globals consolidades al Dock
+
+- XAAC Thin Client Remote deixa d'exposar a la finestra principal els controls globals **Quant a**, **Diagnòstics** i **Apagar**, i redueix l'alçada per defecte a 460 px.
+- El logotip XAAC del Dock passa a ser el punt d'accés a **Quant a XAAC**.
+- Afegit **Diagnòstic** immediatament a l'esquerra d'**Apagar** en el grup d'accions globals del Dock.
+- El diagnòstic del Dock mostra un resum sanititzat dels estats Network, VPN i Remote; les accions globals continuen separades dels tres botons de navegació.
+- Integrats els nous paquets Remote i Dock i sincronitzats els seus SHA-256 mitjançant els importadors de components.
+
 ## 2026-08-31 — Correcció del PATH de la sessió de quiosc 1.1.0
 
 - Corregida la regressió d'arranc `xaac-session: awk: not found` causada per aplicar el PATH restringit del Dock a tota la infraestructura de sessió.

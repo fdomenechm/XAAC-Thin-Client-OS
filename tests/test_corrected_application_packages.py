@@ -26,7 +26,7 @@ def test_corrected_vpn_package_contains_busy_cursor_and_button_lock(tmp_path: Pa
     assert "GLib.idle_add(self._complete_skip_from_idle)" in text
 
 
-def test_corrected_thinclient_package_contains_busy_cursor_and_button_lock(tmp_path: Path) -> None:
+def test_corrected_thinclient_package_keeps_connection_busy_feedback_and_delegates_global_actions(tmp_path: Path) -> None:
     package = ROOT / "packages/xaac-thinclient_1.1.0_all.deb"
     target = tmp_path / "thinclient"
     _extract(package, target)
@@ -34,9 +34,22 @@ def test_corrected_thinclient_package_contains_busy_cursor_and_button_lock(tmp_p
     text = source.read_text(encoding="utf-8")
     assert 'self.set_cursor_from_name("wait" if busy else None)' in text
     assert "self.connect_button.set_sensitive(False)" in text
-    assert "def _set_power_busy" in text
-    assert "self.power_button.set_sensitive(not busy and not dialog_active)" in text
-    assert "self._set_power_busy(True)" in text
-    assert "self._power_confirm_button.set_sensitive(not busy)" in text
-    assert "GLib.idle_add(self._execute_power_action, dialog)" in text
-    assert "result = self.controller.request_poweroff()" in text
+    assert "self.set_default_size(520, 460)" in text
+    assert "self.about_button" not in text
+    assert "self.diagnostic_button" not in text
+    assert "self.power_button" not in text
+    assert "request_poweroff" not in text
+
+
+def test_dock_package_owns_about_diagnostics_and_shutdown_global_actions(tmp_path: Path) -> None:
+    package = ROOT / "packages/xaac-thin-client-dock_1.1.0_all.deb"
+    target = tmp_path / "dock"
+    _extract(package, target)
+    source = next(target.glob("usr/lib/python3/dist-packages/xaac_thin_client_dock/presentation/gtk_view.py"))
+    text = source.read_text(encoding="utf-8")
+    assert 'about_button.add_css_class("xaac-dock-brand-button")' in text
+    assert 'diagnostics_button.add_css_class("xaac-dock-diagnostics-button")' in text
+    assert 'power_button.add_css_class("xaac-dock-power-button")' in text
+    assert 'gettext_message("About XAAC")' in text
+    assert 'gettext_message("Diagnostics")' in text
+    assert text.index("system_actions.append(diagnostics_button)") < text.index("system_actions.append(power_button)")
