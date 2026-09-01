@@ -7,7 +7,7 @@ package:
   architecture: all
   version: 1.1.0
   artifact: packages/xaac-thin-client-dock_1.1.0_all.deb
-  sha256: a82abc8d97686f960643fd77c01905fed81c4b5e85ddaeafcd8869723d9f5a2d
+  sha256: 63602db863e8af60596a382e7eacabcdb8b4acaef4cb7d2faa0001ffa00456b6
 runtime:
   gui_command: /usr/bin/xaac-thin-client-dock
   configuration_path: /etc/xaac-dock/xaac-thin-client-dock.ini
