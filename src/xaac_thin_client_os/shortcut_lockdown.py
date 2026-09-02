@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from xaac_thin_client_os.compositor import REMOTE_BOTTOM_CLEARANCE_PIXELS
+
 
 class ShortcutLockdownError(RuntimeError):
     """Raised when shortcut-lockdown configuration is invalid or unsafe."""
@@ -101,7 +103,8 @@ def create_shortcut_lockdown_plan(rootfs: Path, profile_path: Path) -> ShortcutL
         raise ShortcutLockdownError(f"Rootfs insegur: {root}")
     profile = load_shortcut_lockdown_profile(profile_path)
     blocked = tuple(item for values in profile["categories"].values() for item in values)
-    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>server</decoration><gap>0</gap></core>\n  <placement><policy>center</policy></placement>\n  <theme>
+    remote_clearance = REMOTE_BOTTOM_CLEARANCE_PIXELS
+    labwc = f"""<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>server</decoration><gap>0</gap></core>\n  <placement><policy>center</policy></placement>\n  <theme>
     <name>XAAC</name>
     <cornerRadius>12</cornerRadius>
     <keepBorder>yes</keepBorder>
@@ -112,6 +115,12 @@ def create_shortcut_lockdown_plan(rootfs: Path, profile_path: Path) -> ShortcutL
     <keybind key=\"A-F4\" />
   </keyboard>
   <mouse>
+    <context name=\"Client\">
+      <mousebind button=\"Left\" action=\"Press\">
+        <action name=\"Focus\" />
+        <action name=\"Raise\" />
+      </mousebind>
+    </context>
     <context name=\"Root\">
       <mousebind button=\"Left\" action=\"Press\" />
       <mousebind button=\"Right\" action=\"Press\" />
@@ -124,20 +133,22 @@ def create_shortcut_lockdown_plan(rootfs: Path, profile_path: Path) -> ShortcutL
     </windowRule>
     <windowRule identifier=\"org.xaac.thinclient\" serverDecoration=\"yes\">
       <action name=\"AutoPlace\" policy=\"center\" />
+      <action name=\"MoveToEdge\" direction=\"down\" snapWindows=\"no\" />
+      <action name=\"MoveRelative\" x=\"0\" y=\"-{remote_clearance}\" />
     </windowRule>
     <windowRule identifier=\"*xfreerdp*\" serverDecoration=\"no\" />
-    <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\">
+    <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\" ignoreFocusRequest=\"yes\">
       <action name=\"AutoPlace\" policy=\"center\" />
       <action name=\"MoveToEdge\" direction=\"down\" snapWindows=\"no\" />
     </windowRule>
   </windowRules>\n</labwc_config>\n"""
-    openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    openbox = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <openbox_config xmlns=\"http://openbox.org/3.4/rc\">
   <applications>
     <application class=\"*\"><decor>no</decor></application>
     <application class=\"org.xaac.thinclient\">
       <decor>no</decor>
-      <position force=\"yes\"><x>center</x><y>center</y></position>
+      <position force=\"yes\"><x>center</x><y>-{remote_clearance}</y></position>
     </application>
     <application class=\"org.xaac.ThinClientDock\">
       <decor>no</decor>
@@ -146,7 +157,15 @@ def create_shortcut_lockdown_plan(rootfs: Path, profile_path: Path) -> ShortcutL
     <application class=\"*xfreerdp*\"><decor>no</decor></application>
   </applications>
   <keyboard />
-  <mouse><context name=\"Root\" /></mouse>
+  <mouse>
+    <context name=\"Client\">
+      <mousebind button=\"Left\" action=\"Press\">
+        <action name=\"Focus\" />
+        <action name=\"Raise\" />
+      </mousebind>
+    </context>
+    <context name=\"Root\" />
+  </mouse>
   <desktops><number>1</number></desktops>
 </openbox_config>
 """

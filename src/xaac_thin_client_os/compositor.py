@@ -6,6 +6,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 import yaml
 
+# Local kiosk geometry contract. XAAC Thin Client Dock 1.1.0 has a fixed
+# 96 px window height; Remote must finish at least 20 px above it. Keeping the
+# clearance explicit prevents centred windows from overlapping the Dock on the
+# minimum supported 1024x768 output.
+DOCK_WINDOW_HEIGHT_PIXELS = 96
+REMOTE_DOCK_MINIMUM_GAP_PIXELS = 20
+REMOTE_BOTTOM_CLEARANCE_PIXELS = DOCK_WINDOW_HEIGHT_PIXELS + REMOTE_DOCK_MINIMUM_GAP_PIXELS
+
 class CompositorError(RuntimeError):
     """Raised for invalid or unsafe compositor configuration."""
 
@@ -89,10 +97,17 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     root = rootfs.resolve()
     if root == Path("/") or root.parent == Path("/"): raise CompositorError(f"Rootfs insegur: {root}")
     p = load_compositor_profile(profile_path); files = p["files"]
-    labwc = """<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <keyboard>
+    remote_clearance = REMOTE_BOTTOM_CLEARANCE_PIXELS
+    labwc = f"""<?xml version=\"1.0\"?>\n<labwc_config>\n  <core><decoration>client</decoration><gap>0</gap><reuseOutputMode>yes</reuseOutputMode></core>\n  <placement><policy>center</policy></placement>\n  <keyboard>
     <keybind key=\"A-F4\" />
   </keyboard>
   <mouse>
+    <context name=\"Client\">
+      <mousebind button=\"Left\" action=\"Press\">
+        <action name=\"Focus\" />
+        <action name=\"Raise\" />
+      </mousebind>
+    </context>
     <context name=\"Root\">
       <mousebind button=\"Left\" action=\"Press\" />
       <mousebind button=\"Right\" action=\"Press\" />
@@ -105,21 +120,23 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     </windowRule>
     <windowRule identifier=\"org.xaac.thinclient\" serverDecoration=\"no\">
       <action name=\"AutoPlace\" policy=\"center\" />
+      <action name=\"MoveToEdge\" direction=\"down\" snapWindows=\"no\" />
+      <action name=\"MoveRelative\" x=\"0\" y=\"-{remote_clearance}\" />
     </windowRule>
     <windowRule identifier=\"*xfreerdp*\" serverDecoration=\"no\" />
-    <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\">
+    <windowRule identifier=\"org.xaac.ThinClientDock\" serverDecoration=\"no\" skipTaskbar=\"yes\" skipWindowSwitcher=\"yes\" fixedPosition=\"yes\" ignoreFocusRequest=\"yes\">
       <action name=\"AutoPlace\" policy=\"center\" />
       <action name=\"MoveToEdge\" direction=\"down\" snapWindows=\"no\" />
     </windowRule>
   </windowRules>\n</labwc_config>\n"""
     autostart = "/usr/local/libexec/xaac-session-supervisor &\n"
-    openbox = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    openbox = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <openbox_config xmlns=\"http://openbox.org/3.4/rc\">
   <applications>
     <application class=\"*\"><decor>no</decor></application>
     <application class=\"org.xaac.thinclient\">
       <decor>no</decor>
-      <position force=\"yes\"><x>center</x><y>center</y></position>
+      <position force=\"yes\"><x>center</x><y>-{remote_clearance}</y></position>
     </application>
     <application class=\"org.xaac.ThinClientDock\">
       <decor>no</decor>
@@ -128,7 +145,15 @@ def create_compositor_plan(rootfs: Path, profile_path: Path) -> CompositorPlan:
     <application class=\"*xfreerdp*\"><decor>no</decor></application>
   </applications>
   <keyboard />
-  <mouse><context name=\"Root\" /></mouse>
+  <mouse>
+    <context name=\"Client\">
+      <mousebind button=\"Left\" action=\"Press\">
+        <action name=\"Focus\" />
+        <action name=\"Raise\" />
+      </mousebind>
+    </context>
+    <context name=\"Root\" />
+  </mouse>
   <desktops><number>1</number></desktops>
 </openbox_config>
 """

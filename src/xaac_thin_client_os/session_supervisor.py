@@ -450,6 +450,7 @@ DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini
 REMOTE=/usr/bin/xaac-thinclient
 DOCK=/usr/bin/xaac-thin-client-dock
 REMOTE_APP_ID=org.xaac.thinclient
+DOCK_APP_ID=org.xaac.ThinClientDock
 mode=optional
 remote_pid=
 dock_pid=
@@ -516,6 +517,23 @@ wait_for_remote_surface() {
   return 0
 }
 
+focus_remote_after_dock_map() {
+  # Dock is mapped after Remote and may become the compositor's newest active
+  # toplevel. Wait for that map event, then explicitly return keyboard focus to
+  # Remote. Remote itself already selects username, or password when a username
+  # is remembered, so focusing the toplevel restores the intended input field.
+  if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -x /usr/bin/wlrctl ]; then
+    waited=0
+    while [ "$waited" -lt 50 ]; do
+      /usr/bin/wlrctl toplevel find "app_id:$DOCK_APP_ID" >/dev/null 2>&1 && break
+      kill -0 "$dock_pid" 2>/dev/null || break
+      sleep 0.1
+      waited=$((waited + 1))
+    done
+    /usr/bin/wlrctl toplevel focus "app_id:$REMOTE_APP_ID" >/dev/null 2>&1 || true
+  fi
+}
+
 # Network and VPN are system services and have already been requested during
 # boot. Their connectivity state MUST NOT gate the graphical session: Remote is
 # always started first and remains usable to report network/VPN/server errors.
@@ -535,6 +553,7 @@ fi
 wait_for_remote_surface || true
 PATH="$KIOSK_PATH" XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &
 dock_pid=$!
+focus_remote_after_dock_map
 
 if wait "$dock_pid"; then
   dock_code=0

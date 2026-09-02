@@ -47,9 +47,12 @@ def test_dock_package_owns_about_diagnostics_and_shutdown_global_actions(tmp_pat
     _extract(package, target)
     source = next(target.glob("usr/lib/python3/dist-packages/xaac_thin_client_dock/presentation/gtk_view.py"))
     text = source.read_text(encoding="utf-8")
+    model = next(target.glob("usr/lib/python3/dist-packages/xaac_thin_client_dock/presentation/model.py"))
+    model_text = model.read_text(encoding="utf-8")
     assert 'about_button.add_css_class("xaac-dock-brand-button")' in text
     assert 'diagnostics_button.add_css_class("xaac-dock-diagnostics-button")' in text
     assert 'power_button.add_css_class("xaac-dock-power-button")' in text
     assert 'gettext_message("About XAAC")' in text
     assert 'gettext_message("Diagnostics")' in text
     assert text.index("system_actions.append(diagnostics_button)") < text.index("system_actions.append(power_button)")
+    assert "default_height: int = 96" in model_text

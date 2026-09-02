@@ -157,6 +157,8 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     assert "DOCK_CONFIG=/etc/xaac-dock/xaac-thin-client-dock.ini" in script
     assert "REMOTE=/usr/bin/xaac-thinclient" in script
     assert "DOCK=/usr/bin/xaac-thin-client-dock" in script
+    assert "REMOTE_APP_ID=org.xaac.thinclient" in script
+    assert "DOCK_APP_ID=org.xaac.ThinClientDock" in script
     assert "disabled|optional|required" in script
     assert "xaac-vpn-session-gate" not in script
     assert "xaac-thin-client-vpn" not in script
@@ -164,7 +166,8 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     remote_start = script.index('"$REMOTE" &')
     remote_surface = script.index("wait_for_remote_surface || true")
     dock_start = script.index('PATH="$KIOSK_PATH" XAAC_DOCK_CONFIG="$DOCK_CONFIG" "$DOCK" &')
-    assert remote_start < remote_surface < dock_start
+    focus_after_map = script.index("dock_pid=$!\nfocus_remote_after_dock_map", dock_start)
+    assert remote_start < remote_surface < dock_start < focus_after_map
     assert 'if [ "$mode" = disabled ]; then' in script
     assert 'if [ "$mode" = required ]; then' in script
     assert "connectivity state MUST NOT gate the graphical session" in script
@@ -173,6 +176,25 @@ def test_session_entry_starts_remote_before_dock_without_connectivity_gate(tmp_p
     path.write_text(script)
     completed = subprocess.run(["/bin/sh", "-n", str(path)], check=False, capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
+
+
+def test_session_entry_returns_focus_to_remote_after_dock_maps(tmp_path: Path, project_root: Path) -> None:
+    plan = create_session_supervisor_plan(
+        tmp_path / "build/rootfs", project_root / "config/session-supervisor.yaml"
+    )
+    script = next(
+        content
+        for path, content, _mode in plan.files
+        if str(path).endswith("xaac-session-entry")
+    )
+    function = script[
+        script.index("focus_remote_after_dock_map()") :
+        script.index("# Network and VPN are system services")
+    ]
+    assert 'wlrctl toplevel find "app_id:$DOCK_APP_ID"' in function
+    assert 'wlrctl toplevel focus "app_id:$REMOTE_APP_ID"' in function
+    assert 'kill -0 "$dock_pid"' in function
+    assert 'while [ "$waited" -lt 50 ]' in function
 
 
 def test_supervisor_startup_surface_is_remote_with_dock_fallback(tmp_path: Path, project_root: Path) -> None:

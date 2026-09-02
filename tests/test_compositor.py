@@ -1,6 +1,9 @@
 from pathlib import Path
 import pytest
 from xaac_thin_client_os.compositor import (
+    DOCK_WINDOW_HEIGHT_PIXELS,
+    REMOTE_BOTTOM_CLEARANCE_PIXELS,
+    REMOTE_DOCK_MINIMUM_GAP_PIXELS,
     CompositorConfigurator, CompositorError, CompositorInventory,
     compare_compositor, create_compositor_plan, load_compositor_profile,
 )
@@ -54,9 +57,14 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert 'name="AutoPlace" policy="center"' in rc
     assert '<margin bottom=' not in rc
     assert 'identifier="org.xaac.thinclient"' in rc
+    assert '<context name="Client">' in rc
+    assert '<action name="Focus" />' in rc
+    assert '<action name="Raise" />' in rc
+    assert f'name="MoveRelative" x="0" y="-{REMOTE_BOTTOM_CLEARANCE_PIXELS}"' in rc
     assert '<windowRule identifier="*xfreerdp*" serverDecoration="no" />' in rc
     assert 'identifier="org.xaac.ThinClientDock"' in rc
     assert 'fixedPosition="yes"' in rc
+    assert 'ignoreFocusRequest="yes"' in rc
     assert 'name="MoveToEdge" direction="down" snapWindows="no"' in rc
     assert 'name="ToggleAlwaysOnTop"' not in rc
     assert "ToggleFullscreen" not in rc
@@ -64,8 +72,22 @@ def test_plan_contains_minimal_packages_and_files(tmp_path: Path, project_root: 
     assert "<keyboard />" in openbox
     assert '<fullscreen>yes</fullscreen>' not in openbox
     assert 'class="org.xaac.thinclient"' in openbox
+    assert f'<y>-{REMOTE_BOTTOM_CLEARANCE_PIXELS}</y>' in openbox
     assert 'class="org.xaac.ThinClientDock"' in openbox
     assert '<y>-0</y>' in openbox
+    assert '<context name="Client">' in openbox
+    assert '<action name="Focus" />' in openbox
+    assert '<action name="Raise" />' in openbox
+
+def test_local_layout_guarantees_twenty_pixel_remote_dock_gap() -> None:
+    assert DOCK_WINDOW_HEIGHT_PIXELS == 96
+    assert REMOTE_DOCK_MINIMUM_GAP_PIXELS == 20
+    assert REMOTE_BOTTOM_CLEARANCE_PIXELS == 116
+    assert (
+        REMOTE_BOTTOM_CLEARANCE_PIXELS - DOCK_WINDOW_HEIGHT_PIXELS
+        == REMOTE_DOCK_MINIMUM_GAP_PIXELS
+    )
+
 
 def test_execute_is_idempotent(tmp_path: Path, project_root: Path) -> None:
     plan = create_compositor_plan(tmp_path / "build/rootfs", project_root / "config/compositor.yaml")

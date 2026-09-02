@@ -1,3 +1,10 @@
+## 2026-09-02 — Separació Remote/Dock i focus de la sessió local
+
+- Corregit el solapament de XAAC Thin Client Remote sobre el Dock: Remote queda centrat horitzontalment i amb el seu marge inferior a 116 px de l'extrem de pantalla, corresponents als 96 px del Dock més una separació mínima garantida de 20 px. El mateix contracte s'aplica al fallback X11/Openbox.
+- Restaurat el focus per clic sobre les finestres client sense reactivar menús ni dreceres del compositor: un clic esquerre sobre Remote executa únicament `Focus` + `Raise`, mentre els clics sobre el fons continuen neutralitzats.
+- El Dock ignora les seues pròpies peticions d'activació en `labwc`, i l'entrada de sessió espera que el Dock estiga mapat abans de retornar explícitament el focus de teclat a Remote amb `wlrctl`. Remote conserva així el focus inicial del camp d'usuari o, quan correspon, del camp de contrasenya.
+- Afegides proves de regressió per a la geometria de 20 px, el focus per ratolí i la recuperació explícita de focus després de mapar el Dock.
+
 ## 2026-08-31 — accions globals consolidades al Dock
 
 - XAAC Thin Client Remote deixa d'exposar a la finestra principal els controls globals **Quant a**, **Diagnòstics** i **Apagar**, i redueix l'alçada per defecte a 460 px.

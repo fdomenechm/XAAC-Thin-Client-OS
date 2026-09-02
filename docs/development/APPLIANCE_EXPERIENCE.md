@@ -60,9 +60,7 @@ pantalla d'espera i el Thin Client:
 - En 1.1.0 ja no hi ha una porta VPN davant del client. Network i VPN s'inicialitzen
   com a serveis de sistema, sense mostrar les seues GUI; després es mostra Remote i,
   finalment, el Dock. Cap estat de connectivitat pot ocultar Remote + Dock.
-- `labwc` reserva 112 px en la part inferior per al Dock mentre l’usuari es troba en la superfície local de Remote. El Dock es col·loca al centre
-  inferior, sense decoracions i per damunt de les finestres normals; Remote es maximitza
-  en l'àrea útil restant perquè els controls de recuperació continuen accessibles.
+- En la superfície local, el Dock manté una alçada fixa de 96 px i queda ancorat al centre inferior. Remote es col·loca 116 px per damunt de l'extrem inferior (96 px del Dock + 20 px de separació mínima), sense reservar una workarea que desplace el Dock. Així la geometria es manté estable fins i tot en la resolució mínima admesa de 1024×768.
 
 La validació ràpida es realitza amb `scripts/validate-block8-visual.sh` i comprova
 l'ordre del handoff, dependències, scripts POSIX i sintaxi Python sense construir
