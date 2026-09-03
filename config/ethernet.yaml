@@ -1,0 +1,29 @@
+schema_version: 1
+profile: wyse3040
+interface:
+  type: ethernet
+  name_patterns:
+    - en*
+    - eth*
+  minimum_speed_mbps: 100
+  preferred_speed_mbps: 1000
+  required: true
+driver:
+  expected_modules:
+    - r8169
+    - r8168
+  allow_alternative: true
+addressing:
+  default_mode: dhcp
+  allow_static: true
+  ipv6_accept_ra: false
+wake_on_lan:
+  enabled_if_supported: true
+  preferred_mode: magic
+recovery:
+  required_for_online: true
+  carrier_retry_seconds: 5
+  dhcp_timeout_seconds: 30
+configuration:
+  network_file: /etc/systemd/network/20-xaac-ethernet.network
+  link_file: /etc/systemd/network/10-xaac-ethernet.link

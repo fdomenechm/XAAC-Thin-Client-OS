@@ -1,0 +1,52 @@
+schema_version: 1
+installer_id: xaac-production-installer-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+safety:
+  explicit_disk_selection: true
+  exact_confirmation_phrase: true
+  confirmation_phrase: INSTALL XAAC
+  reject_mounted_target: true
+  reject_running_system_disk: true
+  require_ac_power: true
+partition_layout:
+  table: gpt
+  minimum_disk_mib: 7168
+  partitions:
+    - number: 1
+      label: XAAC_EFI
+      filesystem: vfat
+      size_mib: 256
+    - number: 2
+      label: XAAC_ROOT
+      filesystem: ext4
+      size_mib: 4096
+    - number: 3
+      label: XAAC_DATA
+      filesystem: ext4
+      size_mib: 1024
+    - number: 4
+      label: XAAC_RECOVERY
+      filesystem: ext4
+      size_mib: remaining
+copy:
+  source_rootfs: rootfs.squashfs
+  source_sha256: rootfs.squashfs.sha256
+  verify_sha256: true
+bootloader:
+  type: grub-efi-amd64
+  efi_id: XAAC
+  removable_fallback: true
+  update_grub: true
+post_install:
+  - mark-first-boot
+  - regenerate-machine-id
+  - regenerate-ssh-host-keys
+  - configure-device-identity
+  - verify-boot-files
+outputs:
+  manifest: .build/installer/manifest.json
+  installer_config: .build/installer/installer.json
+  installer_script: .build/installer/xaac-install
+  summary_schema: .build/installer/summary.schema.json

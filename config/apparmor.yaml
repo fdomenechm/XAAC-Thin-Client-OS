@@ -1,0 +1,44 @@
+schema_version: 1
+policy_id: xaac-apparmor-v2
+defaults:
+  attach_disconnected: true
+  mediate_deleted: true
+  audit_denied: true
+  deny_write_exec: true
+profiles:
+  # Phase 9.3 deliberately starts the complex Python/GUI workloads in complain
+  # mode.  The profiles are loaded by AppArmor on the target and collect real
+  # denials during the single physical validation in 9.4 before any promotion
+  # to enforce.  This avoids turning historical path assumptions into outages.
+  - name: usr.bin.xaac-agent
+    executable: /usr/bin/xaac-agent
+    mode: complain
+    abstractions: [base, nameservice]
+    read_paths: [/etc/xaac-agent/**, /etc/xaac/**, /etc/machine-id, /sys/**, /proc/**]
+    write_paths: [/var/lib/xaac-agent/**, /var/cache/xaac-agent/**, /var/log/xaac-agent/**, /var/lib/xaac/thin-client/config/**, /run/xaac-agent/**, /run/xaac/commands/**]
+    network: [inet, inet6, netlink]
+    capabilities: []
+    signals: [send, receive]
+  - name: usr.bin.xaac-thinclient
+    executable: /usr/bin/xaac-thinclient
+    mode: complain
+    abstractions: [base, nameservice, fonts]
+    read_paths: [/etc/xaac/**, /etc/xaac-remote/**, /etc/xaac-thinclient/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**, /sys/class/drm/**, /var/lib/xaac/thin-client/config/**]
+    write_paths: [/var/lib/xaac/thin-client/state/**, /run/xaac/thin-client/events/**]
+    network: [inet, inet6]
+    capabilities: []
+    signals: [send, receive]
+  - name: usr.bin.xaac-thin-client-vpn
+    executable: /usr/bin/xaac-thin-client-vpn
+    mode: complain
+    abstractions: [base, nameservice, fonts]
+    read_paths: [/etc/xaac/**, /etc/xaac-vpn/**, /usr/share/fonts/**, /usr/share/icons/**, /usr/share/themes/**]
+    write_paths: []
+    network: [inet, inet6]
+    capabilities: []
+    signals: [send, receive]
+outputs:
+  profiles_root: /etc/apparmor.d
+  complain_root: /etc/apparmor.d/force-complain
+  policy: /etc/xaac/security/apparmor-policy.json
+  state: /var/lib/xaac-agent/security/apparmor-state.json

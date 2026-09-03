@@ -1,0 +1,48 @@
+schema_version: 1
+repository_id: xaac-apt
+publication:
+  origin: XAAC
+  label: XAAC Thin Client OS
+  base_url: https://packages.xaac.local/debian
+  root: /srv/xaac-repository
+  incoming: /srv/xaac-repository/incoming
+channels:
+  - id: laboratory
+    suite: laboratory
+    codename: trixie-laboratory
+    automatic_publish: true
+  - id: pilot
+    suite: pilot
+    codename: trixie-pilot
+    automatic_publish: false
+  - id: production
+    suite: stable
+    codename: trixie-stable
+    automatic_publish: false
+components: [main]
+architectures: [amd64]
+metadata:
+  generate_packages: true
+  generate_release: true
+  generate_inrelease: true
+  generate_release_gpg: true
+  hashes: [SHA256, SHA512]
+  valid_for_days: 7
+signing:
+  fingerprint: 0123456789ABCDEF0123456789ABCDEF01234567
+  private_key_source: /run/secrets/xaac-archive-signing-key
+  allow_unsigned: false
+local_mirror:
+  enabled: true
+  source_url: https://packages.xaac.local/debian
+  root: /srv/xaac-mirror
+  verify_signatures: true
+retention:
+  versions_per_package: 3
+  keep_published_snapshots: true
+outputs:
+  policy: /usr/share/xaac/update/apt-repository-policy.json
+  layout: /usr/share/xaac/update/apt-repository-layout.json
+  distributions: /etc/xaac/repository/distributions
+  mirror_config: /etc/xaac/repository/mirror.json
+  state: /var/lib/xaac-agent/update/apt-repository.json

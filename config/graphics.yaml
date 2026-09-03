@@ -1,0 +1,27 @@
+schema_version: 1
+profile: wyse3040
+driver:
+  module: i915
+  pci_vendor: "8086"
+  firmware_packages:
+    - firmware-intel-graphics
+  required_kernel_parameters: []
+  forbidden_kernel_parameters:
+    - nomodeset
+    - i915.modeset=0
+outputs:
+  connector_prefixes:
+    - DP
+    - DisplayPort
+  minimum_connectors: 2
+  minimum_connected: 0
+  allow_headless: true
+modes:
+  minimum_width: 1024
+  minimum_height: 768
+  preferred:
+    - 1920x1080
+    - 2560x1440
+configuration:
+  modules_file: /etc/modules-load.d/xaac-intel-graphics.conf
+  modprobe_file: /etc/modprobe.d/xaac-intel-graphics.conf

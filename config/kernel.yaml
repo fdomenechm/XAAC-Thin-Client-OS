@@ -1,0 +1,14 @@
+kernel_package: linux-image-amd64
+initramfs_package: initramfs-tools
+compression: zstd
+modules:
+  - ext4
+  - vfat
+  - ahci
+  - nvme
+  - mmc_block
+  - sdhci
+  - sdhci_pci
+  - uas
+  - usb_storage
+  - xhci_pci

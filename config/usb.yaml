@@ -1,0 +1,36 @@
+schema_version: 1
+profile: wyse3040
+controllers:
+  minimum_usb2: 1
+  minimum_usb3: 1
+classes:
+  required:
+    - hid
+  optional:
+    - storage
+    - smartcard
+    - printer
+    - camera
+policy:
+  default_action: allow
+  authorized_vid_pid: []
+  blocked_vid_pid: []
+  removable_storage: controlled
+  freerdp_redirectable:
+    - smartcard
+    - printer
+    - camera
+configuration:
+  policy_file: /etc/xaac/usb-policy.json
+  udev_rules_file: /etc/udev/rules.d/70-xaac-usb-policy.rules
+  modules_file: /etc/modules-load.d/xaac-usb.conf
+  modules:
+    - usbhid
+    - usb_storage
+    - uvcvideo
+    - usblp
+packages:
+  - usbutils
+  - pcscd
+  - libccid
+  - cups-client

@@ -1,0 +1,48 @@
+schema_version: 1
+partition_id: xaac-recovery-partition-1
+hardware_profile: wyse3040
+partition:
+  label: XAAC_RECOVERY
+  filesystem: ext4
+  mount_point: /recovery
+  read_only: true
+  minimum_size_mib: 768
+image:
+  path: /usr/lib/xaac/recovery/recovery-rootfs.squashfs
+  format: squashfs
+  require_signature: true
+  signature_path: /usr/lib/xaac/recovery/recovery-rootfs.squashfs.sig
+  hash_algorithm: sha256
+boot:
+  kernel_path: /recovery/boot/vmlinuz
+  initramfs_path: /recovery/boot/initrd.img
+  require_signed_kernel: true
+  kernel_arguments:
+    - root=LABEL=XAAC_RECOVERY
+    - ro
+    - systemd.unit=xaac-recovery.target
+tools:
+  required:
+    - xaac-agent
+    - dpkg
+    - apt-get
+    - fsck.ext4
+    - lsblk
+    - journalctl
+protection:
+  immutable_image: true
+  prohibit_runtime_write: true
+  preserve_identity: true
+  preserve_enrollment: true
+  automatic_factory_reset: false
+verification:
+  verify_on_build: true
+  verify_on_boot: true
+  fail_closed: true
+outputs:
+  policy: /etc/xaac/recovery/recovery-partition.json
+  state: /var/lib/xaac-recovery/recovery-partition-state.json
+  mount_unit: /etc/systemd/system/recovery.mount
+  verify_service: /etc/systemd/system/xaac-recovery-partition-verify.service
+  verifier: /usr/libexec/xaac-recovery-partition-verify
+  grub: /etc/grub.d/42_xaac_recovery_partition

@@ -1,0 +1,46 @@
+schema_version: 1
+backend: systemd-sysusers
+account:
+  username: xaac-admin
+  home: /home/xaac-admin
+  shell: /bin/bash
+  groups: [sudo, adm, systemd-journal]
+  initial_password_hash: "!"
+  force_password_change: true
+policy:
+  allowed_sources: [local, remote]
+  require_password_change: true
+  password_file_directory: /etc/xaac/secrets
+  sudo_commands:
+    - /usr/local/sbin/xaac-admin-menu
+    - /usr/local/sbin/xaac-maintenance status
+    - /usr/local/sbin/xaac-maintenance health
+    - /usr/local/sbin/xaac-maintenance network
+    - /usr/local/sbin/xaac-maintenance storage
+    - /usr/local/sbin/xaac-maintenance services
+    - /usr/local/sbin/xaac-maintenance logs
+    - /usr/local/sbin/xaac-maintenance cleanup
+    - /usr/local/sbin/xaac-maintenance diagnostics
+    - /usr/local/sbin/xaac-update-admin os-status
+    - /usr/local/sbin/xaac-update-admin os-check
+    - /usr/local/sbin/xaac-update-admin os-update --yes
+    - /usr/local/sbin/xaac-recovery status
+    - /usr/local/sbin/xaac-recovery menu
+    - /usr/local/sbin/xaac-recovery rollback --yes
+    - /usr/local/sbin/xaac-recovery repair --yes
+    - /usr/local/sbin/xaac-recovery repair --restore-configuration --yes
+    - /usr/local/sbin/xaac-recovery network-on --yes
+    - /usr/local/sbin/xaac-recovery network-off --yes
+    - /usr/bin/systemctl status *
+    - /usr/bin/journalctl *
+paths:
+  sysusers: /usr/lib/sysusers.d/xaac-admin.conf
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-admin.conf
+  sudoers: /etc/sudoers.d/xaac-admin
+  menu: /usr/local/sbin/xaac-admin-menu
+  profile: /etc/profile.d/xaac-admin-menu.sh
+  first_login: /usr/local/libexec/xaac-admin-first-login
+  audit_rules: /etc/audit/rules.d/xaac-admin.rules
+  state: /var/lib/xaac/admin/state.json
+  pending: /var/lib/xaac/admin/pending.json
+  snapshot: /var/lib/xaac/admin/snapshot.json

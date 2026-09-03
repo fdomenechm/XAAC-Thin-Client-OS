@@ -1,0 +1,59 @@
+schema_version: 2
+contract:
+  name: xaac-local-integration
+  version: 1
+  thin_client_version: 1.1.0
+  formats:
+    state: xaac-state/v2
+    event: xaac-local-event/v1
+    configuration: xaac-configuration/v1
+    command: xaac-local-command/v1
+principals:
+  agent_user: xaac-agent
+  thin_client_user: xaac-kiosk
+  shared_group: xaac-ipc
+directories:
+  runtime_parent:
+    path: /run/xaac
+    owner: root
+    group: xaac-ipc
+    mode: '0750'
+  runtime:
+    path: /run/xaac/thin-client
+    owner: xaac-kiosk
+    group: xaac-ipc
+    mode: '2750'
+  events:
+    path: /run/xaac/thin-client/events
+    owner: xaac-kiosk
+    group: xaac-ipc
+    mode: '2750'
+  persistent_parent:
+    path: /var/lib/xaac/thin-client
+    owner: root
+    group: xaac-ipc
+    mode: '0750'
+  state:
+    path: /var/lib/xaac/thin-client/state
+    owner: xaac-kiosk
+    group: xaac-ipc
+    mode: '2750'
+  configuration:
+    path: /var/lib/xaac/thin-client/config
+    owner: xaac-agent
+    group: xaac-ipc
+    mode: '2750'
+  commands:
+    path: /run/xaac/commands
+    owner: xaac-agent
+    group: xaac-ipc
+    mode: '2750'
+limits:
+  state_max_bytes: 65536
+  event_max_bytes: 65536
+  max_events: 128
+  heartbeat_seconds: 30
+files:
+  configuration: /etc/xaac/local-integration.yaml
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-local-integration.conf
+  manifest: /etc/xaac/local-integration-manifest.json

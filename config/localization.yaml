@@ -1,0 +1,14 @@
+schema_version: 1
+locale: ca_ES.UTF-8
+fallback_locales:
+  - es_ES.UTF-8
+  - en_US.UTF-8
+timezone: Europe/Madrid
+keyboard:
+  model: pc105
+  layout: es
+  variant: ""
+  options: []
+console:
+  charmap: UTF-8
+  font: Uni2-Terminus16

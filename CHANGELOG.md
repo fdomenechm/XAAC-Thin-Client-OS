@@ -1,0 +1,1942 @@
+## 2026-09-02 — Separació Remote/Dock i focus de la sessió local
+
+- Corregit el solapament de XAAC Thin Client Remote sobre el Dock: Remote queda centrat horitzontalment i amb el seu marge inferior a 116 px de l'extrem de pantalla, corresponents als 96 px del Dock més una separació mínima garantida de 20 px. El mateix contracte s'aplica al fallback X11/Openbox.
+- Restaurat el focus per clic sobre les finestres client sense reactivar menús ni dreceres del compositor: un clic esquerre sobre Remote executa únicament `Focus` + `Raise`, mentre els clics sobre el fons continuen neutralitzats.
+- El Dock ignora les seues pròpies peticions d'activació en `labwc`, i l'entrada de sessió espera que el Dock estiga mapat abans de retornar explícitament el focus de teclat a Remote amb `wlrctl`. Remote conserva així el focus inicial del camp d'usuari o, quan correspon, del camp de contrasenya.
+- Afegides proves de regressió per a la geometria de 20 px, el focus per ratolí i la recuperació explícita de focus després de mapar el Dock.
+
+## 2026-08-31 — accions globals consolidades al Dock
+
+- XAAC Thin Client Remote deixa d'exposar a la finestra principal els controls globals **Quant a**, **Diagnòstics** i **Apagar**, i redueix l'alçada per defecte a 460 px.
+- El logotip XAAC del Dock passa a ser el punt d'accés a **Quant a XAAC**.
+- Afegit **Diagnòstic** immediatament a l'esquerra d'**Apagar** en el grup d'accions globals del Dock.
+- El diagnòstic del Dock mostra un resum sanititzat dels estats Network, VPN i Remote; les accions globals continuen separades dels tres botons de navegació.
+- Integrats els nous paquets Remote i Dock i sincronitzats els seus SHA-256 mitjançant els importadors de components.
+
+## 2026-08-31 — Correcció del PATH de la sessió de quiosc 1.1.0
+
+- Corregida la regressió d'arranc `xaac-session: awk: not found` causada per aplicar el PATH restringit del Dock a tota la infraestructura de sessió.
+- `xaac-session`, `xaac-session-supervisor` i `xaac-session-entry` usen ara `XAAC_SYSTEM_PATH=/usr/sbin:/usr/bin:/sbin:/bin`; el Dock conserva `XAAC_KIOSK_PATH=/usr/local/libexec/xaac:/usr/libexec/xaac`.
+- El parseig inicial de `/etc/default/keyboard` usa exclusivament built-ins POSIX de `/bin/sh`, sense dependència d'`awk` abans d'arrancar el compositor.
+- Els launchers de Network, VPN i Remote dins `/usr/local/libexec/xaac` passen de symlinks a wrappers POSIX controlats, que restauren el PATH de sistema i executen únicament el binari autoritzat.
+- Afegides proves de regressió per a la separació PATH, sintaxi POSIX i confinament del Dock.
+
+# 2026-08-31 — Importadors uniformes de components 1.1.0
+
+- Afegits `import-xaac-network-package.sh`, `import-xaac-vpn-package.sh`, `import-xaac-remote-package.sh` i `import-xaac-dock-package.sh`, compatibles amb `/bin/sh`, per completar el flux ja existent de l'Agent.
+- Els nous importadors validen el `.deb` real amb `dpkg-deb`, exigeixen el JSON d'evidència adjacent del projecte d'origen, comproven versió, arquitectura, mida quan està disponible i SHA-256, i rebutgen evidències obsoletes o que corresponen a un altre artefacte.
+- La incorporació és transaccional: elimina únicament els artefactes anteriors del mateix component, copia `.deb` + evidència, sincronitza `artifact` i `sha256` del perfil i restaura l'estat anterior si la validació final falla.
+- Afegides proves de regressió per als quatre formats d'evidència actuals i per garantir que els scripts continuen sent POSIX `/bin/sh`.
+- Sincronitzada també l'evidència incrustada de Network amb el `.deb` real, i afegida una prova que garanteix que les evidències empaquetades dels quatre components són reutilitzables pels importadors.
+
+# 2026-08-30 — Correcció d'integració Dock/Remote i geometria local
+
+- El `PATH` restringit (`/usr/local/libexec/xaac:/usr/libexec/xaac`) queda exportat tant pel launcher de sessió com per l'entorn de quiosc, de manera que el Dock descobreix els àlies autoritzats de Network, VPN i Remote sense exposar `/usr/bin`.
+- Integrat un nou paquet Dock 1.1.0 que consulta Network pel **system D-Bus** real, consumeix l'API VPN 1.1.0 `org.xaac.ThinClient.VpnManager1` (`GetCapabilities`/`GetStatus`) i no bloqueja mai Remote per l'estat de Network/VPN.
+- Integrat un nou paquet Remote 1.1.0 que publica `org.xaac.ThinClient1` al bus de sessió per proporcionar l'estat funcional al Dock. La publicació és best-effort i no pot impedir l'aparició de Remote.
+- Corregida la geometria local: eliminat el marge inferior de 112 px, Remote queda centrat i Dock es mou fins a l'extrem inferior central. El fallback X11/Openbox aplica la mateixa disposició i deixa FreeRDP controlar el fullscreen real.
+- El Dock refresca periòdicament els estats per recuperar-se de carreres d'arranc dels serveis.
+- Afegides proves d'integració que inspeccionen els `.deb` incrustats de Dock i Remote i els seus contractes D-Bus/camins canònics de configuració.
+
+# 2026-08-30 — Unificació de directoris de configuració
+
+- Unificat el layout de configuració dels components 1.1.0: Agent `/etc/xaac-agent`, Network `/etc/xaac-network`, VPN `/etc/xaac-vpn`, Remote `/etc/xaac-remote` i Dock `/etc/xaac-dock`. Els paths antics dels paquets es mantenen només com a symlinks de compatibilitat i `xaac-component-config-layout.service` restaura el layout canònic abans de Network/VPN/greetd.
+
+# 2026-08-30 — Correcció: sessió RDP a pantalla completa
+
+- Restaurat el contracte d’appliance: XAAC Thin Client OS és només la via d’accés al sistema remot; una sessió RDP establida ha d’ocupar el 100% de la pantalla.
+- El perfil de producció força `rdp.fullscreen=true` i deixa la resta de propietats de visualització sota responsabilitat de XAAC Thin Client Remote.
+- Eliminada la regla de `labwc` que maximitzava `xfreerdp` dins de l’àrea reservada per al Dock. FreeRDP controla el seu propi fullscreen.
+- El Dock deixa d’estar en la capa `always-on-top`: continua ancorat baix al centre durant la superfície local Remote + Dock, però una sessió FreeRDP fullscreen el cobreix completament.
+- La franja inferior de 112 px continua reservada per a la GUI local de Remote, Network i VPN quan no hi ha una sessió RDP activa.
+
+# 2026-08-30 — XAAC Thin Client OS 1.1.0: seqüència de quiosc Remote + Dock
+
+- Redefinida l’entrada de sessió 1.1.0 perquè XAAC Thin Client Remote siga sempre l’aplicació principal visible: Network s’inicialitza en segon pla, després VPN en segon pla, després es llança Remote i finalment es mostra Dock.
+- Eliminat `xaac-vpn-session-gate` del camí actiu d’arranc. `network`/`vpn` poden estar desconnectats o en error sense impedir que Remote i Dock apareguen.
+- L’ordre de serveis queda declarat amb systemd: `xaac-network-manager.service` precedeix `xaac-vpn-manager.service`; s’elimina del VPN manager la dependència de `network-online.target` perquè la falta de connectivitat no retarde el quiosc.
+- `greetd` sol·licita els dos backends abans de la sessió; són dependències `Wants`, no `Requires`, de manera que una fallada d’un backend no converteix la GUI en inaccessible.
+- [Substituït per la correcció superior] Inicialment el Dock es va configurar `always-on-top`; la correcció de fullscreen elimina aquesta capa perquè FreeRDP puga ocupar físicament tota la pantalla.
+- [Substituït per la correcció superior] La proposta de mantindre FreeRDP dins l’àrea útil del Dock queda descartada: producció torna a exigir `/f` (`fullscreen=true`).
+- La pantalla inicial del supervisor espera Remote com a superfície principal i accepta Dock com a fallback de recuperació; la GUI VPN ja no forma part de la detecció d’arranc.
+- `dock=disabled` mostra Remote sense Dock; `optional` i `required` mostren Remote primer i Dock després. Si un Dock `required` desapareix, el supervisor recupera la sessió completa.
+
+# 2026-08-29 — XAAC Thin Client OS 1.1.0: actualització de composició
+
+- Correcció d’integració del Dock: els tres launchers autoritzats (`xaac-thin-client-network`, `xaac-thin-client-vpn`, `xaac-thin-client-remote`) es publiquen ara en `/usr/local/libexec/xaac`, que és el `PATH` deliberadament restringit de la sessió quiosc. Això evita que el Dock marque tots els components com a no disponibles sense ampliar el `PATH` a `/usr/bin`.
+- Correcció 1.1.0: actualitzat el gate `configure-verify-block7-integration` i el contracte XMS al nou paquet de XAAC Thin Client Agent basat en Python 3.13 del sistema. Ja no s'exigeix ni s'admet el runtime privat `/opt/xaac-agent/runtime`; `/usr/sbin/xaac-agent-admin` ha de ser un executable regular.
+
+- Elevada la versió del sistema i del tooling d'integració a 1.1.0.
+- XAAC Thin Client passa a presentar-se com **XAAC Thin Client Remote**; es conserva el nom tècnic del paquet Debian `xaac-thinclient` per compatibilitat.
+- Integrats com a artefactes obligatoris XAAC Thin Client Remote, VPN, Network, Dock i Agent 1.1.0.
+- Afegits perfils de paquet, inventari, health checks i model d'actualització per a Network i Dock.
+- Actualitzades les referències als paquets 1.1.0 i eliminat l'artefacte corrupte residual de Thin Client 1.0.0.
+- Integrat el Dock en l’entrada de sessió: `disabled` conserva el flux VPN/Remote anterior i `optional`/`required` entren per XAAC Thin Client Dock.
+- Afegits àlies estables d’execució per a Network, VPN i Remote dins del `PATH` restringit del quiosc, satisfent el contracte de descoberta del Dock sense canviar els noms tècnics dels paquets.
+- Actualitzat XAAC Thin Client Agent al contracte 1.1.0-1 amb Python 3.13 del sistema, sense runtime Python privat.
+
+## 2026-08-23 — Tancament de XAAC Thin Client OS 1.0.0 després de validació física
+
+- Corregit el harness de proves de `xaac-admin-change-language`: les proves funcionals de `set` simulen localment només les operacions privilegiades (`id -u`/`chown`) sobre un arbre temporal, de manera que `scripts/run-tests.sh` passa igualment quan s'executa com un usuari de desenvolupament no privilegiat (PyCharm) i no requereix executar pytest amb `sudo`.
+- Eliminat definitivament `/etc/systemd/system/systemd-timesyncd.service.d/20-xaac-network.conf`: el `Wants/After=network-online.target` introduïa un cicle d'ordenació amb `sysinit.target` i NetworkManager. `systemd-timesyncd` torna a usar la unitat estàndard i el constructor rebutja regressions amb `systemd-analyze verify`.
+- `xaac-admin-change-language` normalitza correctament `ca_ES.UTF-8`/`locale -a`, genera el locale admés si cal, manté `LANG` i `LANGUAGE` coherents i continua sincronitzant XAAC Thin Client.
+- `xaac-admin-change-language` i `xaac-admin-change-keyboard` mantenen el binari canònic en `/usr/local/sbin` i disposen d'enllaç estable en `/usr/local/bin`, de manera que `xaac-admin` els pot invocar directament des d'SSH.
+- Integrats els `.deb` 1.0.0 corregits de XAAC Thin Client VPN i XAAC Thin Client; els tests inspeccionen també el feedback visual d'`Omitir VPN` i `Apagar`, a més de `Continuar` i `Connectar`.
+- Documentada la validació Intel SST del Wyse 3040: ALSA i WirePlumber detecten el hardware; la prova acústica queda pendent per absència d'altaveus/micròfon al banc de proves i no s'aplica cap workaround preventiu.
+
+## 2026-08-22 — Iteració final de validació en maquinari real
+
+- SSH conserva `ssh.service` actiu per defecte i ara permet a `xaac-admin` autenticar-se amb contrasenya o clau pública abans del provisionament; `AuthenticationMethods any`, `PermitRootLogin no` i la resta del hardening continuen actius. El mode només-clau queda reservat a la política posterior aplicada per XAAC Management Server mitjançant XAAC Thin Client Agent.
+- Afegits `xaac-admin-change-language` i `xaac-admin-change-keyboard`, compatibles amb `/bin/sh`, no interactius i amb `get`, `list`, `set <valor>` i `--help`; queden integrats a `/usr/local/sbin` i documentats per a ús local, SSH i futura orquestració.
+- Actualitzat el paquet integrat `xaac-thin-client-vpn` a 1.0.0 i verificat que tant VPN com XAAC Thin Client 1.0.0 contenen el feedback d'operació: cursor `wait` i bloqueig temporal dels controls per evitar dobles clics.
+- Mantingudes les correccions ja validades al Dell Wyse 3040: NTP, eMMC no UTF-8, labwc/quiosc, XKB Wayland, OpenVPN 3 i `xaac-vpn-admin`. Intel SST queda documentat com a warning mentre ALSA detecte correctament les targetes i no hi haja fallada funcional d'àudio.
+
+## 2026-08-22 — Paquet de correccions després de validació en Dell Wyse 3040
+
+- SSH queda activat per defecte com a únic canal de gestió remota; `authorized_keys` usa permisos compatibles amb `StrictModes` i continua sent modificable només per root.
+- `systemd-timesyncd` s'instal·la, configura i habilita explícitament, ordenat després de NetworkManager/network-online en cada arrencada.
+- `xaac-maintenance storage` tolera bytes no UTF-8 en atributs eMMC de sysfs.
+- labwc rep bindings explícits buits per impedir que recarregue automàticament el menú i les dreceres per defecte.
+- La sessió Wayland exporta `XKB_DEFAULT_LAYOUT`, `XKB_DEFAULT_VARIANT` i `XKB_DEFAULT_MODEL` a partir de `/etc/default/keyboard`, preservant la selecció `es`/`us` de l'instal·lador.
+- `xaac-vpn-admin` usa `openvpn3 configs-list --json` i coincidència exacta de nom; els filtres per prefix ja no poden confondre el perfil final amb candidats o backups.
+- `openvpn3-autoload.service` queda emmascarat perquè XAAC gestiona el cicle de vida VPN amb `xaac-vpn-manager`.
+- Revisat Intel SST/Cherry Trail: no s'aplica blacklist ni workaround específic; es manté com a warning de hardware mentre HDMI/ALSA funcione, evitant desactivar controladors d'àudio compatibles del kernel.
+
+## 2026-08-20 — Fase 10.7: correcció basada en diagnòstic del Live Installer
+
+- Corregida la fallada real observada en la instal·lació en castellà/anglès: `/etc/default/locale` pot referenciar el mateix fitxer que `/etc/locale.conf`; el `cp` entre ambdós retornava error i `set -e` terminava l'instal·lador abans del missatge final. Ara els dos destins s'escriuen directament, cosa que funciona també quan un és un enllaç a l'altre.
+- Corregida la reinstal·lació sobre un disc amb una GPT/signatures prèvies: `wipefs` usa `--all --force` abans de `sgdisk --zap-all`.
+- Aïllats els muntatges del Live Installer amb `PrivateMounts=yes`, evitant que `/mnt/xaac-target` i els `rbind` de `/dev`, `/sys` i `/run` es propaguen als namespaces de `systemd-udevd`, `systemd-logind`, NetworkManager, XAAC VPN o XAAC Agent.
+- La neteja del target és ara recursiva (`umount -R`, amb `umount -l` només com a últim recurs dins del namespace privat) i torna a formar part del handler d'eixida de l'instal·lador; ja no substitueix el `trap EXIT` que mostra l'error controlat.
+- `xaac_request_poweroff` i `xaac_request_reboot` desarmen els traps abans de sol·licitar l'acció de systemd, de manera que una parada normal no es reinterpreta com una fallada.
+- Afegides regressions específiques per al cas `/etc/default/locale` → `/etc/locale.conf`, per al `wipefs --force`, per a l'aïllament de muntatges i per a la sintaxi POSIX del script generat.
+- La correcció deriva directament del ZIP `xaac-thin-client-os(20260820-172005).zip` i incorpora les causes demostrades durant la depuració de la mateixa ISO, no hipòtesis sobre `tty1` o `poweroff`.
+
+## 2026-08-20 — Fase 10.7: restauració definitiva del Live Installer validat
+
+- Restaurat sobre el codi font `20260820-144400` el control complet de `tty1` i apagada de la versió `20260819-175805`, validada prèviament amb instal·lació correcta.
+- `/usr/local/sbin/xaac-installer-welcome` torna a usar `xaac_installer_exit`, `xaac_request_reboot` i `xaac_request_poweroff`; després del missatge final queda bloquejat en `read` i només després de Retorn sol·licita `systemctl poweroff`.
+- Eliminats `OnFailure=xaac-installer-restore-getty.service` i la unitat `xaac-installer-restore-getty.service`, responsables que una eixida no-zero exposara el login de `tty1` del Live.
+- En cas d'error, el mateix instal·lador manté `tty1`, mostra la incidència i demana Retorn per reiniciar, sense obrir cap consola de login.
+- La sincronització de llengua de XAAC Thin Client continua fora del Live Installer i s'executa abans de `greetd` només en el sistema instal·lat.
+- Afegit un bloqueig de regressió sobre el SHA-256 del Live Installer generat (`2692fad417fea4941e7ae4f71f8d511ee158e31f30792972029cab087b2d7649`) per impedir canvis accidentals en aquest flux.
+- Validació: 1.587 tests, 88 tests específics de Fase 10.7 i gate final del Bloc 10 superats.
+
+# 2026-08-20 — Correcció Fase 10.7: causa arrel de l'eixida a tty1
+
+- Identificada la causa exacta de la regressió: la verificació final de `application.language` s'executava abans de sincronitzar XAAC Thin Client fora del Live; amb `es` o `en`, `config.ini` encara contenia `language = ca`, el `grep` fallava i `set -e` terminava l'instal·lador abans del prompt d'apagada.
+- Eliminades del Live Installer tant la modificació com la verificació de `/etc/xaac-thinclient/config.ini`.
+- El final d'èxit es manté sense cap helper intermedi: `missatge final → Retorn → systemctl poweroff`.
+- Afegit `xaac-thinclient-language-sync.service`, executat únicament en el sistema instal·lat i abans de `greetd`, per aplicar `ca/es/en` des del locale persistent.
+- La correcció parteix directament del ZIP de l'usuari `20260820-104333`.
+
+# 2026-08-20 — Correcció Fase 10.7: restauració exacta del final de l'instal·lador
+
+- Comparat el Live Installer amb la baseline `20260819-105127`, que tenia validat el comportament «missatge final → Retorn → apagada».
+- Eliminats del camí Live `xaac_cleanup_before_power_action`, `xaac_installer_exit`, `xaac_request_reboot` i `xaac_request_poweroff`; aquestes capes no existien en la baseline funcional i podien alterar el cicle de vida de `tty1` i de systemd.
+- Restaurat literalment el final `sync` → missatge de finalització → prompt → `read` → `systemctl poweroff`, sense cap instrucció intermèdia després del Retorn.
+- Restaurats els reinicis directes amb `systemctl reboot` i el `trap cleanup_install EXIT HUP INT TERM` original per a la neteja dels muntatges durant l'aturada.
+- Restaurada la topologia original de systemd amb `OnFailure=xaac-installer-restore-getty.service`; el getty de `tty1` només es recupera si l'instal·lador falla, mai en el camí correcte d'instal·lació.
+- Es mantenen intactes la selecció `ca/es/en`, la selecció de teclat `es/us` i la sincronització de `application.language` de XAAC Thin Client.
+- Afegides regressions que exigeixen l'absència dels helpers eliminats i verifiquen que entre l'Enter final i `systemctl poweroff` no hi haja cap altra ordre.
+
+# 2026-08-20 — Correcció Fase 10.7: regressió del constructor per tty1
+
+- Corregida una regressió introduïda en la protecció de `tty1`: quatre salts de línia havien quedat escrits com a seqüències literals `\n` dins d'un comentari Python de `phase_configure`, de manera que la inicialització de `live_tty1_getty` quedava comentada i la construcció fallava en intentar usar la variable.
+- Afegida una regressió específica que detecta aquesta classe d'error de generació de codi i evita que una seqüència `\n` accidental torne a absorbir instruccions dins d'un comentari.
+- El mask persistent de `getty@tty1.service` ja no es crea durant `phase_configure`. S'aplica en `phase_squashfs`, després de completar totes les operacions de `apt`, `dpkg`, `systemctl`, configuració i initramfs sobre el rootfs.
+- Es conserva la defensa runtime de `xaac-installer-welcome.service` (`stop` + `mask --runtime`) i el sistema instal·lat continua deixant `tty1` emmascarat; per tant, la correcció del final «Retorn → apagada» es manté intacta.
+- Eliminats del ZIP de lliurament els artefactes locals `.build`, `.pytest_cache` i `__pycache__` que havien quedat en el ZIP utilitzat per reproduir la incidència.
+
+# 2026-08-19 — Correcció Fase 10.7: tty1 bloquejat fins a l'apagada real
+
+- Corregida la segona regressió observada en VM on, després d'una instal·lació correcta, la consola Live podia acabar mostrant `xaac-thin-client login:` en lloc de romandre en el flux final «Retorn per apagar».
+- La causa era el cicle de vida de `xaac-installer-welcome.service`: la petició síncrona de `systemctl poweroff` podia coincidir amb el `SIGTERM` de parada del mateix servei i el `trap EXIT` reinterpretava eixa terminació normal com una fallada.
+- `poweroff` i `reboot` es demanen ara amb `systemctl --no-block`; abans de fer-ho es desarmen els traps `EXIT/HUP/INT/TERM`, de manera que una parada normal no pot entrar en el handler d'error.
+- `getty@tty1.service` queda emmascarat també en el rootfs Live i, com a defensa addicional, el servei instal·lador aplica un mask runtime abans d'executar-se. Així `tty1` no pot exposar mai un prompt de login durant la sessió d'instal·lació.
+- Es manté el contracte final: instal·lació correcta → missatge verificat → Retorn → apagada; instal·lació fallida → missatge controlat → Retorn → reinici.
+- Afegida regressió específica que comprova l'ordre «desarmar traps → sol·licitar power action» i la doble protecció contra `getty@tty1`.
+
+# 2026-08-19 — Correcció Fase 10.7: llengua de XAAC Thin Client sincronitzada amb la instal·lació
+
+- Corregit el desajust pel qual XAAC Thin Client conservava `language = ca` del paquet Debian encara que l'administrador haguera seleccionat Español o English durant la instal·lació.
+- L'instal·lador aplica ara el codi de llengua seleccionat (`ca`, `es` o `en`) a `/etc/xaac-thinclient/config.ini` del sistema de destinació abans del primer arranc del quiosc.
+- La verificació final falla de manera controlada si `application.language` no coincideix amb la selecció de l'instal·lador.
+- El resum de Recovery registra també `thinclient_language=<ca|es|en>` per facilitar la diagnosi.
+- Afegida regressió executada sobre els tres idiomes suportats i mantinguda la validació `sh -n` del script d'instal·lació generat.
+
+# 2026-08-19 — Correcció Fase 10.7: finalització controlada de l'instal·lador
+
+- Corregida la regressió observada en VM on una fallada tardana de `xaac-installer-welcome.service` activava el fallback `OnFailure` i deixava `tty1` en un prompt de login del sistema Live.
+- Eliminat `xaac-installer-restore-getty.service`: el mode instal·lador conserva ara `tty1` fins a l'apagada o el reinici i mai exposa una consola de login com a resultat d'una fallada.
+- Afegit un handler de fallada del mateix instal·lador, localitzat en Valencià/Català, Español i English, que manté la consola i espera Retorn per reiniciar.
+- Les peticions de `poweroff` i `reboot` mantenen viu el procés de l'instal·lador fins que systemd atura la màquina, evitant que `getty@tty1` reaparega durant la transició.
+- La persistència de locale s'escriu ara directament en `/etc/locale.conf` i `/etc/default/locale`; el teclat es persisteix en `/etc/default/keyboard`, sense executar `update-locale` ni `dpkg-reconfigure keyboard-configuration` dins del chroot final.
+- Afegides regressions perquè el script generat passe `sh -n`, mantinga el flux de fallada controlat i no torne a introduir el fallback a `getty`.
+
+# 2026-08-19 — Fase 10.7: selecció d'idioma i teclat durant la instal·lació
+
+- L'instal·lador demana la llengua abans de seleccionar el disc: Valencià/Català (`ca_ES.UTF-8`), Español (`es_ES.UTF-8`) o English (`en_US.UTF-8`).
+- Afegida selecció independent de teclat Espanyol (`es`, predeterminat) o English US (`us`), aplicada immediatament a la consola Live amb `loadkeys` quan està disponible.
+- Tots els prompts, advertiments, errors i missatges de progrés de l'instal·lador disposen de les tres traduccions.
+- La llengua i el teclat seleccionats es persisteixen en `/etc/default/locale` i `/etc/default/keyboard`, amb `update-locale` i `dpkg-reconfigure keyboard-configuration` dins del sistema instal·lat.
+- La verificació final comprova `LANG` i `XKBLAYOUT`, i el resum de Recovery registra `locale` i `keyboard_layout`.
+- La zona horària continua deliberadament fixada a `Europe/Madrid`.
+- Afegit `scripts/validate-block10-phase7.sh` i regressions específiques abans de la qualificació física del Bloc 11.
+
+# 2026-08-18 — Fase 10.6: actualització controlada del sistema base
+
+- Afegida l'actualització suportada de Debian 13/trixie amb `xaac-update-admin os-status`, `os-check` i `os-update --yes`.
+- Les fonts APT queden limitades a `trixie`, `trixie-updates` i `trixie-security`, totes amb `Signed-By` del keyring oficial de Debian.
+- El runtime només usa `apt-get upgrade --with-new-pkgs --no-remove`; no implementa `dist-upgrade` ni `full-upgrade`, i bloqueja removals, downgrades i modificacions dels paquets XAAC.
+- `os-update` descarrega primer, reverifica el pla i instal·la amb `--no-download`; preserva conffiles locals i no reinicia automàticament.
+- Afegit checkpoint root-only i estat `failed_requires_recovery` per a fallades que requerisquen `xaac-recovery repair`.
+- Afegits `config/base-os-update.yaml`, `xaac_base_os_update_runtime.py`, el gate `validate-block10-phase6.sh` i les comprovacions corresponents al validador final del Bloc 10.
+
+# 2026-08-18 — Correcció Recovery 10.5 (4): estabilització completa de tty1 i teclat
+
+- Revisat de punta a punta el camí de consola del Recovery després de reproduir en VM entrada de teclat lenta, pulsacions perdudes, retorns de carro inesperats i el prompt de login al peu de la pantalla.
+- Recovery espera explícitament `keyboard-setup.service` i `console-setup.service` abans d'exposar `tty1`, i reaplica el mapa de teclat amb `setupcon --keyboard-only --force`.
+- Eliminats `--noreset` i `--noclear` d'`agetty`: la consola torna a modes `termios` sans i el prompt es presenta sobre una pantalla neta.
+- Afegits `stty sane`, activació explícita de VT1, reinicialització/neteja del terminal i un `RestartSec=1` per evitar bucles agressius de getty.
+- L'entrada GRUB de Recovery usa ara `quiet loglevel=3 systemd.show_status=0 rd.systemd.show_status=0 plymouth.enable=0`; els missatges d'arranc i Plymouth no competeixen amb el login.
+- L'`agetty` de Recovery i el TTY12 administratiu segueixen el patró segur `-o '-p -- \\u'` i el descriptor ja obert per systemd.
+- El constructor verifica la sintaxi real de la unitat amb `systemd-analyze verify` abans d'acceptar la imatge.
+- Afegides regressions específiques contra qualsevol reintroducció de `--noreset`, `--noclear`, `systemd.show_status=1` o exposició del login abans de configurar la consola.
+
+# 2026-08-18 — Correcció Recovery 10.5 (3): reintent d'autenticació
+
+- Eliminat el wrapper que executava `login xaac-admin` amb l'usuari fixat.
+- Recovery i TTY12 usen ara el flux estàndard `agetty -> /bin/login`, de manera que després d'una contrasenya errònia es torna a demanar correctament el nom d'usuari.
+- `root` queda bloquejat explícitament; `xaac-kiosk` continua bloquejat i amb `/usr/sbin/nologin`; `xaac-admin` és l'únic compte administratiu interactiu provisionat.
+- Afegides regressions específiques contra el patró de login amb usuari fixat.
+
+# 2026-08-18 — Correcció Recovery 10.5 (2): descriptor tty1 d'`agetty`
+
+- Corregida la segona fallada observada en VM: pantalla negra amb cursor parpellejant després d'activar la consola dedicada de Recovery.
+- `xaac-recovery-console.service` ja assignava `/dev/tty1` a l'entrada/eixida del servei mitjançant `TTYPath=/dev/tty1`; per tant `agetty` no ha de tornar a obrir `tty1` pel seu compte.
+- L'`ExecStart` segueix ara el patró del `getty@.service` estàndard de Debian: `agetty` rep `-` com a línia i reutilitza el descriptor de terminal que systemd ja ha obert.
+- Aplicada la mateixa correcció al getty administratiu de `tty12`, que compartia el mateix patró potencialment defectuós.
+- El hardening es manté intacte: `getty@tty1.service` continua emmascarat durant l'arranc normal i Recovery conserva la seua consola independent autenticada.
+- Regressió completa validada tant com a root com amb usuari no privilegiat.
+
+# 2026-08-18 — Correcció Recovery 10.5: consola tty1 independent
+
+- Corregida la fallada observada en VM on `xaac-recovery.target` arribava a estat actiu però no apareixia cap prompt d'autenticació.
+- La causa era que el sistema instal·lat emmascara deliberadament `getty@tty1.service`, mentre que el target de Recovery intentava arrancar eixa mateixa unitat.
+- Afegida `xaac-recovery-console.service`, una consola exclusiva de Recovery que usa directament `agetty` sobre `tty1` i no depèn del getty normal emmascarat.
+- Afegit `/usr/local/libexec/xaac/recovery-admin-login`, que fixa l'autenticació a `xaac-admin` mitjançant `/bin/login` sense bypass de contrasenya ni shell root.
+- El gate del Bloc 10 comprova ara la presència i configuració de la consola dedicada.
+- Afegida una regressió que manté explícitament el getty normal de `tty1` emmascarat al quiosc i impedeix que Recovery torne a dependre d'ell.
+
+# 2026-08-18 — Fase 10.5: consolidació i gate final del Bloc 10
+
+- Afegit `scripts/validate-block10-release.sh` com a gate pre-ISO únic del Bloc 10, amb una sola regressió completa per evitar repetir subconjunts de tests abans de cada construcció.
+- Afegida una matriu de fallades controlades per espai insuficient, `dpkg` inconsistent, manifest/esquemes invàlids, SHA-256 corrupte, error d'instal·lació, backup corrupte i transacció interrompuda.
+- Integrat `xaac-block10-validate` a la ISO com a gate de només lectura del terminal instal·lat, reutilitzant el gate físic del Bloc 9 i comprovant update, rollback, manteniment, recovery i GRUB.
+- El manifest de release passa a `xaac-block10-release-manifest/v1` i registra explícitament el model transaccional, rollback automàtic, recovery d'arranc, estat del keyring i necessitat de qualificació física.
+- `scripts/build-production-iso.sh` executa el gate del Bloc 10 abans de construir la ISO.
+- Documentat el cicle físic obligatori al Wyse 3040: instal·lació, actualització, rollback, actualització i segona validació amb conservació d'evidències.
+- `factory-reset` continua deshabilitat fail-closed fins disposar d'una imatge factory independent, versionada i signada.
+- La implementació de codi queda tancada; la ISO candidata i la qualificació física no es declaren superades fins executar-les al maquinari real.
+
+# 2026-08-18 — Fase 10.4: recuperació local i reparació
+
+- Afegida la CLI `xaac-recovery` amb `status`, `rollback`, `repair`, restauració només de configuració i activació/desactivació explícita de xarxa.
+- Integrat `xaac-recovery.target` com a entorn mínim de boot sense quiosc, VPN ni Agent, amb autenticació normal de `xaac-admin` en `tty1`.
+- Afegida l'entrada GRUB `XAAC Thin Client OS — Recovery`; el menú continua ocult i disposa d'un timeout d'un segon per permetre l'accés amb `Esc`.
+- Reutilitzat el runtime transaccional 10.2 per a rollback i restauració de configuració amb els mateixos hashes, locks i punts de recuperació.
+- `repair` queda restringit al boot de recovery i repara `dpkg`, initramfs i `grub.cfg` sense descarregar paquets implícitament ni executar fsck sobre l'arrel muntada.
+- Afegida auditoria root-only de recovery i política de xarxa desactivada per defecte.
+- Factory reset continua deshabilitat fail-closed fins disposar d'una imatge factory independent, versionada i signada.
+- La validació física de GRUB/recovery queda reservada a la Fase 10.5; no es genera ISO en la 10.4.
+
+# 2026-08-17 — Correcció Fase 10.2: confirmació abans de privilegis
+
+- `xaac-update-admin update` i `rollback` validen ara `--yes` abans d'exigir `sudo`, de manera que la CLI manté el mateix contracte quan s'executa des d'un entorn de desenvolupament no privilegiat.
+- Mantinguda l'exigència de privilegis d'administrador immediatament després de la confirmació i abans de qualsevol operació transaccional.
+- Afegides regressions que simulen explícitament `geteuid != 0`, evitant que una suite executada com a `root` torne a ocultar aquesta classe d'errada.
+- Validada la suite completa tant com a `root` com amb un usuari no privilegiat.
+
+# 2026-08-17 — Reestructuració del Bloc 10 i Fase 10.1
+
+- Consolidat el Bloc 10 en cinc fases: arquitectura; actualització/rollback; manteniment; recuperació; validació final.
+- Els prototips de l'antic full de ruta de 8 subfases es mantenen només com a codi reutilitzable no integrat.
+- Refet `config/update-model.yaml` com a contracte de producció de la Fase 10.1.
+- Corregits els noms reals dels paquets: `xaac-thinclient`, `xaac-thin-client-vpn` i `xaac-agent`.
+- Afegit manifest determinista `xaac-update-manifest/v1` amb SHA-256 dels `.deb`, compatibilitat i bloqueig de downgrades.
+- Afegida la CLI instal·lable `xaac-update-admin` amb `status`, `preflight` i `check`; `update` queda explícitament deshabilitat fins a la Fase 10.2.
+- Integrada l'arquitectura 10.1 al `ProductionIsoBuilder` sense requerir generació d'ISO en aquesta fase.
+- Afegit `scripts/validate-block10-phase1.sh` i proves específiques de regressió.
+- La verificació de bundles és fail-closed i no incorpora claus fictícies; el keyring públic real es provisionarà en la Fase 10.2.
+
+# Correcció Bloc 8.7 — continuïtat visual després del Bloc 9
+
+- Forçat `i915` dins l'`initramfs` per avançar el KMS i reduir l'interval negre abans de Plymouth en el Dell Wyse 3040.
+- El handoff usa `plymouth quit --retain-splash` i evita repintar `tty1` en el camí Wayland abans que `labwc` dibuixe el primer frame.
+- Plymouth i la pantalla GTK d'inici passen d'escalat `contain/fit` a `cover/fill`, eliminant bandes en relacions d'aspecte diferents de 16:9.
+- Afegit indicador animat de tres punts a Plymouth i `Gtk.Spinner` a l'overlay d'inici; el cursor `wait` continua actiu durant el treball.
+- El canvas neutre passa de l'antracita `#383e42` al gris granit `#596166`.
+- Afegides regressions de Fase 8.7 al gate visual sense modificar el hardening del Bloc 9.
+
+# Correcció Bloc 9.4 — metadades generades del paquet
+
+- La prova de retirada de components obsolets deixa d'escanejar artefactes generats com `*.egg-info`, `.venv`, `.build`, caches i directoris de distribució.
+- `scripts/create-venv.sh` elimina `src/*.egg-info` abans de `pip install -e` perquè els manifests editables es regeneren sempre des del checkout actual.
+- `.gitignore` exclou explícitament `*.egg-info/`.
+- El gate pre-ISO deixa de dependre de metadades residuals creades per una instal·lació editable anterior.
+
+# Correcció Bloc 9.4 — intèrpret Python del gate pre-ISO
+
+- Els tests que validen la sintaxi dels scripts Python generats utilitzen ara `sys.executable` en lloc de l'ordre genèrica `python`.
+- El gate pre-ISO deixa de dependre del paquet opcional `python-is-python3` de la màquina constructora.
+- La validació usa exactament el mateix Python 3.13 que executa `pytest`, inclòs el de `.venv`.
+- Verificat el gate visual també amb un `PATH` sense cap ordre `python`.
+
+# Correcció Bloc 9.4 — retirada definitiva del client de suport remot
+
+- Eliminats codi, configuracions, tests, assets, paquet placeholder i documentació residuals del client de suport remot retirat.
+- OpenSSH restringit queda com a únic mecanisme d’administració remota del sistema.
+- Afegida una prova de regressió que impedeix reintroduir accidentalment el component retirat.
+- El gate final del Bloc 9 valida exclusivament els components que formen part de l’arquitectura actual.
+
+## 2026-08-17 — Bloc 9.4: consolidació final i gate de maquinari
+
+
+
+## 2026-08-17 — Bloc 9.3: hardening de serveis i AppArmor efectiu
+
+
+
+## 2026-08-17 — Bloc 9.2: kernel, memòria i eMMC
+
+- Integrades `config/kernel-hardening.yaml` i `config/resources.yaml` en el constructor ISO de producció.
+- Retirat `squashfs` de la blacklist de mòduls i declarat com a necessari en runtime per al Live i l'instal·lador.
+- Activats zram al 50 % amb zstd, swappiness 100, `/tmp` en tmpfs de 128 MiB i journald volàtil limitat a 32 MiB.
+- Activat `fstrim.timer`, conservat `noatime` en les particions ext4 instal·lades i bloquejats els timers automàtics d'APT/man-db que generen activitat periòdica.
+- El builder valida la configuració estàtica sense executar `sysctl` contra el kernel host.
+- Netejades caches APT i `.deb` temporals abans de generar SquashFS.
+- Corregida la regressió de la 9.1 que reactivava SSH després de generar les claus host del sistema instal·lat.
+- La fase 9.2 continua sense generar ISO; la validació física de recursos queda ajornada a la 9.4.
+
+## 2026-08-17 — Bloc 9.1: línia base efectiva de xarxa
+
+- Integrada la política canònica `config/ssh.yaml` en el constructor ISO de producció.
+- SSH queda deshabilitat per defecte; es conserva l'activació temporal controlada amb clau pública mitjançant `xaac-ssh-access`.
+- Integrada `config/firewall.yaml` en el rootfs de producció amb nftables habilitat i política `drop` per a entrada i forwarding.
+- Afegides validacions de build amb `sshd -t`, `nft -c` i comprovacions de l'estat systemd abans de continuar la construcció.
+- Adaptats els configuradors SSH/nftables perquè accepten de manera segura `.build/production/rootfs` a més dels rootfs històrics de `runs/`.
+- Afegit `scripts/validate-block9-hardening.sh`, documentació del Bloc 9 actual i regressions específiques.
+- La fase 9.1 es valida sense generar ISO; la construcció completa queda ajornada fins a la consolidació 9.4.
+
+## 2026-08-16 — Bloc 8.6: consolidació i tancament de l'experiència d'appliance
+
+
+
+## 2026-08-16 — Bloc 8.5.2: fons antracita coherent
+
+- Enfosquit el canvas visual de handoff i el fons estable de sessió a `#383e42`, un gris antracita uniforme.
+- Wayland (`swaybg`) i el fallback X11 (`xsetroot`) usen el mateix color darrere de XAAC Thin Client VPN i XAAC Thin Client, evitant el negre del compositor o del root window.
+- Els breus canvassos de `tty1` abans/després de la sessió passen de blanc a gris fosc de consola (`ANSI 100`) per reduir canvis bruscos de llum durant el handoff i l'apagada.
+- Es conserva el branding clar de Plymouth i de les pantalles XAAC de recuperació/energia; només s'unifica el canvas neutre que queda visible entre superfícies i darrere de les aplicacions.
+
+## 2026-08-16 — Bloc 8.5.1: correcció visual en maquinari real
+
+- Reactivat el cursor de text en l'instal·lador i forçats `LANG/LC_ALL=ca_ES.UTF-8` amb `setupcon` abans de mostrar els formularis de TTY.
+- Tots els missatges de l'instal·lador eviten l'apòstrof tipogràfic i utilitzen text segur per a consola i el perfil de consola passa a `Uni2-Terminus16` per evitar glifs quadrats en català.
+- `labwc` activa `reuseOutputMode=yes` per reduir els blackouts causats per un canvi de mode de vídeo en iniciar el compositor.
+- Afegit `xaac-boot-handoff.service` per preparar `tty1` en blanc abans de `plymouth-quit.service` i `greetd.service`.
+- El handoff Wayland usa `wlrctl` i manté l'overlay amb cursor `wait` fins que apareix una finestra real de XAAC Thin Client o XAAC Thin Client VPN, amb timeout limitat.
+- Afegides regressions específiques de la 8.5.1 al gate visual del Bloc 8.
+
+## 2026-08-16 — Bloc 8.5: feedback d'activitat i fons estable de sessió
+
+- Separat el fons de transició XAAC del fons de sessió estable: el logotip es conserva en arrencada/espera/recuperació/energia i es retira abans d'exposar el Thin Client.
+- Afegit fons estable grafit `#4a4d52`, uniforme, no negre i sense text ni logotip, tant en Wayland (`swaybg`) com en el fallback X11 (`xsetroot`).
+- El canvi de fons es realitza darrere de l'overlay d'inici per evitar flaixos del compositor durant el handoff.
+- Afegit cursor `wait` durant inici/VPN, recuperació i transicions d'apagada/reinici; la sessió normal conserva el cursor estàndard.
+- Fixats `XCURSOR_THEME=Adwaita` i `XCURSOR_SIZE=24` abans d'iniciar el compositor per mantindre un feedback visual coherent.
+- Afegides proves específiques de la Fase 8.5 i ampliat el gate ràpid del Bloc 8.
+
+## 2026-08-16 — Bloc 8.4: apagada i reinici amb transició XAAC
+
+- Afegida la superfície `xaac-power-transition` per cobrir el tram entre la confirmació d'apagada/reinici i Plymouth.
+- Els helpers `xaac-kiosk-poweroff` i `xaac-kiosk-reboot` activen primer la coberta XAAC, mantenint la llista sudo exacta i sense concedir privilegis genèrics al quiosc.
+- El llançador root descobreix la sessió Wayland/X11 de `xaac-kiosk`, executa la superfície amb els privilegis de l'usuari i limita l'espera del handoff perquè GTK no puga bloquejar una acció d'energia.
+- Si `systemctl` falla, la superfície es retira i el Thin Client recupera el control visual.
+- Reforçada la neteja de `tty1` amb fons blanc i cursor ocult tant en iniciar la transició com immediatament abans dels serveis Plymouth de poweroff/reboot/halt.
+- Afegides proves específiques de la Fase 8.4 i ampliada la validació ràpida del Bloc 8.
+
+## 2026-08-16 — Bloc 8.3: errors i recuperació amb identitat XAAC
+
+- Les caigudes inesperades del Thin Client queden cobertes durant el `backoff` per una superfície XAAC de recuperació.
+- La pantalla de recuperació reutilitza el branding XAAC, fons blanc, Roboto i `gtk4-layer-shell` en capa `OVERLAY`.
+- En superar el límit de reinicis, el mode `degraded` manté una pantalla XAAC estable amb codi d'incidència `SES-<exit>-<intent>`, sense exposar diàlegs GTK genèrics, journals o tracebacks.
+- Afegit fallback de `tty1` per a absència total de display: consola neta, blanca, cursor ocult i missatge XAAC, sense greeter ni login a `tty1`.
+- No s'han afegit accions destructives ni reinicis automàtics; es conserva la política de supervisió existent i els contractes VPN/Agent.
+- Afegides proves específiques de Fase 8.3 i ampliat `scripts/validate-block8-visual.sh`.
+
+## Bloc 8.2 — Transició visual determinista cap al quiosc
+
+- Afegit un fons `swaybg` blanc amb `XAAC_TC_OS.png` abans d'iniciar el supervisor.
+- La pantalla d'espera GTK usa `gtk4-layer-shell` com a overlay en Wayland.
+- El supervisor espera que la superfície d'espera estiga mapejada abans de llançar XAAC Thin Client.
+- `tty1` es pinta de blanc i manté el cursor ocult durant el traspàs de Plymouth/greetd al compositor.
+- El fallback X11 usa un root window blanc abans d'iniciar Openbox.
+- Afegides proves específiques i ampliat `validate-block8-visual.sh` per cobrir la Fase 8.2.
+
+## 2026-08-15 — Bloc 8.1: cadena d'arrencada amb identitat XAAC
+
+- Unificada la política de paràmetres del kernel de la ISO Live i del sistema instal·lat: els valors visuals de `config/uefi.yaml` es fusionen amb els del perfil de maquinari sense opcions contradictòries.
+- La política efectiva passa a conservar `intel_idle.max_cstate=1` del Wyse 3040 i a aplicar `quiet`, `splash`, `loglevel=0` i la supressió de missatges de systemd tant al Live com al sistema instal·lat.
+- El menú GRUB del mitjà de producció queda ocult durant l'arrencada normal amb `timeout_style=hidden`; `Esc` continua permetent accedir al diagnòstic de només lectura.
+- L'entrada GRUB instal·lada deixa de duplicar una línia de kernel codificada a mà i reutilitza la mateixa política efectiva del constructor.
+- La fase `boot` verifica amb `lsinitramfs` que el descriptor, l'script i la imatge del tema Plymouth XAAC formen part de l'`initramfs`; una imatge sense branding primerenc ja no pot arribar a la fase ISO.
+- Actualitzades les proves del Bloc 7 perquè reflectisquen l'estat consolidat actual: el `.deb` de XAAC Agent incorporat és ja la release canònica `1.0.0-8`.
+
+## 2026-08-15 — Bloc 7.7: correcció del gate pre-squashfs
+
+- Corregida la verificació final del contracte local: `/run` és un tmpfs i els directoris `/run/xaac/...` no han d'existir dins del squashfs estàtic.
+- El gate pre-squashfs valida ara les declaracions exactes de `systemd-tmpfiles` per als directoris efímers i només exigeix físicament els directoris persistents de `/var/lib`.
+- Durant `configure`, `systemd-tmpfiles` materialitza només `/var/lib/xaac/thin-client`; ja no crea ni valida directoris sota el `/run` bind-mounted de la màquina constructora.
+- Afegida una regressió de test que impedeix tornar a exigir directoris `/run/xaac/...` en el rootfs estàtic.
+
+## 2026-08-14 — Bloc 7.7: release canònica i ISO consolidada
+
+- Correcció Bloc 7.7: el gate de paquet valida ara que el runtime privat existisca exactament a `/opt/xaac-agent/runtime/bin` i rebutja el layout erroni `runtime/runtime` abans d'iniciar `debootstrap`.
+
+- Integrada la revisió Debian `xaac-agent 1.0.0-8`.
+- Afegida provenança `xaac-block7-release-provenance/v1` i gate que rebutja artefactes no construïts amb `dpkg-buildpackage`.
+- Substituït el finalitzador acoblat al codi font de l'Agent per `scripts/import-xaac-agent-package.sh`: l'OS importa un `.deb` canònic ja construït, actualitza versió/SHA-256 de forma transaccional i conserva `build-production-iso.sh --clean` com a entrada normal de construcció.
+- `production_builder` valida també la provenança canònica, de manera que invocar el mòdul Python directament no permet eludir el gate.
+- La verificació de versió de l'Agent dins del rootfs deriva ara del perfil del paquet i ja no està codificada literalment al constructor.
+
+## 2026-08-14 — Bloc 7.6: validació integrada del rootfs
+
+- Afegit un gate creuat que inspecciona el `.deb` real de XAAC Agent i el compara amb els contractes de l’OS abans de construir.
+- Corregida la frontera `ProtectSystem=strict`: l’Agent pot escriure només `/var/lib/xaac/thin-client/config` i `/run/xaac/commands`; estat i events continuen de només lectura.
+- Corregit el cicle inicial de systemd: `xaac-agent.service` queda deshabilitat fins a l’enrolament, mentre `xaac-privileged-helper.socket` queda habilitat.
+- Corregides les proves d’imatge que encara referenciaven `xaac-thin-client` i `xaac-thin-client.service`.
+- Nova revisió Debian integrada: `xaac-agent 1.0.0-6`.
+- Afegit `scripts/validate-block7-integration.sh`, compatible amb `/bin/sh`, per validar la frontera sense generar ISO.
+
+## 2026-08-14 — Bloc 7.5: administració i enrolament segur de XAAC Agent
+
+- XAAC Agent passa a la revisió Debian `1.0.0-5`, mantenint la versió d'aplicació `1.0.0`.
+- Afegit i validat `/usr/sbin/xaac-agent-admin` amb `provision`, `enable`, `disable`, `status` i `unenroll`.
+- El token XMS és bootstrap d'un sol ús, mai un argument CLI, i no forma part de la imatge mestra.
+- L'OS substitueix el model històric de certificats propi per `xaac-agent-admin/v1`; identitat, claus i credencials persistents pertanyen exclusivament a l'Agent.
+- El constructor de producció crea `/etc/xaac/xms-enrollment-manifest.json` només després de verificar el paquet i comprova que el manifest no continga secrets.
+- El reenrolament després de `revoked`/`unenrolled` requereix `--reenroll` explícit; un desenrolament remot fallit no deixa un Agent prèviament actiu parat.
+
+## 2026-08-14 — Bloc 7.4: política VPN remota XMS → Agent
+
+- XAAC Agent passa a la revisió Debian `1.0.0-4`, mantenint la versió d'aplicació `1.0.0`.
+- `xaac-vpn-admin status --json` publica el contracte estable `xaac-vpn-status/v1` sense credencials.
+- XMS pot establir únicament `vpn.mode = disabled|optional|required` mitjançant una política `system` signada amb schema de contingut v2.
+- L'Agent passa pel helper privilegiat amb les operacions tipades `vpn-status` i `vpn-policy`; no existeix cap operació remota per a `provision`, `remove`, `.ovpn`, `.p12`, contrasenyes o OTP.
+- El helper manté `ProtectSystem=strict` i només rep l'excepció d'escriptura `ReadWritePaths=/etc/xaac` necessària per a `/etc/xaac/vpn-manager.toml`.
+- Les revisions de política repetides o antigues no es reapliquen i, si falla la persistència després d'un canvi, l'Agent intenta restaurar el mode VPN anterior.
+
+## 2026-08-14 — Bloc 7.3: contracte local OS ↔ Agent
+
+- Substituïda la integració antiga basada en `agent.sock`/`session-events.sock` per `xaac-local-integration/v1`.
+- Afegits directoris direccionals amb `xaac-ipc` i setgid: estat/events propietat de `xaac-kiosk`, configuració/ordres propietat de `xaac-agent`.
+- El supervisor publica `xaac-state/v2` de manera atòmica i events `xaac-local-event/v1`, amb heartbeat cada 30 segons i retenció màxima de 128 events.
+- L'estat descriu el supervisor de sessió real i deixa RDP com `unknown` fins que el Thin Client publique eixa informació directament.
+- Eliminada la dependència de `socat` i dels sockets locals antics.
+- L'inventari detecta ara la configuració real `/etc/xaac-agent/agent.ini` i el paquet `xaac-thinclient`.
+
+## 2026-08-14 — Bloc 7.2: systemd, permisos i helper privilegiat
+
+- Integrat `xaac-agent` revisió Debian `1.0.0-2` mantenint l'aplicació `1.0.0`.
+- Afegit el grup compartit `xaac-ipc`; `xaac-agent` i `xaac-kiosk` en són membres, però només `xaac-agent` pertany a `xaac-command`.
+- Separat `/run/xaac-agent` (protegit, `root:xaac-command`) de `/run/xaac-agent/runtime` (mutable només per l'Agent).
+- L'Agent ja no controla el cicle de vida del directori que conté el socket privilegiat.
+- El helper exigeix `SO_PEERCRED` per a l'UID real de `xaac-agent` i elimina `CAP_SYS_ADMIN`.
+- Consolidat i validat el drop-in `20-wyse-3040-resources.conf`.
+
+## 2026-08-14 — Bloc 7.1: consolidació de XAAC Thin Client Agent
+
+- Substituït el placeholder de 9 bytes per `xaac-agent_1.0.0-1_amd64.deb` real.
+- El paquet Debian és ara l'únic propietari de runtime, configuració, compte i unitats systemd de l'Agent.
+- Eliminada de `xaac_agent_package.py` la creació duplicada d'usuari, `agent.yaml` i servei systemd.
+- El perfil de l'OS diferencia versió d'aplicació `1.0.0` i versió Debian `1.0.0-1` i fixa el SHA-256 de l'artefacte.
+- El constructor de producció valida el paquet abans de copiar-lo i verifica la instal·lació dins del rootfs.
+- Afegida protecció explícita contra `.deb` placeholders o corruptes.
+
+## 2026-08-14 — administració simplificada de XAAC Thin Client VPN
+
+- Afegida la utilitat root `xaac-vpn-admin` a XAAC Thin Client OS.
+- `provision <ovpn> <p12>` valida i adapta automàticament l'export d'OPNsense,
+  importa de manera persistent el perfil `XAAC VPN` i elimina tot el material temporal.
+- El provisionament exigeix `auth-user-pass` i `static-challenge`, expandeix el
+  PKCS#12 temporalment i normalitza `verify-x509-name ... subject` al CN del servidor.
+- La substitució del perfil usa un candidat validat abans de tocar el perfil actiu
+  i conserva un backup temporal per a rollback quan és possible.
+- `policy disabled|optional|required` actualitza atòmicament
+  `/etc/xaac/vpn-manager.toml` i reinicia `xaac-vpn-manager`.
+- `status` resumeix política, perfil, validesa, manager i sessió; `remove`
+  desprovisiona el perfil i força `disabled` per evitar bloquejos.
+- La contrasenya PKCS#12 viatja a OpenSSL per `stdin`, mai com a argument, i les
+  claus extretes només existeixen sota `/run` amb permisos restrictius.
+
+## 2026-08-12 — persistència validada del magatzem FreeRDP en la ISO
+
+- Validat sobre TC-059 que crear `/etc/xaac/freerdp` i `/etc/xaac/freerdp/server` amb `systemd-tmpfiles`, propietari `xaac-kiosk:xaac-kiosk` i mode `0700` permet connectar i reconnectar a RDP després d'un reinici complet.
+- El constructor de producció crea ara explícitament `/usr/lib/tmpfiles.d/xaac-freerdp.conf`; la correcció ja no depén de fases auxiliars del projecte que no formen part del flux real de `build-production-iso.sh`.
+- Els directoris també es creen immediatament dins del rootfs durant la fase `configure`, una vegada existeix `xaac-kiosk`, garantint que el primer inici i la primera connexió RDP disposen del certificate store.
+- Es conserven els certificats/host keys entre reinicis, mantenint la verificació estricta de FreeRDP sense recórrer a `/cert:ignore`.
+
+## 2026-08-12 — inicialització del magatzem de certificats FreeRDP
+
+- Validat en producció que FreeRDP falla amb `BIO_new failed for certificate`, `REMOTE HOST IDENTIFICATION HAS CHANGED` i codi de sessió 143 quan no existeix el certificate store configurat a `/etc/xaac/freerdp/server`.
+- Afegida la creació persistent de `/etc/xaac/freerdp` i `/etc/xaac/freerdp/server` mitjançant `systemd-tmpfiles`.
+- Els dos directoris queden propietat de `xaac-kiosk:xaac-kiosk` i amb mode `0700`, de manera que FreeRDP pot registrar i actualitzar de forma segura els certificats/host keys dels servidors RDP.
+- La correcció reprodueix exactament la configuració validada sobre el sistema instal·lat, on la connexió RDP ha funcionat immediatament sense reiniciar després de crear el magatzem.
+
+## 2026-08-12 — continuïtat visual entre Plymouth i XAAC Thin Client
+
+- Validat en producció que mantindre Plymouth actiu fins a Labwc provoca conflicte DRM (`/dev/dri/card0` ocupat), per tant es conserva l'alliberament normal de Plymouth abans d'iniciar el compositor.
+- `xaac-startup-screen` deixa de mostrar el spinner genèric i passa a reutilitzar `/usr/share/plymouth/themes/xaac/XAAC_TC_OS.png` a pantalla completa.
+- La imatge es mostra amb fons blanc i ajust proporcional `CONTAIN`, de manera que cobreix el període d'arrancada del client i redueix el buit negre de 6–9 segons a la breu transició necessària per al traspàs DRM de Plymouth a Labwc.
+- Es manté el timeout i el control del supervisor existents, sense introduir retards fixos addicionals ni bloquejar el compositor.
+
+## 2026-08-12 — apagat i reinici gràfics sense exposar la TTY
+
+- Validat en l'entorn de producció que Plymouth mostra correctament el splash XAAC tant en `poweroff` com en `reboot`.
+- Afegit `xaac-clear-console-before-shutdown.service`, amb `DefaultDependencies=no`, perquè netege `tty1` abans dels serveis Plymouth i dels serveis finals de `poweroff`, `reboot` i `halt`.
+- El servei queda habilitat per `poweroff.target`, `reboot.target` i `halt.target`, evitant que reaparega durant uns instants el contingut textual de la consola sota el splash.
+- La política d'arrancada silenciosa passa a `loglevel=0 systemd.log_level=emerg`, mantenint `quiet splash`, l'ocultació d'estat de systemd i el cursor de VT desactivat.
+
+## 2026-08-12 — modals quiosc i apagat real del terminal
+
+- Actualitzat `xaac-thinclient_1.0.0_all.deb` amb controls de tancament propis
+  per als diàlegs modals «Quant a» i «Diagnòstics».
+- XAAC Thin Client OS força `application.mode = production` sobre el paquet
+  genèric, que continua sent neutre per defecte fora del Thin Client OS.
+- Afegits helpers root fixos `xaac-kiosk-poweroff` i `xaac-kiosk-reboot`.
+- `xaac-kiosk` només pot executar eixos dos helpers amb `sudo -n`; no rep
+  privilegis generals. `sudo` queda declarat explícitament al sistema base.
+
+## 2026-08-12 — correcció definitiva de les host keys OpenSSH
+
+- Corregit l'instal·lador real generat per `production_builder.py`: el sanejament
+  d'identitat eliminava les host keys després d'haver-les generat.
+- Ara, després d'eliminar qualsevol clau heretada del rootfs, l'instal·lador
+  executa `ssh-keygen -A` dins del sistema de destinació.
+- Es comprova la clau ED25519, es valida la configuració amb `sshd -t` i
+  s'habilita `ssh.service` només després de generar correctament les claus.
+- Cada dispositiu instal·lat conserva així una identitat SSH pròpia i única.
+
+## 2026-08-12 — SVG GTK4 i claus host OpenSSH
+
+- Afegit `librsvg2-common` a la pila gràfica i al conjunt real de paquets de
+  producció. GTK4 pot carregar les 12 icones SVG de `XAAC-Zorin-Light`.
+- L'instal·lador elimina qualsevol host key heretada del rootfs i executa
+  `ssh-keygen -A` dins del sistema instal·lat, generant una identitat SSH única
+  per dispositiu.
+- L'instal·lador valida `sshd -t` i habilita `ssh.service` abans de finalitzar.
+- Les host keys no es generen durant la construcció de la ISO, evitant que
+  diferents equips instal·lats compartisquen la mateixa identitat SSH.
+
+## 2026-08-11 — tema d'icones mínim aïllat
+
+- Creat `XAAC-Zorin-Light` com a tema d'icones propi per evitar que GTK barrege
+  el subconjunt del Thin Client OS amb el `ZorinBlue-Light` complet del host.
+- Mantingudes únicament les 12 icones simbòliques que usa XAAC Thin Client.
+- Els SVG coincideixen amb els fitxers efectius resolts en la màquina Zorin de desenvolupament.
+- La prova ràpida selecciona explícitament `XAAC-Zorin-Light` i falla si alguna
+  de les 12 icones es resol fora del sandbox.
+
+## 2026-08-11 — Resolució exacta d'icones GTK4
+
+- Verificades les 12 icones que XAAC Thin Client resol en el Zorin de desenvolupament.
+- Cada icona s'emmagatzema com un SVG real, sense enllaços simbòlics, amb el mateix SHA-256 que l'original resolt per GTK4.
+- Eliminats els SVG auxiliars dels aliases i qualsevol icona no utilitzada per XAAC Thin Client.
+- Es manté `ZorinBlue-Light` com a tema actiu i `Adwaita,gnome,hicolor` com a fallback.
+- El subconjunt d'icones ocupa menys de 100 KiB.
+
+## 2026-08-11 — Subconjunt mínim d’icones Zorin amb resolució GTK correcta
+
+- Mantingut `ZorinBlue-Light` com a tema d’icones actiu.
+- Eliminats els milers d’icones no utilitzades del snapshot complet.
+- Incloses només les 12 icones referenciades directament per XAAC Thin Client, amb els SVG efectius exportats de l’entorn de desenvolupament.
+- Preservades les categories GTK (`actions`, `apps`, `devices`, `status`) i els aliases simbòlics necessaris.
+- Mantingut fallback a `Adwaita,gnome,hicolor` per a icones internes de GTK.
+- Validada la generació de cache d’icones amb GTK i GTK4.
+
+
+- Integrat el snapshot GTK 3/4 real de `ZorinBlue-Light` exportat de la màquina de desenvolupament, seleccionat explícitament per GTK junt amb Roboto 10.
+- La barra de títol passa a decoració client GTK (`gtk-decoration-layout=:`), evitant que Labwc la substituïsca i mantenint el bloqueig de botons/menús del mode quiosc.
+
+## 2026-08-10 — Bloc 5: centrat de quiosc i icones GTK
+
+### Bloc 5 — fidelitat visual Zorin OS 17
+
+- Fixat `zorin-icon-themes` a la versió 3.3.1, corresponent a la família usada per Zorin OS 17, per reproduir les mateixes icones `ZorinBlue-Light` que l'entorn de desenvolupament.
+- La barra de títol server-side de `labwc` usa explícitament Roboto 10 tant en finestra activa com inactiva.
+
+- La política de col·locació de `labwc` centra les finestres del quiosc en l'eixida activa i aplica `AutoPlace(center)` a les finestres noves.
+- S'elimina la regla genèrica `ToggleFullscreen`, que no corresponia al comportament de finestra centrada requerit per XAAC Thin Client.
+- S'incorporen `adwaita-icon-theme`, `adwaita-icon-theme-legacy` i `hicolor-icon-theme` al sistema mínim.
+- GTK 4 queda configurat explícitament amb `gtk-icon-theme-name=Adwaita`, mantenint Roboto 10 com a tipografia per defecte.
+
+- Corregit un defecte crític de reproduïbilitat del constructor: `scripts/build-production-iso.sh` força ara `PYTHONPATH` al `src/` del checkout actual i verifica la ruta real de `xaac_thin_client_os.production_builder` abans de construir. Això impedeix generar una ISO amb una còpia antiga del constructor instal·lada a `.venv` mentre els tests validen el codi nou.
+
+- Bloc 5: integració del paquet real `xaac-thinclient_1.0.0_all.deb` en la ISO de producció.
+- El llançador del quiosc usa `/usr/bin/xaac-thinclient` (paquet Debian) i elimina l'antic supòsit `/opt/xaac-thin-client/.venv`.
+- La construcció falla si `xaac-thinclient` no queda instal·lat en el rootfs.
+- Deshabilitat l'autostart genèric systemd-user del paquet per evitar duplicats amb el supervisor XAAC.
+- `labwc` queda sense menú contextual ni bindings per defecte i l'autostart del supervisor no substitueix el shell del compositor.
+
+## Bloc 5 — correcció d’arrencada definitiva
+
+- El sistema instal·lat reserva `tty1` exclusivament per a `greetd` i elimina qualsevol autologin d’`agetty`.
+- El compte `xaac-kiosk` torna a usar `/usr/sbin/nologin`; la sessió és iniciada directament per `greetd`.
+- L’instal·lador admet hostnames amb lletres majúscules sense convertir-los a minúscules.
+- `fonts-roboto` és un paquet obligatori del constructor de producció.
+
+## 2026-08-06 — Eines bàsiques i diagnòstic de xarxa
+
+### Bloc 5 — correcció del bloqueig interactiu de dpkg
+
+- La configuració definitiva de `greetd` i de la pila de quiosc s'aplica després d'instal·lar els paquets Debian.
+- `apt-get install` força una política no interactiva de `conffiles` (`--force-confdef` + `--force-confold`) per evitar preguntes invisibles de `dpkg`.
+- Afegides proves de regressió per garantir l'ordre `apt install -> configuració XAAC` i l'absència de prompts de `conffiles`.
+
+
+- Afegits `iproute2` i `iputils-ping` als paquets obligatoris del rootfs.
+- L’ordre `ip` queda disponible en el sistema instal·lat per consultar interfícies, adreces i rutes.
+- Ampliat el diagnòstic de desenvolupament amb hostname, dispositius NetworkManager, connexions actives, IPv4, passarel·la, DNS, estat dels enllaços i rutes IPv4/IPv6.
+- El diagnòstic continua sent estrictament de només lectura.
+
+## 2026-08-06 — Hostname i xarxa DHCP durant la instal·lació
+
+- L’instal·lador demana i valida el hostname.
+- Configura `/etc/hostname` i `/etc/hosts`.
+- Configura Ethernet amb DHCP automàtic mitjançant NetworkManager.
+- Verifica la configuració abans de completar la instal·lació.
+
+## Unreleased — Bloc 4: consolidació de la instal·lació
+
+- Consolidada la identitat visible en `/etc/os-release`, `/etc/issue`, `/etc/issue.net` i `/etc/motd`.
+- Eliminats del sistema instal·lat el servei, l’executable i els enllaços d’activació de l’instal·lador Live.
+- Eliminats artefactes temporals de l’instal·lador abans de finalitzar.
+- Afegit el marcador persistent `/var/lib/xaac/installation/consolidated`.
+- Reforçades les verificacions finals perquè la instal·lació falle si la identitat o la neteja no són correctes.
+- Mantinguda la preparació idempotent de `machine-id`, claus SSH, `random-seed` i primer arrencament.
+
+## Unreleased — Bloc 1: arrencada del sistema instal·lat
+- Consolidat el diagnòstic de desenvolupament perquè identifique inequívocament el mode `LIVE` o `INSTALLED`.
+- Afegida informació de dispositiu arrel, tipus de sistema de fitxers i UUID de l’arrel i de l’ESP.
+- Afegit un resum de GRUB/UEFI amb configuracions, entrades Linux i executables EFI detectats.
+- Afegit l’estat segur de `xaac-kiosk` i `xaac-admin`, i dels serveis principals del sistema.
+- Mantingut el diagnòstic estrictament de només lectura i sense canvis en GRUB ni en el procés d’arrencada.
+
+- Corregit el desplegament: `filesystem.squashfs` exclou deliberadament `/boot`, de manera que l’instal·lador ara copia explícitament el nucli i l’initramfs del mitjà Live al `/boot` del sistema instal·lat amb noms versionats.
+- Afegits els enllaços `/boot/vmlinuz` i `/boot/initrd.img`.
+- `update-grub` només es considera correcte si `grub.cfg` conté una entrada Linux, una ordre `linux` i una ordre `initrd`.
+- La instal·lació s’atura abans d’indicar èxit si el disc quedaria amb un GRUB buit.
+
+## Unreleased
+
+- El menú GRUB del sistema instal·lat mostra ara exactament `XAAC Thin Client OS`.
+- S'ha afegit un generador GRUB propi (`/etc/grub.d/09_xaac`) basat en els enllaços estables `/boot/vmlinuz` i `/boot/initrd.img`.
+- El generador genèric `10_linux` queda desactivat per evitar entrades visibles `GNU/Linux` o `Debian GNU/Linux`.
+- `GRUB_DISTRIBUTOR` queda fixat a `XAAC Thin Client OS` en `/etc/default/grub.d/10-xaac-identity.cfg`.
+
+
+- Reforçada l’activació de `xaac-admin` amb `chpasswd --encrypted`, comparació exacta del hash i verificació final.
+- Ampliat el diagnòstic amb prefix segur de shadow i detecció de directives de bloqueig.
+
+## Unreleased — diagnòstic local de desenvolupament
+
+- Afegida `/usr/local/libexec/xaac/diagnostics` exclusivament quan `config/build.yaml` usa el canal `development`.
+- `xaac-kiosk` pot executar només aquest diagnòstic, sense contrasenya, mitjançant una regla `sudoers` exacta; no obté una shell ni permisos `sudo` generals.
+- L'eina és de només lectura i mostra l'existència, identitat, grups, shell, estat de contrasenya, caducitat, pila PAM i missatges recents d'autenticació de `xaac-admin`.
+- El hash de `/etc/shadow` no es mostra: només s'informa de si és buit, bloquejat o configurat, l'esquema i la longitud.
+- L'opció `--pam-test` permet comprovar interactivament la contrasenya contra PAM sense emmagatzemar-la.
+- No s'ha modificat GRUB, systemd ni el flux d'arrencada.
+- Suite completa: 1375 proves superades.
+
+## Unreleased — autenticació real de `xaac-admin`
+
+- La contrasenya de `xaac-admin` es converteix explícitament en un hash SHA-512 amb `openssl passwd -6`.
+- El compte s’activa amb `usermod --password`, evitant dependre del comportament intern de `chpasswd` dins del chroot.
+- L’instal·lador executa una autenticació real amb PAM mitjançant `pamtester login xaac-admin authenticate`.
+- La instal·lació falla abans de finalitzar si PAM rebutja la contrasenya.
+- `openssl` i `pamtester` passen a ser dependències obligatòries del rootfs de producció.
+- Afegides proves de regressió per impedir tornar a una validació basada només en `/etc/shadow`.
+
+## Unreleased
+- Estabilitzada l’arrencada UEFI del sistema instal·lat amb una cadena Debian signada: `shim-signed` com a `EFI/BOOT/BOOTX64.EFI` i `grub-efi-amd64-signed` com a `EFI/BOOT/grubx64.efi`.
+
+### Correcció d’activació de `xaac-admin`
+
+- L’instal·lador desbloqueja explícitament `xaac-admin` després de configurar-ne la contrasenya.
+- Es força `/bin/bash` com a shell interactiva i s’eliminen caducitats o inactivitats residuals del compte.
+- La instal·lació s’atura si `/etc/shadow` encara conté un prefix de bloqueig (`!` o `*`).
+- Es comprova també que `passwd -S` retorne `P` i que la shell efectiva siga `/bin/bash`.
+- Afegit un `EFI/BOOT/grub.cfg` mínim que localitza explícitament `XAAC_ROOT` pel seu UUID i transfereix el control a `/boot/grub/grub.cfg`.
+- L’instal·lador valida ara la capçalera PE/COFF dels executables EFI, el tipus GPT `EF00`, la integritat FAT32 de l’ESP i la presència de tots els artefactes abans de declarar l’èxit.
+- La neteja de la instal·lació desmunta també `/run`, `/sys`, `/proc` i `/dev` del chroot abans de desmuntar el sistema de destinació.
+- Afegits `shim-signed` i `grub-efi-amd64-signed` al rootfs de producció i proves de regressió específiques.
+- Suite completa: 1371 proves superades.
+
+## Unreleased — contrasenya administrativa durant la instal·lació
+
+- L’instal·lador demana i confirma una contrasenya per a `xaac-admin` abans d’iniciar les operacions destructives.
+- L’entrada queda oculta amb `stty -echo`, exigeix almenys 12 caràcters i rebutja el caràcter `:`.
+- La contrasenya s’aplica exclusivament dins del sistema desplegat mitjançant `chpasswd` i es valida amb `passwd -S`.
+- La dada sensible s’elimina de l’entorn tan prompte com queda aplicada i no apareix en logs ni resums.
+- Es crea el marcador administratiu `password-changed` perquè no es repetisca un canvi obligatori després d’haver-la triada durant la instal·lació.
+- `xaac-kiosk` i `root` mantenen els comptes bloquejats per a autenticació manual.
+- Suite completa: 1372 proves superades.
+
+- Replantejat completament el subsistema Live: `live-boot` queda limitat al muntatge del SquashFS i s’elimina `live-config` dels paquets obligatoris i del flux d’arrencada.
+- Eliminats de GRUB `components`, `username=`, `user-fullname=`, `live-config.nocomponents` i `live-config.nottyautologin`.
+- XAAC crea `xaac-kiosk` durant la construcció del rootfs i controla directament l’autologin exclusiu de `tty1`; `tty2`–`tty6` tornen a la plantilla estàndard autenticada de Debian sense overrides.
+- Eliminats els fitxers de configuració i les defenses compensatòries de `live-config`; els artefactes antics es netegen en construccions incrementals.
+- La neteja del chroot finalitza primer processos residuals confinats al rootfs, conserva l’estat d’eixida del constructor i tracta explícitament `EXIT`, `INT` i `TERM`.
+- Els muntatges continuen confinats per `rslave`, es processen segons `/proc/self/mountinfo` de més profund a menys profund i mai s’aplica `umount -R`, `-l` o `-f`.
+- Suite completa: 1370 proves superades.
+
+- Robustesa del desmuntatge del chroot: reintents davant d'`EBUSY`, `sync` entre intents i diagnòstic amb `fuser` dels processos que mantenen ocupat un punt de muntatge.
+
+- Corregit l’autologin indegut de `xaac-kiosk` en `tty2`–`tty6`: cada consola secundària reinicia explícitament `ImportCredential=` per ignorar qualsevol credencial global `agetty.autologin` injectada en temps d’arrencada.
+- `tty2`–`tty6` restauren explícitament l’ordre estàndard autenticada d’`agetty`; només `tty1` conserva l’autologin controlat per XAAC.
+- Afegit també `live-config.nottyautologin` als paràmetres del kernel com a defensa addicional contra l’autologin de consola de Debian Live.
+
+- Corregida la detecció de discs de l’instal·lador amb `lsblk -P`, evitant errors quan el model conté espais i excloent explícitament `loop`, `ram`, `zram` i `sr`.
+- Desactivada completament l'execució dels components de `live-config` mitjançant `live-config.nocomponents`; XAAC conserva el control exclusiu dels usuaris, la localització i les consoles.
+- Eliminats els overrides específics de `tty2` a `tty6`: aquestes consoles tornen a usar la plantilla estàndard `getty@.service` de Debian i requereixen autenticació.
+- Mantingut l'autologin explícit de `xaac-kiosk` únicament a `tty1`.
+
+## Robustesa de TTY i muntatges del constructor de producció
+
+- L'instal·lador pren exclusivament `tty1` i declara explícitament el conflicte amb `getty@tty1.service`.
+- Afegit `xaac-installer-restore-getty.service`, activat amb `OnFailure`, per restaurar el `getty` de `tty1` si l'instal·lador falla.
+- L'autologin de `xaac-kiosk` queda limitat a `tty1`; `tty2` a `tty6` mantenen un `agetty` normal sense autologin.
+- Els muntatges `--rbind` del chroot es converteixen en `rslave` per impedir propagació cap al sistema host.
+- La neteja desmunta únicament punts situats sota `.build/production/rootfs`, començant per `/dev/pts`, sense `umount -l`.
+- `build-production-iso.sh` incorpora un `trap` per netejar els muntatges en eixida, interrupció o terminació.
+- `--clean` neteja primer qualsevol muntatge residual abans d'eliminar el workspace.
+- Suite completa: 1365 proves superades.
+
+## Correcció de l’autologin del compte quiosc
+
+- El constructor de producció crea ara `xaac-kiosk` amb `/bin/bash`, necessari perquè `agetty --autologin` puga iniciar la sessió.
+- S’aplica també `usermod --shell /bin/bash xaac-kiosk` per corregir rootfs incrementals on el compte ja existia amb `/usr/sbin/nologin`.
+- El compte continua amb la contrasenya bloquejada; només canvia el shell de sessió.
+- Afegida una prova de regressió específica.
+- Suite completa: 1357 proves superades.
+
+## Correcció del constructor ISO — confinament de rutes i Debian minimal
+
+- Corregida la invocació de `grub-mkrescue`: ja no es passa `-- -V`, opció que `xorriso` interpretava en mode natiu i rebutjava amb `Not a known command: -V`.
+
+- Corregida la resolució de rutes dins del rootfs perquè els enllaços simbòlics absoluts vàlids, com `/etc/localtime`, no es resolguen accidentalment contra el sistema amfitrió.
+- Mantinguda la protecció contra `..` i contra directoris pare enllaçats fora del rootfs.
+- El llançador del constructor normalitza ara `PATH` per incloure `/usr/sbin` i `/sbin` en sessions SSH i instal·lacions Debian minimal.
+- Afegides proves de regressió per a `/etc/localtime` i per a pares simbòlics que intenten escapar del rootfs.
+- Suite completa: 1355 proves superades.
+
+## Constructor ISO definitiu — bootstrap mínim i paquets per APT
+
+- `debootstrap` crea ara només el sistema base mínim i ja no intenta resoldre firmware, kernel ni paquets d'escriptori durant el bootstrap.
+- Els components Debian configurats (`main`, `non-free-firmware`, etc.) es propaguen tant a `debootstrap` com a `/etc/apt/sources.list`.
+- Els paquets de runtime, el kernel i el firmware s'instal·len posteriorment amb `apt-get` dins del chroot.
+- Afegida preparació explícita de DNS i repositoris abans de l'actualització APT.
+- Afegit `debian-archive-keyring` a les dependències de construcció de l'amfitrió.
+- Afegides proves de regressió que impedeixen tornar a introduir `--include` amb paquets de runtime en `debootstrap`.
+- Suite completa: 1353 proves superades.
+
+## Refactorització del constructor ISO
+
+- Afegida l'ordre `build-rootfs` per construir un rootfs reutilitzable sense instal·lar cap carregador sobre un dispositiu.
+- Separada la construcció ISO de la construcció d'imatges de disc.
+- `build-production-iso.sh` ja no executa `grub-install` dins del `chroot`; l'arrencada híbrida es genera amb `grub-mkrescue`.
+- Mantingut `build-image` per a artefactes de disc, on la instal·lació UEFI sí que correspon.
+- Afegides proves del nou flux i documentació operativa.
+
+# Fase 12.12 — Release 1.0.0
+
+
+
+## Correcció del constructor ISO — 2026-07-30
+
+- Corregida la configuració de localització del rootfs Debian 13 quan `/etc/default/locale` és un enllaç simbòlic a `/etc/locale.conf`.
+- Es manté la protecció contra enllaços simbòlics arbitraris o que apunten fora del destí permés.
+- Afegides proves de regressió per a `SystemConfigurator` i `LocalizationConfigurator`.
+- Suite completa: 1342 proves superades.
+
+- Fixada la versió definitiva del projecte en `1.0.0`.
+- Afegit el pla final per a ISO, IMG, recovery IMG, PXE, paquets i documentació.
+- Incorporats hashes SHA-256, signatures separades, manifest, notes i anunci de publicació.
+- Afegida l’ordre `build-final-release` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.11 — Release candidate
+
+- Congelada la versió `1.0.0-rc.1` amb política explícita de canvis admesos.
+- Afegides portes de qualitat per a proves, imatge, maquinari, rendiment, documentació i packaging.
+- Incorporats manifest, notes de versió, estat d’aprovació i script de verificació.
+- Afegida l’ordre `build-release-candidate` i 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.10 — Packaging i repositoris
+
+- Consolidats paquets Debian i metapaquet de sistema.
+- Afegits canals laboratory, pilot i production amb publicació signada.
+- Incorporats perfil declaratiu, manifest, configuració reprepro i ordre `build-production-packaging`.
+- Afegides 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.9 — Documentació
+
+- Afegits manuals d’instal·lació, administració, xarxa, seguretat, actualització, recuperació, desenvolupament i troubleshooting.
+- Incorporats perfil declaratiu, validació del conjunt, índex i manifest determinista.
+- Afegida l’ordre `build-documentation` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.8 — Rendiment i estabilitat
+
+- Afegida suite de mètriques per a temps d'arrencada, RAM, CPU, disc i temperatura.
+- Incorporada validació de sessió prolongada i recuperació amb xarxa intermitent.
+- Afegits llindars declaratius, manifest, runner, esquema JSON i guia d'execució.
+- Afegida l'ordre `build-performance-tests` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
+# Fase 12.3 — Paquet PXE
+
+- Afegit constructor del bundle PXE amb kernel, initramfs i rootfs SquashFS.
+- Incorporat script iPXE amb arguments controlats i token de confirmació.
+- Afegida configuració d’instal·lació desatesa específica per al Dell Wyse 3040.
+- Incorporats manifest, hashes SHA-256, documentació i ordre `build-pxe`.
+- Afegides proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 12.2 — Constructor IMG
+
+- Afegit constructor d’imatge RAW amb GPT i UEFI per al Dell Wyse 3040.
+- Incorporades particions EFI, arrel, dades i recuperació.
+- Afegides expansió de l’arrel i regeneració d’identificadors al primer inici.
+- Incorporades neteja d’identitat per a clonació, compressió XZ i hashes SHA-256.
+- Afegida l’ordre `build-img`, documentació i proves automatitzades.
+
+# Fase 11.3 — Reparació de paquets
+
+- Afegida comprovació fail-closed amb `dpkg --audit`, `apt-get check` i verificació de fitxers.
+- Incorporada reinstal·lació controlada dels paquets XAAC i reparació de dependències des de repositoris signats.
+- Afegida restauració atòmica de configuració amb protecció d'identitat, enrolament i política activa.
+- Incorporats diagnòstics persistents, notificacions a Agent/XMS i validació final obligatòria.
+- Afegida l'ordre `configure-package-repair` amb mode `--dry-run`.
+- Afegides proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
+# Correcció estructural prèvia a la fase 11.1
+
+- Afegits fitxers `README.md` als directoris estructurals que podien estar buits.
+- Garantida la persistència en Git dels directoris `builder`, `hooks`, `recovery` i `tools`, inclosos els seus subdirectoris reservats.
+- Afegida una prova de regressió que comprova l'existència dels README estructurals.
+
+# Fase 10.7 — Desplegament per anells
+
+- Afegits els anells ordenats `laboratory`, `pilot` i `production`.
+- Incorporada selecció determinista de dispositius per percentatge basada en `device_uuid`.
+- Exigida promoció seqüencial, èxit de l'anell anterior, observació mínima i aprovació manual.
+- Afegits llindars d'èxit i fallada, pausa, represa i cancel·lació segura.
+- Incorporats estat persistent, auditoria obligatòria, llançador i servei systemd endurit.
+- Afegida l'ordre `configure-update-rings` amb mode `--dry-run`.
+- Afegides 12 proves positives, negatives, d'idempotència, permisos, symlinks i CLI.
+
+# Fase 10.4 — Verificació d’actualitzacions
+
+- Afegida una política fail-closed per verificar actualitzacions preparades en staging.
+- Fet obligatori validar la signatura OpenPGP del manifest amb el keyring XAAC.
+- Exigits hashes SHA-256 i SHA-512 per a tots els artefactes.
+- Incorporades comprovacions d’arquitectura, sistema, perfil Wyse 3040, versió mínima i bloqueig de downgrade.
+- Incorporada validació de dependències declarades, cicles i conjunts atòmics.
+- Generats política, estat auditable i llançador del verificador amb permisos restrictius.
+- Afegida l’ordre `configure-update-verification` amb mode `--dry-run`.
+- Afegides 12 proves positives, negatives, d’idempotència, permisos, symlinks i CLI.
+
+# Fase 9.2 — Usuaris i permisos
+
+
+
+# Fase 9.1 — Política de seguretat base
+
+- Afegit el perfil declaratiu de seguretat amb objectius, actius, actors, superfícies, amenaces, controls i riscos acceptats.
+- Incorporada validació estricta de nivells, identificadors i referències creuades.
+- Generats la política operativa, el model d'amenaces i l'estat versionat per a XAAC Agent.
+- Afegides escriptures atòmiques, permisos restrictius, idempotència i protecció de symlinks.
+- Afegida l'ordre `configure-security-policy` amb mode `--dry-run`.
+- Afegides proves positives, negatives, de permisos, idempotència, seguretat i CLI.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Fase 7.6 — Perfil administrador local
+
+- Corregida la prova d’idempotència perquè substituïsca atòmicament el fitxer `sudoers` de prova amb permisos `0440`, evitant un `PermissionError` en entorns no executats com a root.
+- Afegit el compte administratiu declarat `xaac-admin` amb home i grups mínims.
+- Incorporats hash inicial segur i canvi obligatori de contrasenya.
+- Afegida política `sudo` restringida i menú administratiu de consola.
+- Incorporades regles d'auditoria, estat, snapshot, rollback i protecció de symlinks.
+- Afegides proves positives, negatives, d'idempotència, permisos i CLI.
+
+# Fase 7.4 — VLAN 802.1Q
+
+- Afegit el perfil declaratiu `config/vlan.yaml` i l'ordre `configure-vlan`.
+- Implementada la generació persistent de fitxers `.netdev` i `.network` per a `systemd-networkd`.
+- Afegit adreçament DHCP o IPv4 estàtic, configuració local/remota i validació de polítiques.
+- Incorporats estat, diagnòstic, staging, snapshot, rollback i fallback a la interfície pare.
+- Afegides proves positives, negatives, d'idempotència, recuperació i CLI.
+
+# Fase 7.1 — Gestor de xarxa
+
+- Seleccionat `systemd-networkd` com a gestor de xarxa definitiu i exclusiu.
+- Afegida configuració Ethernet base amb DHCP IPv4 i espera de connectivitat.
+- Afegit manifest auditable i contracte d'estat versionat per a XAAC Agent.
+- Afegit drop-in de systemd i fitxer d'entorn per a la integració amb l'Agent.
+- Afegida l'ordre `configure-network-manager`, proteccions de rutes i proves automatitzades.
+
+## Fase 9.3 — Hardening systemd
+
+- Afegida una política declarativa de hardening per als serveis XAAC.
+- Aplicats NoNewPrivileges, ProtectSystem/ProtectHome, namespaces, capabilities, dispositius, famílies d’adreces i filtres de syscalls.
+- Afegits drop-ins systemd, estat auditable, CLI, documentació i proves de seguretat.
+
+## Fase 4.7 — Multimonitor i escalat
+
+## Fase 6.4 — Servei de primer inici
+
+- Afegit el perfil declaratiu `config/first-boot.yaml`.
+- Afegit el servei idempotent `xaac-first-boot.service`.
+- Incorporada la validació inicial de model, RAM i eMMC.
+- Integrada la generació o validació de la identitat persistent.
+- Afegits estat auditable, marcador de finalització i registre segur de fallades.
+- Afegida l'ordre `configure-first-boot` i proves automatitzades.
+
+- Afegida política declarativa de disposició, monitor principal, resolució i escalat mixt.
+- Afegits scripts Wayland (`wlr-randr`) i X11 (`xrandr`) amb reconciliació de connexió en calent.
+- Preparada la integració FreeRDP amb `/multimon` i `/dynamic-resolution`.
+- Afegida l’ordre `configure-display-layout` i proves automatitzades.
+
+
+## Fase 4.4 — Usuari de quiosc
+
+- Compte `xaac-kiosk` de sistema, bloquejat i amb shell no interactiva.
+- Home restringit, grups mínims i variables XDG controlades.
+- Configuració de tmpfiles, permisos, persistència i proves automatitzades.
+
+## Fase 4.3 — Gestor de sessió
+
+- Afegit `greetd` com a gestor mínim de sessió.
+- Implementada la sessió dedicada `xaac-kiosk` amb autologin restringit.
+- Afegits el llançador Wayland, l'entrada de sessió i la política auditable.
+- Bloquejats gestors de sessió competidors i el greeter interactiu.
+- Afegides proves positives, negatives, d'idempotència i de seguretat.
+# Fase 4.1 — Pila gràfica mínima
+
+### Afegit
+
+- Perfil declaratiu `config/graphical-stack.yaml` amb Wayland principal i X11 de fallback.
+- Paquets mínims per Wayland, X11, Mesa, GTK 4, libinput, xkbcommon i fonts.
+- Exclusió explícita d'escriptoris complets i shells convencionals.
+- Generació segura i idempotent de l'entorn gràfic de la sessió XAAC.
+- Validació de backend, GTK, renderer, resolució, teclat i ratolí.
+- Documentació de la fase i ampliació de la suite automatitzada.
+
+# Fase 3.2 — Suport d’eMMC
+
+### Afegit
+
+- Perfil declaratiu `config/emmc.yaml` per al Dell Wyse 3040.
+- Detecció segura de dispositius `mmcblkN`, capacitat, sector, tipus, CID i TRIM.
+- Validació de controladors MMC/SDHCI carregats.
+- Ordres `inspect-emmc` i `configure-emmc`.
+- Configuració atòmica de mòduls eMMC i activació de `fstrim.timer`.
+- Proteccions davant enllaços simbòlics i rutes d’activació conflictives.
+- Documentació de la fase i ampliació de la suite a 333 proves.
+
+## Fase 4.2 — Compositor
+
+- Seleccionat labwc com a compositor Wayland mínim i Openbox com a fallback X11 controlat.
+- Afegides configuracions de pantalla completa sense panells, menús, decoracions ni dreceres.
+- Afegit suport declaratiu multimonitor i política de reinici segur.
+- Incorporada l'ordre `configure-compositor` i proves automatitzades.
+
+## Fase 3.1 — Inventari de maquinari Dell Wyse 3040
+
+- Afegit el perfil declaratiu `config/hardware.yaml`.
+- Afegida detecció no privilegiada mitjançant procfs, sysfs i DMI.
+- Afegida comparació tipada amb resultats `pass`, `warning` i `fail`.
+- Afegida l'ordre `inspect-hardware` i exportació atòmica d'informes JSON.
+- Coberts CPU, RAM, eMMC, Intel/i915, Ethernet, àudio, USB, UEFI i sensors.
+- Afegida documentació de la Fase 3.1 i proves automatitzades.
+
+
+## Fase 2.8 — Primera imatge arrencable
+
+### Fixed
+
+- `build-image` ja no depén d’un `rootfs` temporal preexistent: reconstrueix automàticament el Bloc 2 en un únic workspace quan `.build/current` és incomplet o obsolet.
+- Corregit l’error `Rootfs inexistent o insegur` que apareixia en invocar directament la construcció integral.
+
+- Afegit el constructor integral d'imatges GPT arrencables en UEFI.
+- Afegida l'ordre `build-image` i el mode `--dry-run`.
+- Afegits assemblatge amb loop, còpia del rootfs, instal·lació GRUB, compressió gzip i hashes SHA-256.
+- Afegida traçabilitat dels artefactes en el manifest i neteja segura en cas d'error.
+- Suite ampliada a 292 proves amb cobertura global superior al 90%.
+
+
+## Fase 2.7 — Localització i consola
+
+- Afegida configuració declarativa de locale, fallbacks, zona horària, teclat i consola.
+- Afegida l'ordre `configure-localization` amb mode `--dry-run`.
+- Afegida generació segura de `locale.gen`, `default/locale`, `default/keyboard`, `console-setup`, `timezone` i `localtime`.
+- Afegida traçabilitat al manifest i proves positives, negatives i d'integració CLI.
+
+## Fase 2.5 — Esquema inicial de particions
+
+- Afegida configuració GPT declarativa en `config/partitions.yaml`.
+- Afegida l'ordre `configure-partitions`.
+- Implementades particions EFI, arrel, dades persistents i recuperació.
+- Afegits `gdisk`, `dosfstools`, `e2fsprogs` i `parted` al sistema base.
+- Afegida generació atòmica de `/etc/fstab`.
+- Afegides proteccions contra execució accidental sobre discs.
+- Afegides proves positives, negatives, de seguretat i manifest.
+
+## Fase 2.8 — Tallafoc base amb nftables
+
+- Afegida la configuració declarativa `config/firewall.yaml`.
+- Afegida l'ordre `configure-firewall` i el mode `--dry-run`.
+- Incorporat `nftables` al sistema base.
+- Política restrictiva `drop` per a entrada i reenviament.
+- Permesos loopback, trànsit establit, DHCP i ICMP essencial.
+- SSH limitat al port i a les xarxes de `config/ssh.yaml`.
+- Activació segura de `nftables.service`.
+- Log, manifest, documentació i proves ampliats.
+
+## Fase 2.7 — Servidor SSH mínim i endurit
+
+- Afegida la configuració declarativa `config/ssh.yaml`.
+- Afegida l'ordre `configure-ssh` amb mode `--dry-run`.
+- Incorporat `openssh-server` al sistema base.
+- Desactivats root, contrasenyes, autenticació interactiva, X11, túnels i reenviaments.
+- Limitat l'accés a `xaac-admin` mitjançant clau pública.
+- Afegida la llista CIDR de xarxes autoritzades per a la futura política nftables.
+- Integrats logs, manifest verificable, documentació i proves.
+
+## Fase 2.6 — Xarxa mínima del sistema
+
+- Nova configuració declarativa `config/network.yaml`.
+- Nova ordre `configure-network` amb mode segur `--dry-run`.
+- Configuració Ethernet determinista amb `systemd-networkd`.
+- DHCPv4, resolució DNS amb `systemd-resolved` i activació de serveis sense executar systemd.
+- Validacions de seguretat, escriptura atòmica, log i integració al manifest.
+- Suite ampliada fins a 168 proves automatitzades.
+
+## Fase 2.5 — Usuaris, grups i accés administratiu base
+
+- Nova configuració declarativa `config/users.yaml`.
+- Nova ordre `configure-users` amb mode segur `--dry-run`.
+- Creació determinista de grups i comptes locals dins del rootfs.
+- Separació entre `xaac-admin` i el compte de sistema `xaac-kiosk`.
+- Comptes inicials bloquejats i absència total de contrasenyes o secrets.
+- Validació estricta, log complet i integració al manifest.
+- Suite ampliada fins a 160 proves automatitzades.
+
+## Fase 2.4 — Identitat i configuració regional del sistema
+
+- Nova configuració declarativa `config/system.yaml`.
+- Nova ordre `configure-system` amb mode segur `--dry-run`.
+- Configuració atòmica de hostname, hosts, locales i zona horària.
+- Generació no interactiva de locales dins del rootfs.
+- Validacions de seguretat, log complet i integració al manifest.
+- Suite ampliada fins a 150 proves automatitzades.
+
+## Fase 2.3 — Instal·lació del sistema base
+
+- Nova ordre `install-packages` amb mode `--dry-run`.
+- Instal·lació determinista dels paquets resolts dins del rootfs mitjançant `chroot`.
+- Actualització prèvia dels índexs APT.
+- Execució no interactiva i sense `Recommends` ni `Suggests`.
+- Validació estricta del rootfs, noms de paquets, inclusions i exclusions.
+- Log complet i integració del resultat en el manifest de construcció.
+- Nova documentació i ampliació de la cobertura de proves.
+
+## Fase 2.2 — Configuració APT del rootfs
+
+- Repositoris APT en format Deb822 amb `Signed-By`.
+- Política minimalista sense paquets recomanats ni suggerits.
+- Validació del rootfs i dels keyrings declarats.
+- Escriptura atòmica i protecció davant enllaços simbòlics.
+- Nova ordre `configure-apt` amb mode `--dry-run`.
+- Integració completa amb logs i manifest verificable.
+
+# Changelog
+
+Tots els canvis rellevants del projecte es documentaran en aquest fitxer.
+
+El format segueix Keep a Changelog i el projecte utilitza versionat semàntic.
+
+## [0.1.0] - Fase 1.4
+
+### Afegit
+
+- Espais de treball aïllats per construcció dins de `.build/runs`.
+- Identificador únic i ordenable de construcció.
+- Bloqueig atòmic contra execucions concurrents.
+- Manifest temporal i punter `current` escrits de manera atòmica.
+- Neteja segura i protecció contra espais de treball actius.
+
+
+## [Unreleased]
+
+### Fase 7.2 — DHCP i IP estàtica
+
+- Afegida configuració transaccional DHCP/IPv4 estàtica per a fonts locals i remotes.
+- Incorporades validació de subxarxa i DNS, snapshots, estat per a l’Agent, fallback DHCP i rollback.
+- Afegida l’ordre `configure-ip-addressing` i proves automatitzades de la fase.
+
+### Added — Fase 2.6
+
+- Configuració declarativa del sistema base en `config/systemd.yaml`.
+- Ordre `configure-systemd` amb mode segur `--dry-run`.
+- Target predeterminat `multi-user.target` i consola `getty@tty1`.
+- Límits de journald adaptats a l’eMMC i regles de `systemd-tmpfiles`.
+- Activació, desactivació i emmascarament determinista d’unitats systemd.
+- Integració amb logs, manifest verificable, documentació i proves.
+
+### Added — Fase 2.4
+
+- Configuració declarativa de l'arrencada UEFI en `config/uefi.yaml`.
+- Ordre `configure-uefi` amb planificació `--dry-run`.
+- Instal·lació de GRUB `x86_64-efi` sense modificar NVRAM.
+- Fallback extraïble `EFI/BOOT/BOOTX64.EFI`, menú ocult i timeout mínim.
+- Validació de kernel/initramfs, logs, manifest i proves de seguretat.
+
+### Added
+
+- Fase 2.1: bootstrap Debian 13 `trixie` amb `debootstrap --variant=minbase`.
+- Pla immutable i auditable, mode `--dry-run`, comprovació de privilegis i logs complets.
+- Rootfs aïllat per construcció, neteja de resultats parcials i integració al manifest.
+
+### Added
+
+- Fase 1.8: manifest complet i determinista de construcció.
+- Hashes SHA-256 de configuracions, perfils, plantilles, hooks i eixides.
+- Traçabilitat de paquets, repositoris i commit Git.
+- Verificació posterior de la integritat del manifest.
+
+### Added
+
+- Fase 1.7: sistema de hooks ordenat per fases, amb permisos, timeout, entorn controlat i logs.
+
+### Added
+
+- Sistema segur de plantilles amb variables jeràrquiques.
+- Renderització atòmica i idempotent dins de cada espai de construcció.
+- Plantilles inicials per a `/etc/xaac/os-release` i `/etc/default/xaac-os`.
+- Proves de variables, rutes, estructura i integració amb la CLI.
+
+### Fase 1.5 — Resolució de paquets
+
+- Afegida resolució determinista dels grups de paquets.
+- Implementada l’herència recursiva dels perfils de maquinari.
+- Afegides deduplicació, exclusions i detecció de conflictes.
+- Incorporat el manifest efectiu de paquets a la CLI i a l’espai de treball.
+- Ampliada la suite fins a 73 proves automatitzades.
+
+## [0.1.0] - Fase 1.3
+
+### Afegit
+
+- CLI completa del constructor amb `validate`, `inspect`, `prepare`, `build` i `clean`.
+- Selecció explícita de l'arrel del projecte mitjançant `--root`.
+- Eixida JSON per a automatització i integració futura.
+- Neteja segura limitada a `.build` i protegida amb `--force`.
+- Gestió homogènia dels errors de configuració i codis d'eixida.
+- Proves de totes les ordres i documentació operativa.
+
+
+## [0.1.0] - Fase 1.2
+
+### Afegit
+
+- Models tipats i immutables de configuració del constructor.
+- Càrrega segura de YAML amb errors contextualitzats.
+- Configuracions inicials de build, paquets i repositoris.
+- Perfils `common` i `wyse3040`.
+- Validació creuada de versió, arquitectura, perfil i capacitat del disc.
+- Validació de la configuració des de `scripts/build.sh`.
+- Proves positives, negatives i de regressió per al model de configuració.
+
+## [0.1.0] - Fase 1.1
+
+### Afegit
+
+- Estructura inicial del repositori.
+- Configuració de projecte per a Python 3.13.
+- Paquet Python amb estructura `src/`.
+- CLI inicial `xaac-os`.
+- Comprovació explícita de la versió de Python.
+- Configuració de `pytest`, cobertura, Ruff i mypy.
+- Documentació de preparació de `.venv` i PyCharm.
+- Tests inicials de metadades, versió i compatibilitat de l'intèrpret.
+- Scripts operatius de desenvolupament.
+- `Makefile` amb objectius estàndard.
+
+## Fase 2.3 - Kernel i initramfs
+
+- Reordenació del Bloc 2 segons el calendari de desenvolupament 1.0.
+- Nova configuració declarativa `config/kernel.yaml`.
+- Nova ordre `configure-kernel` amb mode `--dry-run`.
+- Detecció de versions instal·lades en `/lib/modules`.
+- Configuració de mòduls inicials i compressió de l'initramfs.
+- Creació o actualització determinista amb `update-initramfs` dins del rootfs.
+- Validació de coherència entre mòduls, `vmlinuz` i `initrd.img`.
+- Integració completa al manifest i log de construcció.
+- Documents previs mal numerats preservats com a capacitats anticipades `EARLY_*`.
+- Suite ampliada a 203 proves.
+
+### Corregit — comprovació de dependències de la Fase 2.8
+
+- Afegit `scripts/install-build-dependencies.sh` per instal·lar en Debian i derivats totes les eines host necessàries.
+- `build-image` valida conjuntament `debootstrap`, eines loop/GPT, sistemes de fitxers, `rsync` i GRUB abans d'iniciar la construcció real.
+- Els errors indiquen totes les ordres absents i una ordre APT completa, evitant fallades successives una a una.
+- El mode `--dry-run` es manté sense dependències host ni accés a xarxa.
+
+## [0.1.0] - Fase 3.3
+
+### Afegit
+
+- Perfil declaratiu `config/graphics.yaml` per al Dell Wyse 3040.
+- Detecció de GPU PCI Intel, controlador `i915`, connectors DRM i modes de vídeo.
+- Validació de doble DisplayPort, resolució mínima i arrencada sense monitor.
+- Detecció de paràmetres incompatibles com `nomodeset`.
+- Ordres `inspect-graphics` i `configure-graphics`.
+- Configuració segura de `modules-load.d` i `modprobe.d`.
+- Informes JSON atòmics i 17 proves noves.
+- Suite ampliada fins a 350 proves.
+
+## [0.1.0] - Fase 3.4
+
+### Afegit
+
+- Perfil declaratiu `config/ethernet.yaml` per al Dell Wyse 3040.
+- Detecció de la interfície Ethernet, MAC, controlador, portadora, velocitat i dúplex.
+- Selecció determinista de la millor interfície disponible.
+- Diagnòstic de controladors alternatius, cable desconnectat i velocitat desconeguda.
+- Suport preparat per Wake-on-LAN quan el maquinari l'exposa.
+- Ordres `inspect-ethernet` i `configure-ethernet`.
+- Configuració `systemd-networkd` amb DHCPv4 o IPv4 estàtica validada.
+- Nomenclatura persistent, informes JSON atòmics i protecció contra enllaços simbòlics.
+- 29 proves noves; suite ampliada fins a 379 proves.
+
+
+## [0.1.0] - Fase 3.5
+
+### Afegit
+
+- Perfil declaratiu `config/audio.yaml` per al Dell Wyse 3040.
+- Detecció de targetes ALSA, mòduls del kernel i disponibilitat de PipeWire.
+- Identificació d'eixides HDMI/DisplayPort i analògiques, així com entrades de micròfon.
+- Ordres `inspect-audio` i `configure-audio`.
+- Configuració segura de `modules-load.d`, `modprobe.d` i perfil XAAC d'àudio.
+- Paquets mínims ALSA, PipeWire i WirePlumber incorporats a la resolució gràfica.
+- Informes JSON atòmics i protecció contra enllaços simbòlics.
+- 18 proves noves; suite ampliada fins a 397 proves.
+
+
+## [0.1.0] - Fase 3.6
+
+### Afegit
+
+- Perfil declaratiu `config/usb.yaml` per a USB i perifèrics del Dell Wyse 3040.
+- Detecció de controladors USB 2.0/3.x i dispositius per VID/PID des de sysfs.
+- Classificació de HID, emmagatzematge, smartcard, impressores i càmeres.
+- Ordres `inspect-usb` i `configure-usb`.
+- Política d'autorització amb llistes permeses i bloquejades, regles udev i informe JSON atòmic.
+- Preparació declarativa de perifèrics aptes per a redirecció FreeRDP.
+- Paquets mínims `usbutils`, `pcscd`, `libccid` i `cups-client`.
+- Proves positives, negatives, de seguretat, idempotència i integració CLI.
+
+## [0.1.0] - Fase 3.7
+
+### Afegit
+
+- Perfil `config/power.yaml` per a energia, temperatura i watchdog.
+- Detecció de governors CPU, sensors tèrmics, watchdog i UEFI.
+- Ordres `inspect-power` i `configure-power`.
+- Desactivació declarativa de suspensió i hibernació en mode quiosc.
+- Configuració del watchdog de systemd i política tèrmica XAAC.
+- Documentació de la validació física de recuperació després d'una pèrdua de corrent.
+
+## [0.1.0] - Fase 3.8
+
+### Afegit
+
+- Perfil `config/resources.yaml` per a l'optimització de RAM i disc del Wyse 3040.
+- Detecció de memòria, swap, zram, espai lliure, opcions de muntatge i persistència de journald.
+- Ordres `inspect-resources` i `configure-resources`.
+- zram amb `zstd`, ajustos `sysctl`, journald volàtil limitat i `/tmp` en tmpfs.
+- Política `noatime`, neteja automàtica i desactivació de serveis no essencials.
+- Informes JSON atòmics, protecció contra enllaços simbòlics i conflictes systemd.
+- Tancament funcional del Bloc 3 — Perfil Dell Wyse 3040.
+
+## [0.1.0] - Fase 4.1 — Correcció tipogràfica
+
+### Modificat
+
+- Roboto passa a ser la família tipogràfica principal i predeterminada.
+- Configuració global de Fontconfig i GTK 4 amb Noto i DejaVu com a fallback.
+## Fase 4.5 — Llançament de XAAC Thin Client
+
+- Afegit un llançador segur per a XAAC Thin Client amb Python 3.13.
+- Afegides comprovacions de dependències, configuració i directori de treball.
+- Evitada l'execució duplicada mitjançant `flock`.
+- Integrat el llançador amb l'autostart de labwc.
+- Afegides proves i documentació de la fase 4.5.
+
+
+## [0.1.0] - Fase 4.6
+
+### Afegit
+
+- Supervisor de sessió per a XAAC Thin Client amb reinici automàtic controlat.
+- Límit de reinicis, finestra temporal i backoff exponencial.
+- Estat runtime atòmic i pantalla GTK 4 de degradació segura.
+- Notificació best effort preparada per a XAAC Thin Client Agent.
+- Integració del supervisor amb l'autostart de labwc.
+
+## [0.1.0] - Fase 4.8
+
+### Afegit
+
+- Política de validació completa de la sessió gràfica XAAC.
+- Comprovacions d'arrencada, Wayland, labwc i execució del client.
+- Límits de temps d'arrencada, memòria i CPU en repòs.
+- Validació d'estabilitat de systemd i absència d'escriptoris o terminals convencionals.
+- Ordre `validate-graphical-session`, servei systemd i informe runtime.
+- Tancament funcional del Bloc 4 — Sessió gràfica.
+
+
+## [0.1.0] - Fase 5.1
+
+### Afegit
+
+- Model d’amenaces formal per al mode quiosc.
+- Política declarativa amb denegació per defecte per a accions, dreceres, processos, dispositius i sessions.
+- Generació separada de la política efectiva i la documentació del model d’amenaces.
+- Ordre `configure-kiosk-restrictions` amb mode `--dry-run`.
+- Validació estricta, escriptura atòmica, idempotència i protecció contra enllaços simbòlics.
+
+## [0.1.0] - Fase 5.2
+
+### Afegit
+
+- Política declarativa `shortcut-lockdown.yaml` amb denegació per defecte.
+- Bloqueig del canvi d’aplicació, tancament de finestres, menús, execució ràpida, captures i dreceres de sistema.
+- Configuracions efectives per a Wayland/labwc i X11/Openbox sense dreceres predeterminades.
+- Ordre `configure-shortcut-lockdown` amb mode `--dry-run`.
+- Política JSON auditable, escriptura atòmica, idempotència i protecció contra enllaços simbòlics.
+
+## [0.1.0] - Fase 5.3
+
+### Afegit
+
+- Política declarativa `terminal-lockdown.yaml` amb denegació per defecte.
+- Exclusió explícita dels emuladors de terminal comuns de la selecció de paquets.
+- Bloqueig d’intèrprets, ordres arbitràries i fitxers `.desktop` creats per l’usuari.
+- Restricció dels esquemes URI i desactivació dels obridors genèrics.
+- `PATH` mínim, absolut i limitat als executables interns de XAAC.
+- Ordre `configure-terminal-lockdown` amb mode `--dry-run`.
+- Política JSON auditable, escriptura atòmica, idempotència i protecció contra enllaços simbòlics.
+
+## [0.1.0] - Fase 5.4
+
+### Afegit
+
+- Política declarativa `tty-control.yaml` amb denegació per defecte.
+- Deshabilitació de `getty` i `autovt` als TTY 1–11.
+- Reserva de `tty12` com a únic TTY administratiu local.
+- Accés restringit a `xaac-admin` amb autenticació obligatòria.
+- Configuració de `systemd-logind` sense terminals virtuals automàtics.
+- Bloqueig del canvi de TTY per a la sessió de quiosc i reserva coherent de `Ctrl+Alt+F12`.
+- Ordre `configure-tty-control` amb mode `--dry-run`.
+- Política JSON auditable, escriptura atòmica, idempotència i protecció contra enllaços simbòlics.
+
+## [0.1.0] - Fase 5.5
+
+### Afegit
+
+- Política declarativa `kiosk-filesystem.yaml` amb denegació per defecte.
+- `home` efímer sobre `tmpfs`, amb límits de mida i inodes i opcions `nosuid,nodev,noexec`.
+- Directoris permesos, descàrregues restringides i `umask 0077`.
+- Neteja idempotent de l'estat del quiosc a l'inici i al final de la sessió.
+- Configuració `tmpfiles.d`, servei systemd, entorn i política JSON auditable.
+- Ordre `configure-kiosk-filesystem` amb mode `--dry-run`.
+
+## [0.1.0] - Fase 5.6
+
+### Afegit
+
+- Política declarativa `local-device-control.yaml` amb denegació per defecte.
+- Control USB per classes i llistes VID/PID.
+- Bloqueig de l'emmagatzematge massiu, l'automuntatge i les accions UDisks2 del quiosc.
+- Política explícita per a càmeres, smartcards i impressores.
+- Ordre `configure-local-device-control` amb mode `--dry-run`.
+- Regles udev, política polkit i manifest JSON auditable.
+
+## [0.1.0] - Fase 5.7
+
+### Afegit
+
+- Política declarativa `power-action-control.yaml` amb denegació per defecte.
+- Apagada i reinici canalitzats exclusivament a través de XAAC Agent i amb confirmació.
+- Bloqueig de suspensió, hibernació i accions directes de `systemd-logind` per a `xaac-kiosk`.
+- Inhibició de tecles físiques d’energia i protecció contra peticions accidentals o duplicades.
+- Política de recuperació que prioritza el reinici de la sessió davant una fallada del client.
+- Ordre `configure-power-action-control` amb mode `--dry-run`.
+- Configuració logind, política Polkit, helper restringit i manifest JSON auditable.
+
+## [0.1.0] - Fase 6.1
+
+### Afegit
+
+- Perfil declaratiu per al paquet Debian de XAAC Thin Client.
+- Validació amb `dpkg-deb` de nom, versió, arquitectura i dependències.
+- Verificació SHA-256, política anti-downgrade i compatibilitat de revisions patch.
+- Instal·lació atòmica dins del rootfs, configuració auditable i preferència APT estable.
+- Ordre `install-xaac-thin-client` amb mode `--dry-run`.
+- Proves positives, negatives, de seguretat i d’instal·lació.
+
+## [0.1.0] - Fase 6.2
+
+### Afegit
+
+- Perfil declaratiu del paquet Debian XAAC Thin Client Agent.
+- Validació de nom, versió, arquitectura, dependències i SHA-256.
+- Usuari i grup de sistema `xaac-agent` amb shell no interactiva.
+- Directoris persistents d'estat i logs amb permisos restrictius.
+- Configuració inicial gestionada i manifest auditable.
+- Servei systemd habilitat amb reinici controlat i hardening inicial.
+- Ordre `install-xaac-agent` amb mode `--dry-run`.
+
+## [0.1.0] - Fase 6.3
+
+### Afegit
+
+- Perfil declaratiu de la identitat persistent del dispositiu.
+- UUID v4, número de sèrie DMI, MAC unicast i hostname estable.
+- Certificat X.509 inicial RSA-3072 i clau privada protegida.
+- Persistència idempotent per a XAAC Agent i preparació de l'enrolament XMS.
+- Inicialització coherent de `/etc/hostname` i `/etc/machine-id`.
+- Ordre `configure-device-identity` amb mode `--dry-run`.
+- Validacions de rutes, permisos, symlinks i material criptogràfic.
+
+## [0.1.0] - Fase 6.5
+
+### Afegit
+
+- Canal IPC local Client-Agent basat en socket Unix privat.
+- Protocol JSON versionat `xaac-local-ipc` v1 amb esquema estricte i límit de 64 KiB.
+- Autenticació local obligatòria amb credencials del peer (`SO_PEERCRED`).
+- Llista tancada de tipus de missatge i rebuig de missatges desconeguts.
+- Configuració, manifest auditable i regla `systemd-tmpfiles` per a `/run/xaac`.
+- Ordre `configure-ipc` amb mode `--dry-run`.
+
+## [0.1.0] - Fase 6.6
+
+### Afegit
+
+- Perfil declaratiu per a l'aplicació transaccional de polítiques XAAC.
+- Format `xaac-device-policy` v1 amb esquema estricte, límit de mida i digest SHA-256 obligatori.
+- Recepció i validació amb llista tancada de seccions autoritzades.
+- Àrea de staging persistent i escriptures JSON atòmiques.
+- Aplicació amb còpia de la política anterior, confirmació explícita i estat auditable.
+- Rollback automàtic i restauració de l'última revisió vàlida.
+- Ordre `configure-policy-application` amb mode `--dry-run`.
+
+## Fase 6.7 — Inventari
+
+- Afegit el perfil declaratiu `config/device-inventory.yaml`.
+- Incorporada la recollida de maquinari, sistema, paquets i perifèrics USB.
+- Afegida la detecció de versions dels components XAAC i de l'estat local.
+- Afegits informe i estat atòmics amb digest SHA-256 i manifest versionat.
+- Afegida l'ordre `collect-device-inventory` i proves automatitzades.
+
+## Fase 6.8 — Enrolament XMS
+
+- Afegit el perfil declaratiu `config/xms-enrollment.yaml`.
+- Afegit el gestor local d’enrolament XMS amb token, aprovació i certificat.
+- Afegits els fluxos de renovació, desenrolament i error segur.
+- Afegida l’ordre `configure-xms-enrollment` i el mode `--dry-run`.
+- Afegides proves positives, negatives, de permisos i de transicions d’estat.
+- Tancat el Bloc 6 — Integració XAAC.
+
+## [0.1.0] - Fase 7.3
+
+### Afegit
+
+- Configuració declarativa de DNS amb `systemd-resolved`.
+- Dominis de cerca, DNSSEC i DNS-over-TLS oportunista.
+- Configuració NTP amb `systemd-timesyncd` i servidors de fallback.
+- Proxy HTTP/HTTPS global i integració amb APT.
+- Excepcions de proxy, diagnòstic versionat i estat per a XAAC Agent.
+- Aplicació local o remota, snapshot i rollback.
+- Ordre `configure-network-services` amb mode `--dry-run`.
+
+## [0.1.0] - Fase 7.5
+
+### Afegit
+
+- Autenticació IEEE 802.1X cablejada amb `wpa_supplicant`.
+- EAP-TLS i PEAP/MSCHAPv2 amb validació estricta.
+- Gestió protegida de certificats, claus i credencials.
+- Estat, diagnòstic i renovació integrats amb XAAC Agent.
+- Aplicació local o remota, snapshot i rollback transaccional.
+- Ordre `configure-ieee8021x` amb mode `--dry-run`.
+## [0.1.0] - Fase 7.7
+
+### Afegit
+
+- OpenSSH restringit a l’usuari administratiu i a xarxes corporatives autoritzades.
+- Autenticació exclusiva amb claus públiques aprovades i algoritmes moderns.
+- Servei desactivat de manera predeterminada i activació temporal amb caducitat automàtica.
+- Helper administratiu `xaac-ssh-access` amb duració limitada per política.
+- Estat versionat per a XAAC Agent, registres en journald i regles d’auditoria.
+- Escriptures atòmiques, permisos restrictius i protecció contra enllaços simbòlics.
+- Ampliació de `configure-ssh` i proves automatitzades de seguretat i idempotència.
+
+
+## [0.1.0] - Fase 7.8
+
+### Afegit
+
+
+
+## [0.1.0] - Fase 8.4
+
+### Afegit
+
+
+
+## [0.1.0] - Fase 8.5
+
+### Afegit
+
+
+
+## [0.1.0] - Fase 8.6
+
+### Afegit
+
+
+
+## [0.1.0] - Fase 8.7
+
+### Afegit
+
+
+
+## [0.1.0] - Fase 9.4
+
+### Afegit
+
+- Perfils AppArmor declaratius per a XAAC Agent, XAAC Thin Client i XAAC Thin Client VPN.
+- Modes `enforce` i `complain` gestionats mitjançant `force-complain`.
+- Regles de mínim privilegi per a fitxers, xarxa, capabilities i senyals.
+- Auditoria de denegacions i estat versionat per a XAAC Agent.
+- Paquets `apparmor` i `apparmor-utils` incorporats a la imatge base.
+- Ordre `configure-apparmor` amb mode `--dry-run`.
+- Validació de rutes, tokens, duplicats, idempotència i enllaços simbòlics.
+
+## Fase 9.5 — Hardening del kernel
+
+- Política declarativa `config/kernel-hardening.yaml`.
+- ASLR complet i restricció de `ptrace`, informació del kernel, BPF i comptadors de rendiment.
+- Desactivació de core dumps i Magic SysRq.
+- Enduriment IPv4/IPv6 contra redirects, source routing i forwarding no autoritzat.
+- Política de bloqueig de sistemes de fitxers i protocols de xarxa no necessaris.
+- Ordre `configure-kernel-hardening` amb mode `--dry-run`.
+- Estat auditable per a XAAC Agent, escriptura atòmica i protecció contra symlinks.
+
+## [0.1.0] - Fase 9.6
+
+### Afegit
+
+- Política declarativa d'integritat de fitxers amb hashes SHA-256.
+- Baseline protegida per a fitxers crítics de XAAC, systemd, AppArmor i kernel.
+- Verificació periòdica mitjançant servei i temporitzador systemd.
+- Detecció de modificacions, eliminacions i substitucions no autoritzades.
+- Estat d'alerta versionat per a XAAC Agent i registre preparat per a auditoria.
+- Reparació opcional des d'una còpia baseline local controlada.
+- Excepcions declaratives per a fitxers temporals, bloquejos i logs.
+- Ordres `configure-file-integrity` i `verify-file-integrity --repair`.
+
+## [0.1.0] - Fase 9.7
+
+### Afegit
+
+- Política declarativa de confiança per al repositori APT XAAC.
+- Ús obligatori de `Signed-By`, HTTPS i verificació de vigència de metadades.
+- Model de clau activa, claus anteriors confiables i empremtes revocades.
+- Bloqueig de repositoris insegurs, degradacions i paquets no autenticats.
+- Verificador offline amb `gpgv`, manifest signat i hashes SHA-256.
+- Estat auditable per a XAAC Agent i ordre `configure-package-signing`.
+
+## Fase 9.8 — Secure Boot i TPM
+
+- Afegida política declarativa de viabilitat per al Dell Wyse 3040.
+- Decidida una cadena d’arrencada Debian signada amb activació condicional de Secure Boot.
+- TPM 2.0 queda com a capacitat opcional i mai com a dependència d’arrencada o recuperació.
+- Afegits probe local, estat auditable per a XAAC Agent i ADR-0009.
+- Afegida l’ordre `configure-secure-boot-tpm` i proves positives, negatives, d’idempotència i permisos.
+- Tancat el Bloc 9 — Seguretat.
+
+## [0.1.0] - Fase 10.1
+
+### Afegit
+
+- Model declaratiu d’actualitzacions amb components, canals i finestres de manteniment.
+- Política SemVer amb prereleases controlades, versió mínima i bloqueig de downgrades.
+- Validació de dependències i conjunts atòmics de components.
+- Màquina d’estats completa per a comprovació, descàrrega, staging, instal·lació, validació i rollback.
+- Estat inicial auditable per a XAAC Agent i política efectiva en format JSON.
+- Ordre `configure-update-model` amb mode `--dry-run`.
+- Proves positives, negatives, d’idempotència, permisos, CLI i protecció contra symlinks.
+- Iniciat el Bloc 10 — Actualitzacions.
+
+## [0.1.0] - Fase 10.2
+
+### Afegit
+
+- Política declarativa de repositori APT XAAC amb canals de laboratori, pilot i producció.
+- Estructura determinista `pool/` i `dists/` per component, suite i arquitectura.
+- Generació obligatòria de `Packages`, `Release`, `InRelease` i `Release.gpg`.
+- Signatura obligatòria, SHA-256/SHA-512 i vigència limitada de metadades.
+- Configuració de publicació, retenció de versions i snapshots.
+- Model de mirall local amb verificació obligatòria de signatures.
+- Ordre `configure-xaac-apt-repository` amb mode `--dry-run`.
+- Estat auditable per a XAAC Agent, escriptures atòmiques i protecció contra symlinks.
+
+## [0.1.0] - Fase 10.3
+
+### Afegit
+
+- Servei declaratiu de comprovació, descàrrega i staging d’actualitzacions.
+- Temporitzador systemd persistent amb interval i jitter configurables.
+- Control preventiu d’espai lliure, mida màxima de descàrrega, timeout i reintents.
+- Bloqueig exclusiu d’execució, descàrregues parcials i escriptura sincronitzada.
+- Estat persistent i auditable amb màquina d’estats segura.
+- Unitat systemd endurida i regles tmpfiles per als directoris de treball.
+- Ordre `configure-update-service` amb mode `--dry-run`.
+- Proves positives, negatives, d’idempotència, permisos, CLI i symlinks.
+
+## [0.1.0] - Fase 10.5
+
+### Afegit
+
+- Política declarativa d’instal·lació transaccional d’actualitzacions verificades.
+- Punt de recuperació obligatori amb estat de paquets i configuració.
+- Instal·lació no interactiva amb bloqueig, conjunts atòmics i staging verificat.
+- Reinici restringit als serveis autoritzats que hagen canviat.
+- Validació posterior fail-closed de paquets, serveis, sessió del client i salut de l’Agent.
+- Confirmació explícita, conservació d’evidències i rollback automàtic davant fallades.
+- Servei systemd endurit, estat auditable i ordre `configure-transactional-update`.
+
+## [0.1.0] - Fase 10.6
+
+### Afegit
+
+- Política declarativa de rollback per a transaccions d'actualització fallides.
+- Restauració obligatòria de versions anteriors, configuració i estat transaccional.
+- Reinici restringit als serveis afectats i autoritzats.
+- Validació posterior fail-closed de paquets, configuració, serveis, client i Agent.
+- Registre persistent i bloqueig de versions defectuoses amb motiu i transacció.
+- Conservació d'evidències, servei systemd endurit i ordre `configure-package-rollback`.
+
+## [0.1.0] - Fase 11.1
+
+### Afegit
+
+- Model declaratiu d'estats de recuperació per a fallades d'aplicació, sessió, actualització i integritat.
+- Comptadors amb finestres temporals i llindars estrictament creixents.
+- Estats `healthy`, `degraded`, `recovering`, `safe` i `manual_intervention` amb classificació determinista.
+- Accions i notificacions obligatòries a XAAC Agent i XMS segons la severitat.
+- Política *fail-closed*, conservació d'evidències i prohibició del `factory reset` automàtic.
+- Estat persistent amb permisos restrictius, escriptures atòmiques i protecció contra symlinks.
+- Ordre `configure-recovery-model`, documentació i proves positives, negatives i d'idempotència.
+
+- Correcció de regressió CLI: restaurada l’ordre `configure-update-sources` de la fase 10.8.
+
+## [0.1.0] - Fase 11.2
+
+### Afegit
+
+- Política declarativa de recuperació escalonada de XAAC Thin Client i la sessió de quiosc.
+- Reinici controlat del client i escalat al reinici de sessió amb límits i temps d'espera.
+- Neteja segura d'estat efímer amb preservació d'identitat, enrolament i política activa.
+- Restauració atòmica de la política anterior amb validació obligatòria de signatura i esquema.
+- Recopilació persistent de diagnòstics del client, sessió, Agent i política.
+- Notificacions a XAAC Agent i XMS, conservació d'evidències i comportament *fail-closed*.
+- Servei systemd endurit, ordre `configure-application-recovery` i proves de regressió.
+
+## Fase 11.4 — Mode de recuperació local
+
+- Afegida una entrada GRUB dedicada per iniciar `xaac-recovery.target`.
+- Incorporat un entorn mínim autenticat amb menú restringit i registre persistent.
+- La xarxa queda desactivada per defecte i només s'activa explícitament.
+- Afegides proves positives, negatives, d'idempotència, permisos i seguretat.
+
+## Fase 11.5 — Partició de recuperació
+
+- Afegida la política declarativa de la partició `XAAC_RECOVERY` adaptada a l'eMMC del Wyse 3040.
+- Definides una imatge SquashFS immutable i signada, kernel, initramfs i eines mínimes de recuperació.
+- Incorporats muntatge només de lectura, verificació en arrencada, servei systemd endurit i entrada GRUB dedicada.
+- Afegida l'ordre `configure-recovery-partition`, documentació i proves positives, negatives, d'idempotència, permisos i symlinks.
+
+## Fase 11.6 — Factory reset
+
+- Afegida una política declarativa de restauració de fàbrica segura i auditable.
+- Incorporada la conservació selectiva d'identitat, enrolament, auditoria i xarxa mínima.
+- Afegides confirmació reforçada, verificació de la imatge signada i restauració transaccional.
+- Incorporat el servei de primer inici posterior al reset i proves de regressió.
+
+## Fase 11.7 — Recuperació USB
+
+- Afegida la detecció estricta de mitjans extraïbles amb etiqueta `XAAC_RECOVERY_USB`.
+- Incorporades verificació del manifest, signatura, SHA-256, producte, perfil de maquinari i versió.
+- Afegida reinstal·lació transaccional amb verificació anterior i posterior, conservant identitat i enrolament.
+- Incorporats rebuig del mitjà incorrecte, registre persistent, notificació a l'Agent i comportament *fail-closed*.
+- Afegits regla udev, servei systemd endurit, ordre `configure-usb-recovery`, documentació i proves.
+
+## Fase 11.8 — Recuperació PXE i remota
+
+- Afegida una política declarativa d’arrencada de recuperació mitjançant Ethernet i iPXE.
+- Exigides descàrregues HTTPS amb validació TLS, manifest signat i hashes SHA-256.
+- Incorporada autorització XMS mitjançant ordres `recovery.pxe` autenticades, amb nonce, caducitat i ús únic.
+- Afegida confirmació local amb presència física, frase exacta, temps limitat i alimentació elèctrica.
+- Incorporats estat persistent, progrés periòdic, notificacions a l’Agent i XMS, límit de fallades i comportament *fail-closed*.
+- Afegits script iPXE, servei systemd endurit, llançador restringit, unitat Ethernet, ordre `configure-pxe-recovery`, documentació i proves.
+- Tancat el bloc 11: recuperació local, USB i per xarxa.
+
+## [0.1.0] - Fase 12.1
+
+### Afegit
+
+- Constructor declaratiu d’ISO híbrida per a `amd64` i Dell Wyse 3040.
+- Arrencada UEFI i BIOS de compatibilitat mitjançant GRUB 2.
+- Entrada d’instal·lació per defecte i mode live de diagnòstic separat, immutable i sense persistència.
+- Preparació determinista de l’arbre ISO, manifest i script `xorriso` fail-closed.
+- Generació obligatòria de hash SHA-256 i signatura OpenPGP separada.
+- Ordre `build-iso` amb mode `--dry-run`.
+- Proves positives, negatives, d’idempotència, CLI, permisos, rutes i protecció contra symlinks.
+- Iniciat el Bloc 12 — Imatge de producció.
+
+## [0.1.0] - Fase 12.4
+
+### Afegit
+
+- Constructor declaratiu de l’instal·lador de producció per al Dell Wyse 3040.
+- Selecció explícita del disc i confirmació destructiva exacta `INSTALL XAAC`.
+- Rebuig de discs muntats, del sistema en execució, dispositius no admesos i discs insuficients.
+- Comprovació d’alimentació AC abans del particionat.
+- Particionat GPT amb `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY`.
+- Verificació SHA-256 del rootfs, extracció i instal·lació de GRUB UEFI amb fallback extraïble.
+- Resum final JSON, esquema de validació i gestió d’errors *fail-closed*.
+- Ordre `build-installer`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.5
+
+### Afegit
+
+- Constructor declaratiu per sanejar i publicar una imatge mestra de clonació massiva.
+- Eliminació fora de línia de `machine-id`, claus SSH, identitat XAAC, enrolament XMS, logs i llavor aleatòria.
+- Marca de primer inici per regenerar identificadors únics, UUID, claus SSH i identitat XAAC en cada clon.
+- Escriptura sobre múltiples dispositius explícits amb confirmació exacta `CLONE XAAC`.
+- Rebuig de destinacions muntades o insegures i verificació byte a byte posterior a l'escriptura.
+- Validació GPT i de les quatre etiquetes de partició de producció.
+- Ordre `build-cloning`, documentació i 12 proves positives, negatives, d'idempotència i seguretat.
+
+## [0.1.0] - Fase 12.6
+
+### Afegit
+
+- Suite declarativa de proves automatitzades sobre la imatge de producció.
+- Validacions d’arrencada, serveis, particions, usuaris, paquets, seguretat, actualització i recuperació.
+- Executor que recull totes les comprovacions i retorna error si qualsevol validació falla.
+- Informe JSON validable mitjançant esquema i manifest determinista de la suite.
+- Ordre `build-image-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+
+## [0.1.0] - Fase 12.7
+
+### Afegit
+
+- Suite declarativa de proves finals sobre maquinari Dell Wyse 3040 real.
+- Validacions d’instal·lació, ús continu, RDP, perifèrics, actualització, factory reset i recuperació.
+- Recollida d’inventari, PCI, USB i journal com a evidència de laboratori.
+- Llista manual per a operacions destructives i informe JSON validable.
+- Ordre `build-hardware-tests`, documentació i 12 proves positives, negatives, d’idempotència i seguretat.
+## Documentació reorganitzada després de 1.0.0
+
+- Reescrit el `README.md` com a portada de la versió estable.
+- Creat un índex general i una jerarquia per a primers passos, administració, arquitectura, desenvolupament, referència, release i històric.
+- Agrupats els documents de fase per blocs sense modificar el codi ni el comportament del sistema.
+- Afegides referències de CLI, configuració, release i criteris editorials.
+
+
+## [Unreleased] — Constructor ISO independent per fases
+
+- S'ha substituït el flux de producció ISO per un motor independent en `production_builder.py`.
+- Les fases `rootfs`, `configure`, `boot`, `squashfs`, `iso` i `verify` són executables separadament.
+- El nou motor no reutilitza `build-image`, `UefiBootConfigurator`, `SystemdConfigurator` ni cap ruta del sistema amfitrió.
+- La ISO es crea amb `grub-mkrescue`; no s'executa `grub-install` dins del chroot.
+- Totes les escriptures de configuració queden confinades a `.build/production/rootfs`.
+- S'han afegit muntatges de chroot amb neteja garantida i logs independents per fase.
+
+## Correcció del constructor ISO de producció
+
+- El directori de logs es recrea abans de cada ordre externa.
+- `--clean` ja no elimina el directori de logs de manera que la fase `rootfs` falle abans d'executar `debootstrap`.
+- Afegida una prova de regressió específica per a la seqüència `--clean` seguida de construcció.
+
+### Correcció de l'usuari Live
+
+- El constructor ISO passa explícitament `username=xaac-kiosk` i `user-fullname=XAAC_Kiosk` al kernel.
+- S'evita que `live-config` cree l'usuari predeterminat `user` i substituïsca l'autologin configurat.
+- La identitat Live queda declarada en `config/iso-builder.yaml` i s'aplica tant al constructor de producció com al constructor ISO heretat.
+
+## Unreleased — localització de la ISO
+
+- La llengua predeterminada de la sessió Live i del sistema és `ca_ES.UTF-8`.
+- La disposició de teclat predeterminada és l'espanyola (`es`, model `pc105`, sense variant).
+- S'instal·len `keyboard-configuration`, `console-setup` i `console-setup-linux`.
+- La fase `configure` regenera la configuració del teclat de forma no interactiva.
+- GRUB transmet a Debian Live `locales=ca_ES.UTF-8`, `keyboard-layouts=es` i `timezone=Europe/Madrid`.
+
+## Unreleased — instal·lador incremental, pas 1
+
+- Partint del ZIP 30 validat, s’ha afegit exclusivament una prova no destructiva de l’instal·lador.
+- L’entrada GRUB d’instal·lació arranca en `multi-user.target`.
+- `xaac-installer-welcome.service` pren `tty1` només amb `xaac.mode=installer`.
+- La pantalla confirma l’arrencada i reinicia en prémer Retorn.
+- No es detecta, particiona, formata ni modifica cap disc.
+- No s’ha alterat la separació validada entre `debootstrap --variant=minbase` i la instal·lació posterior de paquets amb APT.
+
+
+## Unreleased — instal·lador incremental, pas 2
+
+- La pantalla d’instal·lació detecta els discs de bloc escrivibles amb `lsblk`.
+- Mostra dispositiu, capacitat i model, i permet seleccionar-ne un amb validació.
+- Exclou dispositius que no són discs i discs marcats com a només lectura.
+- La selecció continua sent completament no destructiva: no particiona, no formata i no escriu cap dada.
+- Manté el control exclusiu de `tty1` i reinicia en prémer Retorn després de la prova.
+
+## Unreleased — instal·lador incremental, pas 3
+
+- Afegida la revalidació del dispositiu després de seleccionar-lo per detectar canvis entre la detecció i la confirmació.
+- Rebutjats discs menors de 7.000.000.000 bytes i qualsevol disc o partició amb muntatges actius.
+- El resum mostra dispositiu, capacitat, model i advertència per a dispositius extraïbles.
+- La selecció exigeix escriure exactament `INSTALL XAAC`; qualsevol altra entrada cancel·la l’operació.
+- El pas continua sent completament no destructiu: no particiona, no formata i no escriu al disc.
+
+## Unreleased — instal·lador incremental, pas 4
+
+- Agrupats el preflight final, el particionat GPT, el format, el muntatge i el desplegament del rootfs en una sola fase funcional.
+- Rebuig explícit del dispositiu que conté el sistema Live actiu.
+- Validació de l’alimentació externa quan el maquinari publica l’estat en `/sys/class/power_supply`.
+- Creació de `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY` amb mides deterministes.
+- Desplegament de `filesystem.squashfs` mitjançant `unsquashfs` i generació d’`fstab` per UUID.
+- Neteja segura dels muntatges de destinació mitjançant `trap`, `sync` i desmuntatge en ordre invers.
+- GRUB i les tasques de postinstal·lació continuen ajornades a la fase següent per mantindre una frontera de validació clara.
+
+## Unreleased — instal·lador incremental, pas 4
+
+- Agrupats el preflight final, el particionat GPT, el format, el muntatge i el desplegament del rootfs en una sola fase funcional.
+- Rebuig explícit del dispositiu que conté el sistema Live actiu.
+- Validació de l’alimentació externa quan el maquinari publica l’estat en `/sys/class/power_supply`.
+- Creació de `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY` amb mides deterministes.
+- Desplegament de `filesystem.squashfs` mitjançant `unsquashfs` i generació d’`fstab` per UUID.
+- Neteja segura dels muntatges de destinació mitjançant `trap`, `sync` i desmuntatge en ordre invers.
+- GRUB i les tasques de postinstal·lació continuen ajornades a la fase següent per mantindre una frontera de validació clara.
+
+
+## Unreleased — instal·lador incremental, pas 5
+
+- Instal·lació de GRUB UEFI x86_64 amb fallback extraïble i sense modificar NVRAM.
+- Generació i verificació de `grub.cfg` i `EFI/BOOT/BOOTX64.EFI`.
+- Muntatges de chroot confinats amb propagació `rslave` i neteja ordenada.
+- Sanejament de `machine-id`, claus SSH i `random-seed`.
+- Marcatge del primer arrencament, desactivació de l’instal·lador i resum persistent en la partició de recuperació.
+
+## Bloc 5 — Integració definitiva de XAAC Thin Client
+
+- Integrada la pila gràfica de quiosc dins del constructor real de la ISO de producció.
+- Habilitada l'arrencada automàtica de `xaac-kiosk` amb `greetd` i `graphical.target`.
+- Establit Wayland/labwc com a camí principal i X11/Openbox com a fallback controlat.
+- Afegida una pantalla d'espera GTK 4 a pantalla completa durant l'inici del client.
+- Consolidat el supervisor com a únic punt d'autostart, amb reinici limitat i backoff.
+- Evitada l'activació de `greetd` durant el mode instal·lador.
+
+### Correcció de visibilitat del constructor ISO
+
+- El constructor mostra l'inici i la finalització de cada ordre llarga.
+- Cada 30 segons informa que la subfase continua activa i mostra el temps transcorregut.
+- Els logs per fase continuen disponibles sota `.build/production/logs/`.
+
+## 2026-08-07 — Bloc 5: integració verificable de XAAC Thin Client
+
+- El paquet real `xaac-thinclient_1.0.0_all.deb` és l'únic artefacte de XAAC Thin Client inclòs a `packages/`.
+- La construcció falla si `/usr/bin/xaac-thinclient`, `/etc/xaac-thinclient` o l'estat `dpkg` de la versió 1.0.0 no són presents al rootfs.
+- El SquashFS es verifica després de crear-se per confirmar que conté el binari del client i el marcador d'integració del Bloc 5.
+- L'instal·lador torna a verificar el paquet i el binari després de desplegar el SquashFS al disc de destinació.
+- La sessió Wayland exporta `XDG_CONFIG_HOME=/etc/xaac`, de manera que labwc carrega també `/etc/xaac/labwc/autostart` i inicia el supervisor XAAC.
+- La configuració de labwc continua sense menús ni bindings per defecte per impedir `Reconfigure`/`Exit` en el quiosc.
+- Proves: 1394 superades.
+
+### Bloc 5 — correcció runtime XDG del quiosc
+- Corregit el launcher de XAAC Thin Client perquè el lock de `flock` use `XDG_RUNTIME_DIR` (p. ex. `/run/user/989`) en lloc de la ruta invàlida `/run/user/xaac-kiosk`.
+- Corregit el fitxer d'estat del supervisor perquè use igualment el runtime XDG real de l'UID del quiosc.
+- El launcher i el supervisor esperen el socket Wayland real abans d'intentar iniciar el client.
+- `nano` s'incorpora com a paquet obligatori de la imatge de producció.
+
+### Block 5 visual parity with development
+
+- XAAC Thin Client remains centered under labwc.
+- Wayland decorations switch to client-side decoration so GTK can render the rounded window container.
+- labwc keeps a 12 px corner-radius fallback for server-side decorated clients.
+- GTK 3 and GTK 4 select `ZorinBlue-Light` for the XAAC Thin Client icon theme.
+- A license-preserving subset of upstream Zorin icons used by XAAC Thin Client is bundled locally, with Adwaita/hicolor fallback.
+
+### Bloc 5 — quiosc visual: SSD bloquejada i tema Zorin complet
+
+- `labwc` torna a decoració server-side per mantindre cantonades arredonides sense exposar controls de finestra.
+- La barra de títol no conté botons de minimitzar, maximitzar, menú ni tancar (`<layout>:</layout>`).
+- Es força `serverDecoration=yes`, es manté el centrat automàtic i es desactiven keybindings/mousebindings de gestió.
+- La construcció instal·la el tema oficial complet `ZorinBlue-Light` i la seua base `Zorin`, fixats a la versió 4.0.8, en lloc d'un subconjunt parcial.
+- Es conserva Adwaita/hicolor únicament com a fallback i es regeneren les caches GTK.
+
+## 2026-08-17 — Bloc 10.3: manteniment i diagnòstic
+
+- Afegida la CLI administrativa única `xaac-maintenance` amb `status`, `health`, `network`, `storage`, `services`, `logs`, `cleanup` i `diagnostics`.
+- Integrada la política 10.3 en el constructor de producció sense afegir cap daemon ni canal remot nou.
+- Afegida detecció d'estat de RAM/zram, eMMC, xarxa, serveis, actualitzacions i errors rellevants.
+- Corregit el menú de `xaac-admin` perquè use l'arquitectura real del Thin Client i deixe d'assumir `xaac-thin-client.service`.
+- Els bundles de diagnòstic són root-only, acotats de mida i sanititzats per excloure contrasenyes, tokens, OTP, secrets VPN i claus privades.
+- La neteja només aplica retenció del journal, neteja APT i eliminació de bundles antics; no toca configuració ni punts de rollback.
+- Afegit `scripts/validate-block10-phase3.sh` com a gate específic de la fase.

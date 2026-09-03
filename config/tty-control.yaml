@@ -1,0 +1,32 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-tty-control
+  default_decision: deny
+  enforcement_mode: enforce
+  kiosk_user: xaac-kiosk
+
+virtual_terminals:
+  minimum: 1
+  maximum: 12
+  administrative_tty: 12
+  disabled_user_ttys: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  reserve_administrative_tty: true
+  automatic_vts: 0
+
+administration:
+  allowed_user: xaac-admin
+  authentication_required: true
+  clear_screen: true
+  issue_banner: false
+  securetty_only: true
+
+switching:
+  kiosk_switching_allowed: false
+  reserved_shortcut: Ctrl+Alt+F12
+  require_capability: CAP_SYS_TTY_CONFIG
+
+files:
+  logind: /etc/systemd/logind.conf.d/30-xaac-tty-control.conf
+  getty_override: /etc/systemd/system/getty@tty12.service.d/30-xaac-admin.conf
+  securetty: /etc/securetty.d/xaac-admin.conf
+  policy: /etc/xaac/kiosk/tty-control.json

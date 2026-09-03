@@ -1,0 +1,43 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-shortcut-lockdown
+  kiosk_user: xaac-kiosk
+  default_decision: deny
+  enforcement_mode: enforce
+backends:
+  wayland:
+    compositor: labwc
+    disable_default_keybindings: true
+  x11:
+    window_manager: openbox
+    disable_default_keybindings: true
+categories:
+  application_switching:
+    - Alt+Tab
+    - Alt+Shift+Tab
+    - Super+Tab
+  window_closing:
+    - Alt+F4
+    - Super+Q
+  compositor_menu:
+    - Super
+    - Super+Space
+    - Menu
+  command_execution:
+    - Super+R
+    - Alt+F2
+    - Ctrl+Alt+T
+  screenshots:
+    - Print
+    - Alt+Print
+    - Shift+Print
+  system:
+    - Ctrl+Alt+Delete
+    - Ctrl+Alt+Backspace
+    - Ctrl+Alt+Escape
+reserved_for_later_phases:
+  - Ctrl+Alt+F12
+files:
+  labwc_rc: /etc/xaac/labwc/rc.xml
+  openbox_rc: /etc/xaac/openbox/rc.xml
+  policy: /etc/xaac/kiosk/shortcut-policy.json

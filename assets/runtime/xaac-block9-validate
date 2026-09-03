@@ -1,0 +1,126 @@
+#!/bin/sh
+set -u
+
+REPORT=${1:-/var/log/xaac/block9-validation.txt}
+EVIDENCE=${2:-/var/log/xaac/block9-validation-evidence}
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT HUP INT TERM
+
+if [ "$(id -u)" -ne 0 ]; then
+    printf '%s\n' 'Error: executeu aquesta validació com a root.' >&2
+    exit 2
+fi
+
+install -d -m 0750 "$(dirname "$REPORT")" "$EVIDENCE"
+passed=0
+failed=0
+review=0
+
+record() {
+    status=$1
+    name=$2
+    detail=$3
+    printf '%-8s %-34s %s\n' "$status" "$name" "$detail" >> "$TMP"
+    case $status in
+        PASS) passed=$((passed + 1)) ;;
+        FAIL) failed=$((failed + 1)) ;;
+        REVIEW) review=$((review + 1)) ;;
+    esac
+}
+
+check() {
+    name=$1
+    command=$2
+    if sh -c "$command" >/dev/null 2>&1; then
+        record PASS "$name" "$command"
+    else
+        record FAIL "$name" "$command"
+    fi
+}
+
+printf '%s\n' 'XAAC Thin Client OS — Bloc 9.4 final validation' > "$TMP"
+printf 'date_utc=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "$TMP"
+printf 'hostname=%s\n' "$(hostname 2>/dev/null || printf unknown)" >> "$TMP"
+printf 'kernel=%s\n' "$(uname -r 2>/dev/null || printf unknown)" >> "$TMP"
+printf '\n' >> "$TMP"
+
+check 'Dell Wyse 3040' "grep -qi 'Wyse 3040' /sys/class/dmi/id/product_name"
+check 'UEFI boot' 'test -d /sys/firmware/efi'
+check 'installed root label' 'rootdev=$(findmnt -nro SOURCE /); test "$(blkid -s LABEL -o value "$rootdev" 2>/dev/null)" = XAAC_ROOT'
+check 'XAAC OS identity' "grep -Fx 'ID=xaac-thin-client-os' /etc/os-release"
+check 'RAM >= 1800 MiB' "awk '/MemTotal/{exit !(\$2 >= 1800*1024)}' /proc/meminfo"
+check 'idle RAM <= 650 MiB' "awk '/MemTotal/{t=\$2}/MemAvailable/{a=\$2}END{exit !(((t-a)/1024) <= 650)}' /proc/meminfo"
+check 'root free >= 512 MiB' "df -Pm / | awk 'NR==2{exit !(\$4 >= 512)}'"
+check 'root noatime' "findmnt -nro OPTIONS / | tr ',' '\n' | grep -Fx noatime"
+check '/tmp is tmpfs' "test \"$(findmnt -nro FSTYPE /tmp)\" = tmpfs"
+check '/tmp limit policy' "grep -F 'size=128M' /etc/systemd/system/tmp.mount.d/xaac-limits.conf"
+check 'zram0 present' 'test -b /dev/zram0'
+check 'zram swap active' "swapon --noheadings --show=NAME 2>/dev/null | grep -Fx /dev/zram0"
+check 'zram uses zstd' "grep -Eq '\\[zstd\\]' /sys/block/zram0/comp_algorithm"
+check 'swappiness=100' "test \"$(sysctl -n vm.swappiness)\" = 100"
+check 'journald volatile' "grep -Fx 'Storage=Volatile' /etc/systemd/journald.conf.d/xaac-limits.conf"
+check 'journald limit=32M' "grep -Fx 'RuntimeMaxUse=32M' /etc/systemd/journald.conf.d/xaac-limits.conf"
+check 'fstrim enabled' 'systemctl is-enabled --quiet fstrim.timer'
+check 'apt daily masked' "test \"$(systemctl is-enabled apt-daily.timer 2>/dev/null || true)\" = masked"
+check 'apt upgrade masked' "test \"$(systemctl is-enabled apt-daily-upgrade.timer 2>/dev/null || true)\" = masked"
+check 'ASLR=2' "test \"$(sysctl -n kernel.randomize_va_space)\" = 2"
+check 'ptrace_scope=2' "test \"$(sysctl -n kernel.yama.ptrace_scope)\" = 2"
+check 'SysRq disabled' "test \"$(sysctl -n kernel.sysrq)\" = 0"
+check 'sctp blocked' "modprobe -n sctp 2>/dev/null | grep -F /bin/false"
+check 'squashfs not blocked' "! modprobe -n squashfs 2>/dev/null | grep -F /bin/false"
+check 'SSH enabled at boot' "systemctl is-enabled --quiet ssh.service"
+check 'SSH active' "systemctl is-active --quiet ssh.service"
+check 'nftables active' 'systemctl is-active --quiet nftables.service'
+check 'nftables input drop' "nft list ruleset 2>/dev/null | grep -Eq 'hook input .*policy drop'"
+check 'NetworkManager active' 'systemctl is-active --quiet NetworkManager.service'
+check 'greetd active' 'systemctl is-active --quiet greetd.service'
+check 'VPN manager enabled' 'systemctl is-enabled --quiet xaac-vpn-manager.service'
+check 'AppArmor active' 'systemctl is-active --quiet apparmor.service'
+check 'AppArmor agent profile' 'test -L /etc/apparmor.d/force-complain/usr.bin.xaac-agent'
+check 'AppArmor client profile' 'test -L /etc/apparmor.d/force-complain/usr.bin.xaac-thinclient'
+check 'AppArmor VPN profile' 'test -L /etc/apparmor.d/force-complain/usr.bin.xaac-thin-client-vpn'
+check 'Agent package installed' "dpkg-query -W -f='\${Status}' xaac-agent 2>/dev/null | grep -Fx 'install ok installed'"
+check 'Agent disabled by default' "! systemctl is-enabled --quiet xaac-agent.service"
+check 'privileged helper socket' 'systemctl is-enabled --quiet xaac-privileged-helper.socket'
+check 'Thin Client package' "dpkg-query -W -f='\${Status}' xaac-thinclient 2>/dev/null | grep -Fx 'install ok installed'"
+check 'Thin Client running' "pgrep -f '(^|/)xaac-thinclient([[:space:]]|$)'"
+check 'VPN package' "dpkg-query -W -f='\${Status}' xaac-thin-client-vpn 2>/dev/null | grep -Fx 'install ok installed'"
+check 'no failed systemd units' "test \"$(systemctl --failed --no-legend | wc -l)\" -eq 0"
+
+# Evidence is deliberately read-only. AppArmor is in complain mode in Block 9.4,
+# so DENIED lines are review material rather than an automatic release failure.
+aa-status > "$EVIDENCE/aa-status.txt" 2>&1 || true
+journalctl -k -b --no-pager > "$EVIDENCE/kernel-journal.txt" 2>&1 || true
+journalctl -b --no-pager > "$EVIDENCE/system-journal.txt" 2>&1 || true
+systemctl --failed --no-pager > "$EVIDENCE/failed-units.txt" 2>&1 || true
+systemd-analyze time > "$EVIDENCE/boot-time.txt" 2>&1 || true
+systemd-analyze blame > "$EVIDENCE/boot-blame.txt" 2>&1 || true
+free -m > "$EVIDENCE/memory.txt" 2>&1 || true
+swapon --show > "$EVIDENCE/swap.txt" 2>&1 || true
+zramctl > "$EVIDENCE/zram.txt" 2>&1 || true
+findmnt > "$EVIDENCE/mounts.txt" 2>&1 || true
+nft list ruleset > "$EVIDENCE/nftables.txt" 2>&1 || true
+
+denied=$(grep -Eic 'apparmor=.*DENIED|apparmor="DENIED"' "$EVIDENCE/kernel-journal.txt" 2>/dev/null || true)
+case $denied in ''|*[!0-9]*) denied=0 ;; esac
+record REVIEW 'AppArmor DENIED events' "count=$denied; review $EVIDENCE/kernel-journal.txt before enforce"
+
+boot_seconds=$(sed -n 's/.*= \([0-9][0-9.]*\)s.*/\1/p' "$EVIDENCE/boot-time.txt" | tail -n 1)
+if [ -n "$boot_seconds" ]; then
+    if awk "BEGIN { exit !($boot_seconds <= 45) }"; then
+        record PASS 'boot <= 45 s' "${boot_seconds}s"
+    else
+        record FAIL 'boot <= 45 s' "${boot_seconds}s"
+    fi
+else
+    record REVIEW 'boot <= 45 s' 'systemd-analyze time could not be parsed'
+fi
+
+printf '\nsummary: passed=%s failed=%s review=%s\n' "$passed" "$failed" "$review" >> "$TMP"
+install -m 0640 "$TMP" "$REPORT"
+cat "$REPORT"
+
+if [ "$failed" -ne 0 ]; then
+    exit 1
+fi
+exit 0

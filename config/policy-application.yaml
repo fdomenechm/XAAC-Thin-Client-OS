@@ -1,0 +1,25 @@
+schema_version: 1
+policy:
+  format: xaac-device-policy
+  version: 1
+  maximum_bytes: 262144
+  allowed_sections:
+    - client
+    - agent
+    - kiosk
+    - network
+    - devices
+    - power
+  require_digest: true
+transaction:
+  confirmation_timeout_seconds: 300
+  rollback_on_validation_failure: true
+  rollback_on_apply_failure: true
+  retain_revisions: 3
+paths:
+  configuration: /etc/xaac/policy-application.yaml
+  staging: /var/lib/xaac-agent/policies/staging
+  active: /var/lib/xaac-agent/policies/active/policy.json
+  rollback: /var/lib/xaac-agent/policies/rollback/policy.json
+  state: /var/lib/xaac-agent/policies/state.json
+  manifest: /etc/xaac/policy-application-manifest.json

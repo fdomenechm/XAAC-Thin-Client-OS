@@ -1,0 +1,58 @@
+schema_version: 2
+transaction_id: xaac-transactional-update
+phase: "10.2"
+hardware_profile: wyse3040
+staging:
+  root: /var/lib/xaac-update/staging
+  maximum_bundle_bytes: 268435456
+  preserve_on_success: false
+recovery_point:
+  required: true
+  root: /var/lib/xaac-update/recovery-points
+  package_cache: /var/lib/xaac-update/package-cache
+  max_points: 2
+  include_package_state: true
+  include_configuration: true
+  configuration_paths:
+    - /etc/xaac
+    - /etc/xaac-agent
+    - /etc/xaac-network
+    - /etc/xaac-vpn
+    - /etc/xaac-remote
+    - /etc/xaac-dock
+    - /etc/NetworkManager/system-connections
+    - /etc/ssh
+    - /etc/hostname
+    - /etc/hosts
+installation:
+  require_verified_staging: true
+  atomic_component_set: true
+  noninteractive: true
+  lock_timeout_seconds: 300
+health:
+  required: true
+  fail_closed: true
+  timeout_seconds: 300
+  checks:
+    - exact_package_versions
+    - dpkg_audit
+    - apt_check
+    - executables
+    - previously_active_services
+    - previously_running_thin_client
+failure:
+  mark_failed: true
+  preserve_evidence: true
+  automatic_rollback: true
+interruption:
+  rollback_on_boot: true
+  states:
+    - installing
+    - validating
+    - rolling_back
+outputs:
+  policy: /etc/xaac/update/transactional-installation.json
+  state: /var/lib/xaac-update/transaction-state.json
+  runtime: /usr/local/libexec/xaac_update_runtime.py
+  recovery_service: /etc/systemd/system/xaac-update-recover.service
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-update.conf

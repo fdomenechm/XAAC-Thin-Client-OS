@@ -1,0 +1,55 @@
+schema_version: 1
+policy_id: xaac-kernel-hardening-v1
+sysctl:
+  kernel.randomize_va_space: 2
+  kernel.yama.ptrace_scope: 2
+  kernel.core_pattern: '|/bin/false'
+  kernel.core_uses_pid: 1
+  kernel.sysrq: 0
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  kernel.unprivileged_bpf_disabled: 1
+  kernel.perf_event_paranoid: 3
+  fs.suid_dumpable: 0
+  fs.protected_hardlinks: 1
+  fs.protected_symlinks: 1
+  fs.protected_fifos: 2
+  fs.protected_regular: 2
+  net.ipv4.ip_forward: 0
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  net.ipv4.tcp_syncookies: 1
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  net.ipv6.conf.all.accept_source_route: 0
+  net.ipv6.conf.default.accept_source_route: 0
+module_policy:
+  disabled:
+    - cramfs
+    - freevxfs
+    - hfs
+    - hfsplus
+    - jffs2
+    - udf
+    - dccp
+    - sctp
+    - rds
+    - tipc
+  allowed_runtime:
+    - squashfs
+    - i915
+    - snd_hda_intel
+    - r8169
+    - mmc_block
+outputs:
+  sysctl: /etc/sysctl.d/90-xaac-hardening.conf
+  modules: /etc/modprobe.d/xaac-hardening.conf
+  limits: /etc/security/limits.d/90-xaac-core-dumps.conf
+  policy: /usr/share/xaac/security/kernel-hardening.json
+  state: /var/lib/xaac-agent/security/kernel-hardening-state.json

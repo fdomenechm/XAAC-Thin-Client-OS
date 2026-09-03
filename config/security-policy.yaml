@@ -1,0 +1,247 @@
+version: 1
+policy_id: xaac-thin-client-os-base
+status: baseline
+scope:
+  product: XAAC Thin Client OS
+  hardware_profile: wyse3040
+  environment: managed-thin-client
+security_objectives:
+- confidentiality
+- integrity
+- availability
+- accountability
+assets:
+- id: device-identity
+  category: identity
+  criticality: critical
+  description: Identitat, certificats i claus del dispositiu
+- id: management-policy
+  category: configuration
+  criticality: critical
+  description: Polítiques rebudes de XMS i estat aplicat
+- id: kiosk-session
+  category: service
+  criticality: high
+  description: Sessió gràfica i fluxos autoritzats de l'usuari
+- id: administration-channel
+  category: access
+  criticality: high
+  description: Consola administrativa i OpenSSH restringit
+- id: audit-records
+  category: evidence
+  criticality: high
+  description: Registres de sistema i de XAAC Thin Client Agent
+actors:
+- id: kiosk-user
+  trust: untrusted
+  capabilities:
+  - physical-access
+  - user-input
+- id: remote-attacker
+  trust: hostile
+  capabilities:
+  - network-access
+- id: malicious-peripheral
+  trust: hostile
+  capabilities:
+  - physical-access
+  - usb-device
+- id: authorized-admin
+  trust: privileged
+  capabilities:
+  - console-access
+  - ssh-access
+- id: xms-operator
+  trust: managed
+  capabilities:
+  - policy-management
+attack_surfaces:
+- id: local-session
+  exposure: local
+  components:
+  - compositor
+  - xaac-thin-client
+  - input-devices
+- id: management-network
+  exposure: network
+  components:
+  - xaac-agent
+  - openssh
+  - nftables
+- id: software-supply-chain
+  exposure: update
+  components:
+  - apt
+  - xaac-packages
+  - build-manifest
+- id: boot-and-storage
+  exposure: physical
+  components:
+  - uefi
+  - emmc
+  - recovery
+threats:
+- id: T01
+  title: Eixida no autoritzada del mode quiosc
+  actors:
+  - kiosk-user
+  assets:
+  - kiosk-session
+  - administration-channel
+  surfaces:
+  - local-session
+  likelihood: medium
+  impact: high
+  controls:
+  - C01
+  - C02
+  residual_risk: low
+- id: T02
+  title: Accés remot no autoritzat
+  actors:
+  - remote-attacker
+  assets:
+  - device-identity
+  - management-policy
+  - administration-channel
+  surfaces:
+  - management-network
+  likelihood: medium
+  impact: critical
+  controls:
+  - C03
+  residual_risk: low
+- id: T03
+  title: Escalada de privilegis d'un servei
+  actors:
+  - remote-attacker
+  - kiosk-user
+  assets:
+  - management-policy
+  - device-identity
+  surfaces:
+  - management-network
+  - local-session
+  likelihood: low
+  impact: critical
+  controls:
+  - C06
+  - C07
+  residual_risk: medium
+- id: T04
+  title: Manipulació de paquets o configuració
+  actors:
+  - remote-attacker
+  assets:
+  - management-policy
+  - device-identity
+  surfaces:
+  - software-supply-chain
+  - management-network
+  likelihood: low
+  impact: critical
+  controls:
+  - C08
+  - C09
+  residual_risk: low
+- id: T05
+  title: Extracció o alteració física de dades
+  actors:
+  - malicious-peripheral
+  - kiosk-user
+  assets:
+  - device-identity
+  - audit-records
+  surfaces:
+  - boot-and-storage
+  likelihood: medium
+  impact: high
+  controls:
+  - C10
+  - C11
+  residual_risk: medium
+controls:
+- id: C01
+  type: preventive
+  owner: kiosk
+  phases:
+  - 5.1
+  - 5.2
+  - 5.3
+  - 5.4
+  description: Restriccions de sessió, dreceres, terminals i TTY
+- id: C02
+  type: detective
+  owner: xaac-agent
+  phases:
+  - 5.8
+  - 6.7
+  description: Degradació segura i inventari d'estat
+- id: C03
+  type: preventive
+  owner: network
+  phases:
+  - 7.7
+  - 7.8
+  description: SSH restringit i tallafoc amb denegació per defecte
+- id: C06
+  type: preventive
+  owner: systemd
+  phases:
+  - 9.2
+  - 9.3
+  description: Privilegis mínims, usuaris dedicats i sandboxing
+- id: C07
+  type: preventive
+  owner: kernel
+  phases:
+  - 9.4
+  - 9.5
+  description: AppArmor i hardening del kernel
+- id: C08
+  type: preventive
+  owner: packaging
+  phases:
+  - 9.6
+  - 9.7
+  description: Integritat i signatura de paquets
+- id: C09
+  type: corrective
+  owner: updates
+  phases:
+  - 10.4
+  - 10.5
+  - 10.6
+  description: Verificació, instal·lació transaccional i rollback
+- id: C10
+  type: preventive
+  owner: device
+  phases:
+  - 5.6
+  - 9.8
+  description: Control de dispositius i estudi de Secure Boot/TPM
+- id: C11
+  type: corrective
+  owner: recovery
+  phases:
+  - 11.4
+  - 11.5
+  - 11.6
+  description: Recuperació protegida i restauració de fàbrica
+accepted_risks:
+- id: R01
+  threat: T03
+  rationale: El maquinari limita alguns mecanismes d'aïllament; es compensa amb serveis
+    mínims i defensa en profunditat.
+  owner: security
+  review: phase-9.8
+- id: R02
+  threat: T05
+  rationale: El xifratge complet i TPM depenen de la viabilitat real del Dell Wyse
+    3040.
+  owner: product
+  review: phase-9.8
+outputs:
+  policy: /etc/xaac/security/base-policy.json
+  threat_model: /usr/share/doc/xaac-thin-client-os/security-threat-model.json
+  state: /var/lib/xaac-agent/security/base-policy-state.json

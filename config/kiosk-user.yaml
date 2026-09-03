@@ -1,0 +1,35 @@
+schema_version: 1
+profile: xaac-kiosk-user
+user:
+  name: xaac-kiosk
+  group: xaac-kiosk
+  home: /var/lib/xaac-kiosk
+  shell: /usr/sbin/nologin
+  system: true
+  locked: true
+  supplementary_groups:
+    - audio
+    - video
+    - input
+    - render
+    - xaac-ipc
+permissions:
+  home_mode: '0750'
+  owner: xaac-kiosk
+  group: xaac-kiosk
+directories:
+  persistent:
+    - /var/lib/xaac-kiosk/.config
+    - /var/lib/xaac-kiosk/.local/state/xaac
+  runtime:
+    - /run/user/xaac-kiosk
+environment:
+  HOME: /var/lib/xaac-kiosk
+  XDG_CONFIG_HOME: /var/lib/xaac-kiosk/.config
+  XDG_STATE_HOME: /var/lib/xaac-kiosk/.local/state
+  XDG_CACHE_HOME: /run/user/xaac-kiosk/cache
+  XDG_RUNTIME_DIR: /run/user/xaac-kiosk
+files:
+  environment: /etc/xaac/session/kiosk-user.env
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-kiosk.conf
+  policy: /etc/xaac/session/kiosk-user-policy.json

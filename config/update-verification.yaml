@@ -1,0 +1,27 @@
+schema_version: 1
+verification_id: xaac-update-verification
+hardware_profile: wyse3040
+staging:
+  root: /var/lib/xaac-update/staging
+  manifest_name: update-manifest.json
+trust:
+  keyring: /usr/share/keyrings/xaac-archive-keyring.gpg
+  require_signature: true
+  signature_file: update-manifest.json.asc
+hashes:
+  algorithms: [sha256, sha512]
+  require_all: true
+compatibility:
+  architecture: amd64
+  os_id: xaac-thin-client-os
+  minimum_installed_version: 0.1.0
+  allow_downgrade: false
+  require_hardware_profile: true
+dependencies:
+  require_declared: true
+  reject_cycles: true
+  require_atomic_sets: true
+outputs:
+  policy: /etc/xaac/update/verification.json
+  state: /var/lib/xaac-update/verification-state.json
+  verifier: /usr/libexec/xaac-update-verify

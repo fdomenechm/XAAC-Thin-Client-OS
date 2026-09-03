@@ -1,0 +1,42 @@
+schema_version: 1
+policy_id: xaac-secure-boot-tpm-1
+hardware_profile: wyse3040
+secure_boot:
+  feasibility: conditional
+  firmware_requirement: UEFI firmware exposing Secure Boot controls
+  implementation: shim-grub-signed
+  key_management: distribution-managed
+  require_signed_kernel: true
+  require_signed_bootloader: true
+  allow_custom_keys: false
+  fallback: documented-manual-enablement
+  checks:
+    - efi_present
+    - secure_boot_variable
+    - signed_shim
+    - signed_grub
+    - signed_kernel
+tpm:
+  feasibility: optional
+  minimum_version: "2.0"
+  required_for_boot: false
+  use_cases:
+    - device-attestation
+    - sealed-enrollment-secret
+  fallback: software-identity-with-file-permissions
+  checks:
+    - tpm_device
+    - tpm2_tools
+    - resource_manager
+accepted_risks:
+  - id: SB-RISK-001
+    statement: Some Dell Wyse 3040 firmware revisions may not expose usable Secure Boot controls.
+    treatment: Document firmware validation and keep signed UEFI boot artifacts without forcing activation.
+  - id: TPM-RISK-001
+    statement: TPM 2.0 availability is not guaranteed on every Dell Wyse 3040 variant.
+    treatment: Keep TPM optional and never make boot or local recovery depend on it.
+outputs:
+  policy: /usr/share/xaac/security/secure-boot-tpm-policy.json
+  probe: /usr/local/libexec/xaac/probe-secure-boot-tpm
+  state: /var/lib/xaac-agent/security/secure-boot-tpm.json
+  adr: /usr/share/doc/xaac-thin-client-os/adr/ADR-0009-secure-boot-tpm.md

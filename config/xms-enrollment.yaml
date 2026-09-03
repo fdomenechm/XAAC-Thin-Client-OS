@@ -1,0 +1,23 @@
+schema_version: 3
+enrollment:
+  format: xaac-agent-admin
+  version: 1
+  admin_command: /usr/sbin/xaac-agent-admin
+  admin_target: /usr/sbin/xaac-agent-admin
+  service_unit: xaac-agent.service
+  configuration: /etc/xaac-agent/agent.ini
+  bootstrap_token: /etc/xaac-agent/enrollment.token
+  device_credentials: /var/lib/xaac-agent/device-credentials.json
+  registration_state: /var/lib/xaac-agent/registration-state.json
+  require_https: true
+  bootstrap_token_one_time: true
+  explicit_reenrollment: true
+  commands:
+  - provision
+  - enable
+  - disable
+  - status
+  - unenroll
+manifest:
+  path: /etc/xaac/xms-enrollment-manifest.json
+  mode: '0640'

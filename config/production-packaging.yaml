@@ -1,0 +1,25 @@
+schema_version: 1
+product: XAAC Thin Client OS
+version: 1.1.0
+architecture: amd64
+packages:
+  xaac-thin-client:
+    architecture: amd64
+    source: packaging/xaac-thin-client
+  xaac-agent:
+    architecture: amd64
+    source: packaging/xaac-agent
+  xaac-thin-client-os:
+    architecture: all
+    source: packaging/xaac-thin-client-os
+channels:
+  laboratory: laboratory
+  pilot: pilot
+  production: production
+signing:
+  required: true
+  digest: SHA256
+outputs:
+  manifest: .build/packaging/manifest.json
+  script: .build/packaging/publish.sh
+  repository: .build/packaging/distributions

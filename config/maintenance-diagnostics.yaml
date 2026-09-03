@@ -1,0 +1,54 @@
+schema_version: 1
+maintenance_id: xaac-maintenance
+phase: "10.3"
+hardware_profile: wyse3040
+commands:
+  - status
+  - health
+  - network
+  - storage
+  - services
+  - logs
+  - cleanup
+  - diagnostics
+limits:
+  log_lines: 300
+  root_warning_percent: 85
+  root_critical_percent: 95
+  diagnostics_max_bytes: 16777216
+  diagnostics_retention_days: 14
+  journal_retention_days: 14
+  journal_max_bytes: 134217728
+services:
+  active_required:
+    - NetworkManager.service
+    - systemd-timesyncd.service
+    - ssh.service
+    - nftables.service
+    - apparmor.service
+  installed_required: []
+  optional:
+    - xaac-agent.service
+    - xaac-vpn-manager.service
+    - xaac-update-recover.service
+privacy:
+  sanitize_logs: true
+  include_configuration_contents: false
+  include_private_keys: false
+  include_credentials: false
+  include_vpn_secrets: false
+  forbidden_paths:
+    - /etc/xaac/secrets
+    - /etc/xaac-agent/enrollment.token
+    - /etc/NetworkManager/system-connections
+    - /etc/ssh/ssh_host_rsa_key
+    - /etc/ssh/ssh_host_ecdsa_key
+    - /etc/ssh/ssh_host_ed25519_key
+    - /var/lib/xaac-update/package-cache
+outputs:
+  policy: /etc/xaac/maintenance/policy.json
+  state: /var/lib/xaac-maintenance/state.json
+  admin: /usr/local/sbin/xaac-maintenance
+  runtime: /usr/local/libexec/xaac_maintenance_runtime.py
+  diagnostics_root: /var/lib/xaac-maintenance/diagnostics
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-maintenance.conf

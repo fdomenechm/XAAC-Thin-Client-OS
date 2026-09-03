@@ -1,0 +1,28 @@
+schema_version: 1
+profile: wyse3040
+cpu:
+  preferred_governor: schedutil
+  accepted_governors: [schedutil, powersave, ondemand]
+thermal:
+  warning_celsius: 80
+  critical_celsius: 90
+  require_sensor: true
+suspend:
+  allow_suspend: false
+  allow_hibernate: false
+watchdog:
+  required: false
+  timeout_seconds: 60
+power_loss:
+  firmware_setting: restore-on-ac-power-loss
+  expected: power-on
+configuration:
+  tmpfiles_file: /etc/tmpfiles.d/xaac-power.conf
+  systemd_sleep_file: /etc/systemd/sleep.conf.d/xaac-kiosk.conf
+  systemd_system_file: /etc/systemd/system.conf.d/xaac-watchdog.conf
+  sysctl_file: /etc/sysctl.d/60-xaac-power.conf
+  policy_file: /etc/xaac/power-policy.json
+packages:
+  - linux-cpupower
+  - lm-sensors
+  - watchdog

@@ -1,0 +1,201 @@
+#!/bin/sh
+set -eu
+
+DEFAULT_LOCALE=/etc/default/locale
+SYSTEMD_LOCALE=/etc/locale.conf
+LOCALE_GEN_FILE=/etc/locale.gen
+
+usage() {
+    cat <<'EOF'
+Ús: xaac-admin-change-language get
+    xaac-admin-change-language list
+    xaac-admin-change-language set <ca|es|en>
+    xaac-admin-change-language --help
+
+Canvia l'idioma persistent de XAAC Thin Client OS.
+Les ordres get, list i --help no requereixen privilegis.
+L'ordre set s'ha d'executar com a root, normalment amb sudo.
+EOF
+}
+
+code_to_locale() {
+    case "$1" in
+        ca) printf '%s\n' 'ca_ES.UTF-8' ;;
+        es) printf '%s\n' 'es_ES.UTF-8' ;;
+        en) printf '%s\n' 'en_US.UTF-8' ;;
+        *) return 1 ;;
+    esac
+}
+
+code_to_language() {
+    case "$1" in
+        ca) printf '%s\n' 'ca_ES:ca' ;;
+        es) printf '%s\n' 'es_ES:es' ;;
+        en) printf '%s\n' 'en_US:en' ;;
+        *) return 1 ;;
+    esac
+}
+
+locale_to_code() {
+    case "$1" in
+        ca|ca_*|ca.*) printf '%s\n' ca ;;
+        es|es_*|es.*) printf '%s\n' es ;;
+        en|en_*|en.*) printf '%s\n' en ;;
+        *) return 1 ;;
+    esac
+}
+
+read_lang() {
+    file=$1
+    [ -r "$file" ] || return 1
+    sed -n 's/^[[:space:]]*LANG[[:space:]]*=[[:space:]]*//p' "$file" \
+        | head -n 1 | tr -d '"'
+}
+
+safe_locale_target() {
+    file=$1
+    if [ -L "$file" ]; then
+        target=$(readlink -f "$file")
+        case "$target" in
+            /etc/default/locale|/etc/locale.conf) ;;
+            *) echo "ERROR: enllaç de locale no segur: $file -> $target" >&2; exit 1 ;;
+        esac
+        printf '%s\n' "$target"
+    else
+        printf '%s\n' "$file"
+    fi
+}
+
+normalize_locale_name() {
+    # Debian's `locale -a` renders UTF-8 as `.utf8`; keep the territory
+    # separator intact and normalise only the codeset suffix.
+    printf '%s\n' "$1" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed 's/\.utf[-_]8$/.utf8/'
+}
+
+locale_is_generated() {
+    value=$1
+    command -v locale >/dev/null 2>&1 || return 0
+    normalized=$(normalize_locale_name "$value")
+    locale -a 2>/dev/null \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed 's/\.utf[-_]8$/.utf8/' \
+        | grep -Fx "$normalized" >/dev/null
+}
+
+enable_locale_generation() {
+    value=$1
+    [ -f "$LOCALE_GEN_FILE" ] || return 0
+    dir=$(dirname "$LOCALE_GEN_FILE")
+    base=$(basename "$LOCALE_GEN_FILE")
+    tmp="$dir/.${base}.xaac.$$"
+    umask 022
+    awk -v value="$value" '
+        BEGIN { done=0 }
+        {
+            candidate=$0
+            sub(/^[[:space:]]*#[[:space:]]*/, "", candidate)
+            if (candidate == value " UTF-8") {
+                if (!done) { print value " UTF-8"; done=1 }
+                next
+            }
+            print
+        }
+        END { if (!done) print value " UTF-8" }
+    ' "$LOCALE_GEN_FILE" > "$tmp"
+    chown root:root "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$LOCALE_GEN_FILE"
+}
+
+ensure_locale_generated() {
+    value=$1
+    locale_is_generated "$value" && return 0
+    if command -v locale-gen >/dev/null 2>&1; then
+        enable_locale_generation "$value"
+        locale-gen >/dev/null
+        locale_is_generated "$value" && return 0
+    fi
+    echo "ERROR: no s'ha pogut generar el locale $value." >&2
+    exit 1
+}
+
+write_locale_env() {
+    file=$(safe_locale_target "$1")
+    lang=$2
+    language=$3
+    dir=$(dirname "$file")
+    base=$(basename "$file")
+    tmp="$dir/.${base}.xaac.$$"
+    umask 022
+    mkdir -p "$dir"
+    if [ -f "$file" ]; then
+        awk -v lang="$lang" -v language="$language" '
+            BEGIN { lang_done=0; language_done=0 }
+            /^[[:space:]]*LANG[[:space:]]*=/ {
+                if (!lang_done) { print "LANG=" lang; lang_done=1 }
+                next
+            }
+            /^[[:space:]]*LANGUAGE[[:space:]]*=/ {
+                if (!language_done) { print "LANGUAGE=" language; language_done=1 }
+                next
+            }
+            { print }
+            END {
+                if (!lang_done) print "LANG=" lang
+                if (!language_done) print "LANGUAGE=" language
+            }
+        ' "$file" > "$tmp"
+    else
+        printf 'LANG=%s\nLANGUAGE=%s\n' "$lang" "$language" > "$tmp"
+    fi
+    chown root:root "$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$file"
+}
+
+command=${1:-}
+case "$command" in
+    --help|-h|help)
+        usage
+        ;;
+    list)
+        printf '%s\n' ca es en
+        ;;
+    get)
+        current=$(read_lang "$DEFAULT_LOCALE" || true)
+        [ -n "$current" ] || current=$(read_lang "$SYSTEMD_LOCALE" || true)
+        if code=$(locale_to_code "$current"); then
+            printf '%s\n' "$code"
+        elif [ -n "$current" ]; then
+            printf '%s\n' "$current"
+        else
+            echo "ERROR: no s'ha pogut determinar LANG" >&2
+            exit 1
+        fi
+        ;;
+    set)
+        [ "$#" -eq 2 ] || { usage >&2; exit 2; }
+        [ "$(id -u)" -eq 0 ] || { echo 'ERROR: set requereix root; useu sudo.' >&2; exit 1; }
+        code=$2
+        locale_value=$(code_to_locale "$code") || {
+            echo "ERROR: idioma no admés: $code" >&2
+            echo 'Valors admesos: ca es en' >&2
+            exit 2
+        }
+        language_value=$(code_to_language "$code")
+        ensure_locale_generated "$locale_value"
+        write_locale_env "$DEFAULT_LOCALE" "$locale_value" "$language_value"
+        write_locale_env "$SYSTEMD_LOCALE" "$locale_value" "$language_value"
+        if [ -x /usr/local/sbin/xaac-sync-thinclient-language ]; then
+            /usr/local/sbin/xaac-sync-thinclient-language
+        fi
+        printf 'Idioma configurat: %s (%s)\n' "$code" "$locale_value"
+        printf '%s\n' "El canvi complet s'aplica en iniciar una nova sessió; es recomana reiniciar el sistema."
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

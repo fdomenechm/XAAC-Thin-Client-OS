@@ -1,0 +1,20 @@
+schema_version: 1
+identity:
+  state_path: /var/lib/xaac-agent/identity/device.json
+  certificate_path: /etc/xaac/identity/device.crt
+  private_key_path: /etc/xaac/identity/device.key
+  certificate_days: 3650
+  hostname_prefix: xaac
+  hostname_path: /etc/hostname
+  machine_id_path: /etc/machine-id
+sources:
+  serial_paths:
+    - /sys/class/dmi/id/product_serial
+    - /sys/class/dmi/id/board_serial
+  mac_root: /sys/class/net
+security:
+  state_mode: '0640'
+  certificate_mode: '0644'
+  private_key_mode: '0600'
+  directory_mode: '0750'
+  allowed_group: xaac-agent

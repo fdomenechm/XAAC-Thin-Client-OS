@@ -1,0 +1,53 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-filesystem-v1
+  default_decision: deny
+  enforcement_mode: enforce
+  kiosk_user: xaac-kiosk
+home:
+  path: /home/xaac-kiosk
+  ephemeral: true
+  backing: tmpfs
+  mode: '0700'
+  size: 192M
+  inodes: 8192
+  clear_on_start: true
+  clear_on_stop: true
+runtime:
+  path: /run/user/1000
+  mode: '0700'
+  size: 64M
+allowed_directories:
+  - path: /home/xaac-kiosk/.config/xaac
+    mode: '0700'
+    purpose: configuration
+  - path: /home/xaac-kiosk/.cache/xaac
+    mode: '0700'
+    purpose: cache
+  - path: /home/xaac-kiosk/Downloads
+    mode: '0700'
+    purpose: downloads
+downloads:
+  path: /home/xaac-kiosk/Downloads
+  maximum_size: 128M
+  executable_files: false
+  device_files: false
+  suid_files: false
+  clear_on_session_end: true
+permissions:
+  owner: xaac-kiosk
+  group: xaac-kiosk
+  umask: '0077'
+  follow_symlinks: false
+  world_writable: false
+cleanup:
+  service: xaac-kiosk-cleanup.service
+  remove_contents_only: true
+  fail_closed: true
+files:
+  tmpfiles: /usr/lib/tmpfiles.d/xaac-kiosk-filesystem.conf
+  home_mount: /etc/systemd/system/home-xaac\x2dkiosk.mount
+  cleanup_script: /usr/local/libexec/xaac/kiosk-cleanup
+  cleanup_service: /etc/systemd/system/xaac-kiosk-cleanup.service
+  environment: /etc/xaac/kiosk/environment.d/30-filesystem.conf
+  policy: /etc/xaac/kiosk/filesystem-policy.json

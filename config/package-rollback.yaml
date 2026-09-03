@@ -1,0 +1,35 @@
+schema_version: 2
+rollback_id: xaac-package-rollback
+phase: "10.2"
+hardware_profile: wyse3040
+source:
+  require_recovery_point: true
+  require_previous_versions: true
+  allow_last_confirmed_transaction: true
+restore:
+  packages: true
+  configuration: true
+  transaction_state: true
+  noninteractive: true
+  lock_timeout_seconds: 300
+validation:
+  required: true
+  fail_closed: true
+  timeout_seconds: 300
+  checks:
+    - packages
+    - configuration
+    - dpkg_audit
+    - apt_check
+    - previously_active_services
+failed_versions:
+  block: true
+  registry: /var/lib/xaac-update/blocked-versions.json
+  require_reason: true
+  require_transaction_id: true
+evidence:
+  preserve: true
+  root: /var/lib/xaac-update/rollback-evidence
+outputs:
+  policy: /etc/xaac/update/package-rollback.json
+  state: /var/lib/xaac-update/rollback-state.json

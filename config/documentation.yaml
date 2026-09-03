@@ -1,0 +1,15 @@
+schema_version: 1
+product: XAAC Thin Client OS
+language: ca
+manuals:
+  installation: docs/manual/installation.md
+  administration: docs/manual/administration.md
+  network: docs/manual/network.md
+  security: docs/manual/security.md
+  updates: docs/manual/updates.md
+  recovery: docs/manual/recovery.md
+  development: docs/manual/development.md
+  troubleshooting: docs/manual/troubleshooting.md
+outputs:
+  index: docs/manual/README.md
+  manifest: .build/documentation/manifest.json

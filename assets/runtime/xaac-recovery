@@ -1,0 +1,111 @@
+#!/usr/bin/python3
+"""Administrative recovery CLI for XAAC Thin Client OS phase 10.4."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+LIBEXEC = Path("/usr/local/libexec")
+if str(LIBEXEC) not in sys.path:
+    sys.path.insert(0, str(LIBEXEC))
+try:
+    import xaac_recovery_runtime as recovery_runtime
+except ImportError as exc:
+    recovery_runtime = None  # type: ignore[assignment]
+    _RUNTIME_IMPORT_ERROR = exc
+else:
+    _RUNTIME_IMPORT_ERROR = None
+
+
+class RecoveryAdminError(RuntimeError):
+    pass
+
+
+def _runtime():
+    if recovery_runtime is None:
+        raise RecoveryAdminError(f"No està disponible el runtime de recovery: {_RUNTIME_IMPORT_ERROR}")
+    return recovery_runtime
+
+
+def _require_root() -> None:
+    if os.geteuid() != 0:
+        raise RecoveryAdminError("Aquesta ordre requereix privilegis d'administrador (sudo)")
+
+
+def _require_yes(value: bool) -> None:
+    if not value:
+        raise RecoveryAdminError("Aquesta operació requereix confirmació explícita amb --yes")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="xaac-recovery",
+        description="Recuperació segura de XAAC Thin Client OS",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("status", help="Mostra l'estat de recuperació")
+    rollback = sub.add_parser("rollback", help="Restaura l'últim punt funcional")
+    rollback.add_argument("--yes", action="store_true", help="Confirma el rollback")
+    repair = sub.add_parser("repair", help="Repara dpkg, initramfs i GRUB")
+    repair.add_argument("--yes", action="store_true", help="Confirma la reparació")
+    repair.add_argument(
+        "--restore-configuration",
+        action="store_true",
+        help="Restaura només la configuració de l'últim punt segur",
+    )
+    network_on = sub.add_parser("network-on", help="Activa NetworkManager en recovery")
+    network_on.add_argument("--yes", action="store_true", help="Confirma l'activació")
+    network_off = sub.add_parser("network-off", help="Atura NetworkManager en recovery")
+    network_off.add_argument("--yes", action="store_true", help="Confirma l'aturada")
+    sub.add_parser("menu", help="Obri el menú interactiu de recovery")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        # Confirmation is checked before privilege status so tests and callers
+        # receive the same safety contract as root and as an unprivileged user.
+        if args.command in {"rollback", "repair", "network-on", "network-off"}:
+            _require_yes(bool(args.yes))
+        _require_root()
+        runtime = _runtime()
+        if args.command == "status":
+            print(runtime.status_report(runtime.load_policy()), end="")
+        elif args.command == "rollback":
+            print(json.dumps(runtime.rollback(), ensure_ascii=False, indent=2, sort_keys=True))
+        elif args.command == "repair":
+            if args.restore_configuration:
+                print(
+                    json.dumps(
+                        runtime.restore_configuration(),
+                        ensure_ascii=False,
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            else:
+                print(
+                    json.dumps(
+                        runtime.repair_system(), ensure_ascii=False, indent=2, sort_keys=True
+                    )
+                )
+        elif args.command == "network-on":
+            print(json.dumps(runtime.set_network(True), ensure_ascii=False, sort_keys=True))
+        elif args.command == "network-off":
+            print(json.dumps(runtime.set_network(False), ensure_ascii=False, sort_keys=True))
+        elif args.command == "menu":
+            return int(runtime.interactive_menu())
+        return 0
+    except (RecoveryAdminError, Exception) as exc:
+        # Runtime exceptions intentionally collapse to one stable admin-facing
+        # error contract without a traceback or secret-bearing object repr.
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

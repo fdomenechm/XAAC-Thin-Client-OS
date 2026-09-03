@@ -1,0 +1,50 @@
+schema_version: 1
+model_id: xaac-recovery-model-1
+hardware_profile: wyse3040
+failure_classes:
+  - id: application
+    counter: application_failures
+    window_seconds: 300
+  - id: session
+    counter: session_failures
+    window_seconds: 600
+  - id: update
+    counter: update_failures
+    window_seconds: 3600
+  - id: integrity
+    counter: integrity_failures
+    window_seconds: 3600
+thresholds:
+  degraded: 1
+  recovering: 3
+  safe: 5
+  manual_intervention: 8
+states:
+  healthy:
+    severity: 0
+    actions: [clear_transient_counters]
+    notify: []
+  degraded:
+    severity: 1
+    actions: [collect_diagnostics, notify_agent]
+    notify: [agent]
+  recovering:
+    severity: 2
+    actions: [collect_diagnostics, execute_recovery_action, notify_agent]
+    notify: [agent]
+  safe:
+    severity: 3
+    actions: [enter_safe_state, preserve_evidence, notify_agent, notify_xms]
+    notify: [agent, xms]
+  manual_intervention:
+    severity: 4
+    actions: [lock_automatic_recovery, preserve_evidence, notify_agent, notify_xms]
+    notify: [agent, xms]
+safety:
+  automatic_factory_reset: false
+  destructive_actions_require_confirmation: true
+  preserve_evidence: true
+  fail_closed: true
+outputs:
+  policy: /usr/share/xaac/recovery/recovery-model.json
+  state: /var/lib/xaac/recovery/state.json

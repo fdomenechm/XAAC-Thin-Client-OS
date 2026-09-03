@@ -1,0 +1,35 @@
+schema_version: 1
+service_id: xaac-update-service
+hardware_profile: wyse3040
+schedule:
+  check_interval_minutes: 60
+  jitter_seconds: 300
+  respect_maintenance_window: true
+repository:
+  policy_path: /etc/xaac/update/repository.json
+  update_model_path: /etc/xaac/update/policy.json
+storage:
+  staging_root: /var/lib/xaac-update/staging
+  state_path: /var/lib/xaac-update/service-state.json
+  lock_path: /run/lock/xaac-update.lock
+  minimum_free_bytes: 536870912
+  maximum_download_bytes: 1073741824
+download:
+  timeout_seconds: 900
+  retries: 3
+  partial_suffix: .partial
+  fsync: true
+state:
+  initial: idle
+  transitions:
+    idle: [checking]
+    checking: [idle, downloading, failed]
+    downloading: [staged, failed]
+    staged: [idle, failed]
+    failed: [idle, checking]
+outputs:
+  policy: /etc/xaac/update/service.json
+  state: /var/lib/xaac-update/service-state.json
+  systemd_service: /etc/systemd/system/xaac-update.service
+  systemd_timer: /etc/systemd/system/xaac-update.timer
+  tmpfiles: /etc/tmpfiles.d/xaac-update.conf

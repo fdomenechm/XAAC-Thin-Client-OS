@@ -1,0 +1,112 @@
+schema_version: 1
+policy:
+  identifier: xaac-kiosk-baseline
+  default_decision: deny
+  enforcement_mode: staged
+  kiosk_user: xaac-kiosk
+
+threats:
+  - id: escape-application
+    description: Eixir de XAAC Thin Client i accedir a altres aplicacions o al compositor.
+    severity: critical
+    mitigations: [shortcuts, processes, sessions]
+  - id: arbitrary-code-execution
+    description: Executar ordres, scripts, terminals o llançadors no autoritzats.
+    severity: critical
+    mitigations: [actions, processes]
+  - id: unauthorized-session
+    description: Iniciar o canviar a una sessió gràfica o TTY no autoritzada.
+    severity: high
+    mitigations: [shortcuts, sessions]
+  - id: local-data-access
+    description: Accedir a dades locals o dispositius extraïbles fora dels fluxos autoritzats.
+    severity: high
+    mitigations: [actions, devices]
+  - id: disruptive-power-action
+    description: Apagar, reiniciar o suspendre el dispositiu accidentalment o sense autorització.
+    severity: high
+    mitigations: [actions, shortcuts]
+
+allowed_actions:
+  - id: use-xaac-thin-client
+    actor: kiosk-user
+    resource: xaac-thin-client
+    operations: [interact]
+  - id: connect-approved-session
+    actor: kiosk-user
+    resource: approved-remote-session
+    operations: [connect, disconnect, reconnect]
+  - id: report-status
+    actor: kiosk-user
+    resource: xaac-status-interface
+    operations: [view]
+  - id: agent-managed-power
+    actor: xaac-agent
+    resource: system-power
+    operations: [reboot, poweroff]
+
+shortcuts:
+  default: deny
+  allowed: []
+  reserved_for_administration:
+    - Ctrl+Alt+F12
+  forbidden:
+    - Alt+Tab
+    - Alt+F4
+    - Super
+    - Super+R
+    - Ctrl+Alt+T
+    - Ctrl+Alt+Delete
+    - Ctrl+Alt+Backspace
+    - Print
+
+processes:
+  default: deny
+  allowed:
+    - xaac-session-supervisor
+    - xaac-thin-client
+    - labwc
+    - greetd
+    - pipewire
+    - wireplumber
+  forbidden:
+    - sh
+    - bash
+    - dash
+    - xterm
+    - foot
+    - gnome-terminal
+    - konsole
+    - xfce4-terminal
+    - weston-terminal
+
+  maximum_user_processes: 64
+
+devices:
+  default: deny
+  classes:
+    hid: allow
+    smartcard: policy
+    camera: policy
+    printer: policy
+    storage: deny
+  automount: false
+  policy_source: /etc/xaac/usb-policy.json
+
+sessions:
+  graphical:
+    allowed: [xaac-kiosk-wayland]
+    default: xaac-kiosk-wayland
+    switching: false
+    nested: false
+  tty:
+    kiosk_access: false
+    administrative_tty: 12
+    authentication_required: true
+  remote:
+    kiosk_ssh: false
+    administrative_ssh: policy
+
+files:
+  policy: /etc/xaac/kiosk/restrictions.json
+  threat_model: /usr/share/doc/xaac-thin-client-os/kiosk-threat-model.json

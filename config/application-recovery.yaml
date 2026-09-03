@@ -1,0 +1,52 @@
+schema_version: 1
+recovery_id: xaac-application-recovery-1
+hardware_profile: wyse3040
+client:
+  service: xaac-thin-client.service
+  session_service: xaac-kiosk-session.service
+  restart_timeout_seconds: 30
+  session_restart_timeout_seconds: 60
+  max_client_restarts: 3
+  max_session_restarts: 2
+state_cleanup:
+  enabled: true
+  preserve:
+    - /var/lib/xaac/device-identity.json
+    - /var/lib/xaac-agent/enrollment.json
+    - /etc/xaac/policy/active.json
+  remove:
+    - /run/xaac-thin-client
+    - /var/cache/xaac-thin-client
+    - /var/lib/xaac-thin-client/session-state.json
+  forbid_symlinks: true
+policy_rollback:
+  enabled: true
+  current: /etc/xaac/policy/active.json
+  previous: /var/lib/xaac-agent/policy/previous.json
+  require_signature_validation: true
+  require_schema_validation: true
+  atomic_replace: true
+diagnostics:
+  enabled: true
+  collect:
+    - client-status
+    - session-status
+    - client-journal
+    - agent-status
+    - policy-metadata
+  journal_lines: 200
+  output_directory: /var/lib/xaac-recovery/application-diagnostics
+  preserve_on_success: true
+safety:
+  fail_closed: true
+  preserve_evidence: true
+  automatic_factory_reset: false
+  destructive_actions_require_confirmation: true
+notifications:
+  destinations: [agent, xms]
+  notify_on: [client_restart_failed, session_restart_failed, policy_rollback, recovery_failed]
+outputs:
+  policy: /etc/xaac/recovery/application-recovery.json
+  state: /var/lib/xaac-recovery/application-recovery-state.json
+  runner: /usr/libexec/xaac-application-recovery
+  service: /usr/lib/systemd/system/xaac-application-recovery.service

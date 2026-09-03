@@ -1,0 +1,21 @@
+schema_version: 1
+backend: systemd-networkd
+interface_match: "en*"
+default_mode: dhcp
+allowed_sources:
+  - local
+  - remote
+validation:
+  require_gateway_in_subnet: true
+  maximum_dns_servers: 3
+fallback:
+  enabled: true
+  mode: dhcp
+rollback:
+  enabled: true
+  keep_snapshots: 3
+paths:
+  active_network: /etc/systemd/network/20-xaac-ethernet.network
+  state: /var/lib/xaac-agent/network/ip-addressing.json
+  snapshots: /var/lib/xaac-agent/network/snapshots
+  pending: /var/lib/xaac-agent/network/pending.json

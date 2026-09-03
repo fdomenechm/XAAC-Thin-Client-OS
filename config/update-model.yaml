@@ -1,0 +1,109 @@
+schema_version: 2
+model_id: xaac-update-architecture-v1
+phase: '10.2'
+hardware_profile: wyse3040
+architecture: amd64
+platform:
+  id: xaac-thin-client-os
+  version_source: /etc/os-release:VERSION_ID
+  version_format: semver
+  update_strategy: controlled-debian-package-set
+components:
+- id: xaac-thin-client-remote
+  package: xaac-thinclient
+  kind: application
+  architecture: all
+  package_config: config/xaac-thin-client-package.yaml
+  critical: true
+- id: xaac-thin-client-vpn
+  package: xaac-thin-client-vpn
+  kind: vpn
+  architecture: all
+  package_config: config/xaac-thin-client-vpn-package.yaml
+  critical: true
+- id: xaac-thin-client-network
+  package: xaac-thin-client-network
+  kind: network
+  architecture: all
+  package_config: config/xaac-thin-client-network-package.yaml
+  critical: true
+- id: xaac-thin-client-dock
+  package: xaac-thin-client-dock
+  kind: shell
+  architecture: all
+  package_config: config/xaac-thin-client-dock-package.yaml
+  critical: true
+- id: xaac-agent
+  package: xaac-agent
+  kind: agent
+  architecture: amd64
+  package_config: config/xaac-agent-package.yaml
+  critical: true
+channels:
+- id: laboratory
+  priority: 10
+  build_channels:
+  - development
+- id: pilot
+  priority: 20
+  build_channels:
+  - testing
+  - candidate
+- id: production
+  priority: 30
+  build_channels:
+  - stable
+  - long-term
+version_policy:
+  os_format: semver
+  package_format: debian
+  allow_downgrade: false
+  allow_os_version_change: false
+  allow_prerelease_channels:
+  - laboratory
+  - pilot
+  minimum_os_version: 1.1.0
+compatibility:
+  require_complete_component_set: true
+  atomic_component_set:
+  - xaac-thin-client-remote
+  - xaac-thin-client-vpn
+  - xaac-thin-client-network
+  - xaac-thin-client-dock
+  - xaac-agent
+  require_exact_manifest_versions: true
+  require_hardware_profile: true
+  require_architecture: true
+manifest:
+  schema: xaac-update-manifest/v1
+  hash_algorithm: sha256
+  require_detached_signature: true
+  signature_suffix: .asc
+  keyring: /usr/share/keyrings/xaac-archive-keyring.gpg
+  fail_closed: true
+preflight:
+  minimum_free_bytes: 536870912
+  require_dpkg_audit_clean: true
+  require_apt_check: true
+  require_os_identity: xaac-thin-client-os
+  preserve_configuration:
+  - /etc/xaac
+  - /etc/xaac-agent
+  - /etc/xaac-network
+  - /etc/xaac-vpn
+  - /etc/xaac-remote
+  - /etc/xaac-dock
+  - /etc/NetworkManager/system-connections
+  - /etc/ssh
+  - /etc/hostname
+  - /etc/hosts
+audit:
+  enabled: true
+  path: /var/log/xaac/update-audit.jsonl
+  record_manifest_hash: true
+  record_component_versions: true
+outputs:
+  policy: /etc/xaac/update/policy.json
+  state: /var/lib/xaac-update/state.json
+  current_release: /usr/share/xaac/update/current-release.json
+  admin: /usr/local/sbin/xaac-update-admin

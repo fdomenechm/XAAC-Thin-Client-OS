@@ -1,0 +1,39 @@
+schema_version: 3
+package:
+  name: xaac-agent
+  architecture: amd64
+  application_version: 1.1.0
+  version: 1.1.0-1
+  artifact: packages/xaac-agent_1.1.0-1_amd64.deb
+  sha256: 074879d6babc8607e84b9d158d78e1587d9f29310744ebaa6c313e588bac54e2
+  dependencies:
+  - ca-certificates
+  - systemd
+  - openssl
+installation:
+  cache_path: /var/cache/xaac/packages/xaac-agent.deb
+  manifest_path: /etc/xaac/packages/xaac-agent.json
+  install_recommends: false
+  required_paths:
+  - /usr/bin/python3
+  - /usr/bin/xaac-agent
+  - /usr/sbin/xaac-agent-admin
+  - /etc/xaac-agent/agent.ini
+  - /usr/lib/systemd/system/xaac-agent.service
+  - /usr/lib/systemd/system/xaac-privileged-helper.socket
+  - /usr/lib/systemd/system/xaac-privileged-helper.service
+  - /usr/lib/systemd/system/xaac-agent.service.d/20-wyse-3040-resources.conf
+  - /usr/lib/tmpfiles.d/xaac-agent.conf
+  - /usr/lib/sysusers.d/xaac-agent.conf
+ownership:
+  user: xaac-agent
+  group: xaac-agent
+  configuration_root: /etc/xaac-agent
+  runtime_root: /usr/lib/python3/dist-packages/xaac_agent
+  state_root: /var/lib/xaac-agent
+  service_unit: xaac-agent.service
+  helper_socket: xaac-privileged-helper.socket
+  command_group: xaac-command
+  ipc_group: xaac-ipc
+  runtime_directory: /run/xaac-agent/runtime
+  helper_socket_path: /run/xaac-agent/privileged.sock

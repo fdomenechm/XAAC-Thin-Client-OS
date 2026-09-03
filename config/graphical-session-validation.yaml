@@ -1,0 +1,34 @@
+schema_version: 1
+profile: xaac-graphical-session-validation
+startup:
+  require_greetd: true
+  require_wayland: true
+  require_compositor: labwc
+  require_client_launcher: true
+performance:
+  maximum_startup_seconds: 30
+  maximum_idle_memory_mb: 512
+  maximum_idle_cpu_percent: 15
+stability:
+  observation_seconds: 300
+  maximum_failed_units: 0
+restrictions:
+  forbidden_desktops:
+    - gnome-shell
+    - plasmashell
+    - xfce4-session
+    - mate-session
+    - cinnamon-session
+  forbidden_terminals:
+    - gnome-terminal
+    - konsole
+    - xterm
+    - xfce4-terminal
+    - mate-terminal
+    - lxterminal
+  forbid_interactive_shell: true
+files:
+  policy: /etc/xaac/session/graphical-session-validation-policy.json
+  validator: /usr/local/libexec/xaac-validate-graphical-session
+  service: /usr/lib/systemd/system/xaac-graphical-session-validation.service
+  report: /var/lib/xaac/validation/graphical-session.json

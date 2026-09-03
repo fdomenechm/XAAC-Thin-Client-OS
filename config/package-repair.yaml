@@ -1,0 +1,57 @@
+schema_version: 1
+repair_id: xaac-package-repair-1
+hardware_profile: wyse3040
+packages:
+  managed:
+  - xaac-thin-client
+  - xaac-agent
+  require_installed: true
+  allow_additional_dependencies: true
+verification:
+  apt_check: true
+  dpkg_audit: true
+  verify_package_files: true
+  require_signed_repository: true
+  fail_closed: true
+repair:
+  reinstall_managed_packages: true
+  repair_dependencies: true
+  restore_configuration: true
+  preserve_local_overrides: true
+  atomic_configuration_restore: true
+  max_attempts: 2
+  timeout_seconds: 900
+configuration:
+  backup_directory: /var/lib/xaac-recovery/package-config-backups
+  staging_directory: /var/lib/xaac-recovery/package-repair-staging
+  protected_paths:
+  - /etc/xaac/device-identity.json
+  - /etc/xaac/agent/enrollment.json
+  - /etc/xaac/policy/current.json
+final_validation:
+  commands:
+  - dpkg-audit
+  - apt-check
+  - package-files
+  - xaac-services
+  require_all: true
+diagnostics:
+  output_directory: /var/lib/xaac-recovery/diagnostics/package-repair
+  preserve_on_success: true
+notifications:
+  destinations:
+  - agent
+  - xms
+  notify_on:
+  - repair_started
+  - repair_completed
+  - repair_failed
+safety:
+  automatic_factory_reset: false
+  destructive_actions_require_confirmation: true
+  preserve_evidence: true
+outputs:
+  policy: /etc/xaac/recovery/package-repair.json
+  state: /var/lib/xaac-recovery/package-repair-state.json
+  runner: /usr/libexec/xaac-package-repair
+  service: /etc/systemd/system/xaac-package-repair.service

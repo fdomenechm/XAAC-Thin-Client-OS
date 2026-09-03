@@ -1,0 +1,26 @@
+schema_version: 1
+profile: wyse3040
+storage:
+  device_prefix: mmcblk
+  minimum_mib: 7000
+  required_non_removable: true
+  required_non_rotational: true
+  sector_size: 512
+  stable_mounts:
+    - XAAC_ROOT
+    - XAAC_DATA
+    - XAAC_RECOVERY
+kernel:
+  required_any_modules:
+    - mmc_block
+    - sdhci
+    - sdhci_acpi
+    - sdhci_pci
+trim:
+  required: true
+  timer: fstrim.timer
+  cadence: weekly
+  minimum_discard_bytes: 4096
+mounts:
+  require_noatime: true
+  forbid_continuous_discard: true

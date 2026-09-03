@@ -1,0 +1,13 @@
+schema_version: 1
+component:
+  id: xaac-thin-client-dock
+  display_name: XAAC Thin Client Dock
+package:
+  name: xaac-thin-client-dock
+  architecture: all
+  version: 1.1.0
+  artifact: packages/xaac-thin-client-dock_1.1.0_all.deb
+  sha256: c6b151ec7af3e7b52c3b78a6205082307b61c9c053c3bfbd59a212774942f0c3
+runtime:
+  gui_command: /usr/bin/xaac-thin-client-dock
+  configuration_path: /etc/xaac-dock/xaac-thin-client-dock.ini

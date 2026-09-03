@@ -1,0 +1,37 @@
+schema_version: 1
+profile: xaac-multimonitor
+backend:
+  primary: wayland
+  fallback: x11
+layout:
+  mode: extend
+  primary_output: auto
+  orientation: horizontal
+  gap_pixels: 0
+  hotplug: true
+  allow_mirroring: false
+scaling:
+  default: 1.0
+  minimum: 1.0
+  maximum: 2.0
+  step: 0.25
+  mixed: true
+resolution:
+  preferred: auto
+  minimum_width: 1024
+  minimum_height: 768
+freerdp:
+  multimon: true
+  dynamic_resolution: true
+  span: false
+  use_all_monitors: true
+packages:
+  required:
+    - wlr-randr
+    - x11-xserver-utils
+files:
+  policy: /etc/xaac/session/display-layout-policy.json
+  wayland_script: /usr/local/libexec/xaac-display-layout-wayland
+  x11_script: /usr/local/libexec/xaac-display-layout-x11
+  hotplug_service: /usr/lib/systemd/user/xaac-display-hotplug.service
+  freerdp_env: /etc/xaac/session/freerdp-display.env

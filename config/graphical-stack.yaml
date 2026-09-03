@@ -1,0 +1,56 @@
+schema_version: 1
+profile: minimal-kiosk
+backend:
+  primary: wayland
+  fallback: x11
+  allow_fallback: true
+packages:
+  required:
+    - libwayland-client0
+    - libwayland-egl1
+    - libx11-6
+    - libxkbcommon0
+    - libinput10
+    - libgtk-4-1
+    - librsvg2-common
+    - mesa-utils
+    - mesa-vulkan-drivers
+    - fontconfig
+    - fonts-roboto
+    - fonts-noto-core
+    - fonts-dejavu-core
+    - adwaita-icon-theme
+    - adwaita-icon-theme-legacy
+    - hicolor-icon-theme
+  forbidden:
+    - task-desktop
+    - task-gnome-desktop
+    - task-kde-desktop
+    - gnome-shell
+    - plasma-desktop
+environment:
+  file: /etc/xaac/session/graphical-stack.env
+  variables:
+    GDK_BACKEND: wayland,x11
+    GTK_USE_PORTAL: "0"
+    LIBGL_DRI3_DISABLE: "0"
+fonts:
+  default_family: Roboto
+  default_size: 10
+  sans_fallbacks:
+    - Noto Sans
+    - DejaVu Sans
+  serif_fallbacks:
+    - Noto Serif
+    - DejaVu Serif
+  monospace_fallbacks:
+    - DejaVu Sans Mono
+  fontconfig_file: /etc/fonts/conf.d/60-xaac-default-fonts.conf
+  gtk3_settings_file: /etc/xaac/gtk-3.0/settings.ini
+  gtk4_settings_file: /etc/xaac/gtk-4.0/settings.ini
+validation:
+  minimum_width: 1024
+  minimum_height: 768
+  require_keyboard: true
+  require_pointer: true
+  gtk_major: 4

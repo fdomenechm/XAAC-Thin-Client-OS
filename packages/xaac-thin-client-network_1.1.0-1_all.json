@@ -1,0 +1,9 @@
+{
+  "package": "xaac-thin-client-network",
+  "version": "1.1.0-1",
+  "architecture": "all",
+  "filename": "xaac-thin-client-network_1.1.0-1_all.deb",
+  "media_type": "application/vnd.debian.binary-package",
+  "sha256": "3680128e8bbaf6cf4671aeb15c3cdd7a352038ae52ba0018706898954cbe4359",
+  "size": 190246
+}

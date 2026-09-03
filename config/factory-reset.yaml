@@ -1,0 +1,50 @@
+schema_version: 1
+reset_id: xaac-factory-reset-1
+hardware_profile: wyse3040
+confirmation:
+  require_local_admin: true
+  require_exact_phrase: "RESET XAAC DEVICE"
+  require_physical_presence: true
+  timeout_seconds: 120
+preserve:
+  device_identity: true
+  enrollment: true
+  recovery_audit: true
+  network_bootstrap: true
+remove:
+  kiosk_state: true
+  application_cache: true
+  downloaded_updates: true
+  temporary_credentials: true
+  user_data: true
+restore:
+  source: recovery_partition
+  require_signature: true
+  hash_algorithm: sha256
+  transactional: true
+  verify_before_switch: true
+first_boot:
+  enable_service: true
+  regenerate_machine_id: true
+  reapply_preserved_identity: true
+  validate_hardware: true
+  reconcile_enrollment: true
+  notify_agent: true
+audit:
+  enabled: true
+  persistent: true
+  include_operator: true
+  include_reason: true
+  include_manifest_hash: true
+safety:
+  automatic_reset: false
+  remote_unattended_reset: false
+  fail_closed: true
+  require_ac_power: true
+outputs:
+  policy: /etc/xaac/recovery/factory-reset.json
+  state: /var/lib/xaac-recovery/factory-reset-state.json
+  service: /usr/lib/systemd/system/xaac-factory-reset.service
+  first_boot_service: /usr/lib/systemd/system/xaac-factory-reset-first-boot.service
+  runner: /usr/libexec/xaac-factory-reset
+  first_boot_runner: /usr/libexec/xaac-factory-reset-first-boot

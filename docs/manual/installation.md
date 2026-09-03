@@ -1,0 +1,30 @@
+# Guia d’instal·lació
+
+## Abast
+Instal·lació de XAAC Thin Client OS en un Dell Wyse 3040 mitjançant ISO, IMG o PXE.
+
+## Requisits
+- Dell Wyse 3040 amb UEFI i alimentació estable.
+- Còpia de seguretat de qualsevol dada existent.
+- Artefacte publicat amb hash SHA-256 i signatura verificats.
+
+## ISO
+1. Verifiqueu el fitxer `.sha256` i la signatura separada.
+2. Graveu la ISO híbrida en un USB.
+3. Arranqueu en UEFI i seleccioneu **Instal·lar XAAC Thin Client OS**.
+4. Trieu la llengua de l'instal·lador: Valencià/Català, Español o English.
+5. Trieu la distribució física del teclat: Espanyol (predeterminada) o English US.
+6. Seleccioneu el disc eMMC, reviseu el resum i escriviu `INSTALL XAAC`.
+7. No interrompeu el particionat, la còpia ni la instal·lació de GRUB.
+8. Quan aparega el missatge de finalització correcta, premeu Retorn. L'instal·lador executa l'apagada del terminal; retireu el mitjà d'instal·lació quan el dispositiu ja estiga apagat.
+
+La llengua i el teclat seleccionats queden aplicats al sistema instal·lat. XAAC Thin Client sincronitza `application.language` amb eixe locale en el primer arrencament, mitjançant `xaac-thinclient-language-sync.service` i abans de `greetd`; aquesta operació no s'executa durant el Live Installer. La zona horària es manté en `Europe/Madrid`. El final correcte de la instal·lació és estrictament «missatge de finalització → Retorn → apagada».
+
+## IMG
+Descomprimiu la IMG XZ, verifiqueu-ne el hash i escriviu-la només sobre el dispositiu de destinació correcte. En el primer inici s’expandeix l’arrel i es regeneren els identificadors.
+
+## PXE
+Publiqueu `vmlinuz`, `initrd.img`, `rootfs.squashfs` i `boot.ipxe` en el servidor autoritzat. La instal·lació desatesa exigeix el token de confirmació configurat.
+
+## Validació final
+Comproveu UEFI, les particions `XAAC_EFI`, `XAAC_ROOT`, `XAAC_DATA` i `XAAC_RECOVERY`, l’absència de serveis crítics fallits i l’arrencada de la sessió de quiosc.

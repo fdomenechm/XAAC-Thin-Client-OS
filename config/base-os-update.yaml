@@ -1,0 +1,80 @@
+schema_version: 1
+update_id: xaac-base-os-update
+phase: '10.6'
+hardware_profile: wyse3040
+platform:
+  os_id: xaac-thin-client-os
+  debian_major: 13
+  suite: trixie
+  architecture: amd64
+repositories:
+- uri: https://deb.debian.org/debian
+  suites:
+  - trixie
+  - trixie-updates
+  components:
+  - main
+  - non-free-firmware
+  signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+- uri: https://security.debian.org/debian-security
+  suites:
+  - trixie-security
+  components:
+  - main
+  - non-free-firmware
+  signed_by: /usr/share/keyrings/debian-archive-keyring.gpg
+policy:
+  apt_operation: upgrade-with-new-pkgs
+  allow_release_change: false
+  allow_downgrade: false
+  allow_removals: false
+  allow_new_dependencies: true
+  automatic_reboot: false
+  automatic_rollback: false
+  require_fresh_indexes: true
+  require_no_unauthenticated_sources: true
+  reject_unmanaged_sources: true
+  minimum_free_bytes: 805306368
+  minimum_free_after_download_bytes: 268435456
+  maximum_changed_packages: 256
+  maximum_new_packages: 48
+  protected_packages:
+  - xaac-thinclient
+  - xaac-thin-client-vpn
+  - xaac-agent
+  - xaac-thin-client-network
+  - xaac-thin-client-dock
+  reboot_package_prefixes:
+  - linux-image
+  - linux-base
+  - initramfs-tools
+  - grub-
+  - shim-
+  - systemd
+  - libc6
+health:
+  require_dpkg_audit_clean: true
+  require_apt_check: true
+  required_services:
+  - NetworkManager.service
+  - nftables.service
+  - apparmor.service
+  - greetd.service
+  - xaac-network-manager.service
+  installed_services:
+  - ssh.service
+  required_executables:
+  - /usr/bin/xaac-thinclient
+  - /usr/bin/xaac-thin-client-vpn
+  - /usr/bin/xaac-agent
+  - /usr/bin/xaac-network-gui
+  - /usr/bin/xaac-network-manager
+  - /usr/bin/xaac-thin-client-dock
+outputs:
+  policy: /etc/xaac/update/base-os-policy.json
+  state: /var/lib/xaac-update/base-os-state.json
+  checkpoint: /var/lib/xaac-update/base-os-checkpoint
+  audit: /var/log/xaac/base-os-update-audit.jsonl
+  apt_preferences: /etc/apt/preferences.d/99xaac-base-os-protected
+  apt_conf: /etc/apt/apt.conf.d/99xaac-base-os-update
+  runtime: /usr/local/libexec/xaac_base_os_update_runtime.py

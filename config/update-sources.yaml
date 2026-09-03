@@ -1,0 +1,59 @@
+schema_version: 1
+policy_id: xaac-update-sources
+hardware_profile: wyse3040
+xms:
+  enabled: true
+  allowed_commands: [check, download, stage, install, rollback, cancel]
+  require_enrolled_device: true
+  require_authenticated_channel: true
+  require_command_signature: true
+  require_nonce: true
+  reject_replay: true
+  record_command_id: true
+  maximum_command_age_seconds: 300
+usb:
+  enabled: true
+  volume_label: xaac-update
+  filesystem_read_only: true
+  require_offline_manifest: true
+  require_detached_signature: true
+  require_sha256: true
+  require_sha512: true
+  reject_unknown_files: true
+  copy_before_processing: true
+  eject_after_import: true
+  maximum_package_mib: 2048
+verification:
+  reuse_phase_10_4: true
+  fail_closed: true
+  require_authorized_keyring: true
+  require_hardware_profile: true
+  require_dependency_validation: true
+  block_known_bad_versions: true
+recovery:
+  preserve_previous_staging: true
+  quarantine_failed_import: true
+  resume_interrupted_copy: false
+  cleanup_partial_imports: true
+  trigger_transactional_rollback: true
+audit:
+  required: true
+  record_source: true
+  record_actor: true
+  record_device: true
+  record_command_id: true
+  record_hashes: true
+  record_result: true
+  record_timestamps: true
+state:
+  initial: idle
+  allowed: [idle, received, importing, verified, staged, installing, completed, recovering, cancelled, failed]
+outputs:
+  policy: /etc/xaac/update/update-sources.json
+  state: /var/lib/xaac-update/source-update-state.json
+  audit_log: /var/log/xaac/update-source-audit.jsonl
+  inbox: /var/lib/xaac-update/source-inbox
+  quarantine: /var/lib/xaac-update/quarantine
+  runner: /usr/libexec/xaac-update-source-import
+  service: /etc/systemd/system/xaac-update-source-import.service
+  udev_rule: /etc/udev/rules.d/90-xaac-update-usb.rules

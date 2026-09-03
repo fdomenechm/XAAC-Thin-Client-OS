@@ -1,0 +1,44 @@
+schema_version: 1
+image_id: xaac-production-iso-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+image:
+  format: iso-hybrid
+  volume_id: XAAC_TC_OS
+  uefi: true
+  bios_compatibility: true
+boot:
+  loader: grub2
+  default_entry: installer
+  timeout_seconds: 5
+  entries:
+    - id: installer
+      kernel_parameters: ["boot=live", "quiet", "xaac.mode=installer", "systemd.unit=multi-user.target"]
+    - id: diagnostics
+      kernel_parameters: ["boot=live", "ro", "toram", "xaac.mode=diagnostics", "xaac.persistence=disabled"]
+live:
+  diagnostics_only: true
+  read_only_root: true
+  persistent_changes: false
+  allow_shell: false
+  allow_install: false
+integrity:
+  hash_algorithm: sha256
+  require_signature: true
+  detached_signature: true
+  signing_key_id: XAAC-RELEASE-KEY
+sources:
+  rootfs: .build/image/rootfs.squashfs
+  kernel: .build/rootfs/boot/vmlinuz
+  initramfs: .build/rootfs/boot/initrd.img
+  efi_image: .build/boot/efi.img
+  bios_image: .build/boot/isohdpfx.bin
+  installer: builder/scripts/xaac-installer
+outputs:
+  staging: .build/iso/staging
+  iso: .build/artifacts/xaac-thin-client-os-amd64.iso
+  checksum: .build/artifacts/xaac-thin-client-os-amd64.iso.sha256
+  signature: .build/artifacts/xaac-thin-client-os-amd64.iso.asc
+  manifest: .build/iso/manifest.json
+  build_script: .build/iso/build-iso.sh

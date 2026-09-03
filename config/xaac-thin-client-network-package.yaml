@@ -1,0 +1,16 @@
+schema_version: 1
+component:
+  id: xaac-thin-client-network
+  display_name: XAAC Thin Client Network
+package:
+  name: xaac-thin-client-network
+  architecture: all
+  version: 1.1.0-1
+  artifact: packages/xaac-thin-client-network_1.1.0-1_all.deb
+  sha256: 3680128e8bbaf6cf4671aeb15c3cdd7a352038ae52ba0018706898954cbe4359
+runtime:
+  manager_service: xaac-network-manager.service
+  manager_command: /usr/bin/xaac-network-manager
+  gui_command: /usr/bin/xaac-network-gui
+  configuration_path: /etc/xaac-network/xaac-network.ini
+  dbus_interface: org.xaac.ThinClient.Network1

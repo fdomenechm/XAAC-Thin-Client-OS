@@ -1,0 +1,65 @@
+schema_version: 1
+profile_id: xaac-image-tests-1
+product: XAAC Thin Client OS
+architecture: amd64
+hardware_profile: wyse3040
+categories:
+  boot:
+    enabled: true
+    checks:
+    - systemctl is-system-running --wait
+    - test -d /sys/firmware/efi
+  services:
+    enabled: true
+    checks:
+    - systemctl --failed --quiet
+    - systemctl is-active --quiet greetd.service
+    - systemctl is-enabled --quiet xaac-privileged-helper.socket
+    - '! systemctl is-enabled --quiet xaac-agent.service'
+  partitions:
+    enabled: true
+    checks:
+    - test "$(findmnt -nro LABEL /)" = XAAC_ROOT
+    - blkid -L XAAC_EFI
+    - blkid -L XAAC_DATA
+    - blkid -L XAAC_RECOVERY
+  users:
+    enabled: true
+    checks:
+    - getent passwd xaac-kiosk
+    - getent passwd xaac-agent
+    - 'test "$(getent passwd xaac-kiosk | cut -d: -f7)" = /usr/sbin/nologin'
+  packages:
+    enabled: true
+    checks:
+    - dpkg-query -W xaac-thinclient
+    - dpkg-query -W xaac-thin-client-vpn
+    - dpkg-query -W xaac-agent
+    - dpkg-query -W xaac-thin-client-network
+    - dpkg-query -W xaac-thin-client-dock
+    - dpkg --audit
+  security:
+    enabled: true
+    checks:
+    - systemctl is-active --quiet apparmor.service
+    - nft list ruleset
+    - sysctl -n kernel.randomize_va_space | grep -qx 2
+  update:
+    enabled: true
+    checks:
+    - systemctl is-enabled --quiet xaac-update.timer
+    - test -r /etc/xaac/update-model.yaml
+  recovery:
+    enabled: true
+    checks:
+    - blkid -L XAAC_RECOVERY
+    - test -x /usr/libexec/xaac/recovery-menu
+execution:
+  fail_fast: false
+  require_clean_shutdown: true
+  collect_journal: true
+  timeout_seconds: 900
+outputs:
+  manifest: .build/image-tests/manifest.json
+  runner: .build/image-tests/run-image-tests
+  report_schema: .build/image-tests/report.schema.json

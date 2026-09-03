@@ -1,0 +1,10 @@
+name: common
+description: Configuració comuna mínima per a plataformes x86-64
+architecture: amd64
+memory_mib: 2048
+storage_mib: 8192
+kernel_parameters:
+  - quiet
+  - loglevel=3
+packages: []
+exclude_packages: []

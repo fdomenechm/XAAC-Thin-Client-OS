@@ -1,0 +1,53 @@
+schema_version: 1
+deployment_id: xaac-update-rings
+hardware_profile: wyse3040
+rings:
+  - id: laboratory
+    order: 10
+    channel: laboratory
+    percentage: 100
+    minimum_devices: 1
+    automatic_promotion: false
+  - id: pilot
+    order: 20
+    channel: pilot
+    percentage: 10
+    minimum_devices: 3
+    automatic_promotion: false
+  - id: production
+    order: 30
+    channel: production
+    percentage: 100
+    minimum_devices: 1
+    automatic_promotion: false
+promotion:
+  sequential: true
+  require_previous_ring_success: true
+  require_manual_approval: true
+  minimum_observation_minutes: 60
+  success_threshold_percent: 95
+  maximum_failure_percent: 5
+controls:
+  pause_supported: true
+  resume_supported: true
+  cancellation_supported: true
+  cancellation_blocks_new_installs: true
+  allow_in_progress_completion: true
+selection:
+  deterministic: true
+  identity_field: device_uuid
+  algorithm: sha256-modulo-100
+  stable_across_checks: true
+state:
+  allowed: [idle, scheduled, deploying, paused, completed, cancelled, failed]
+  terminal: [completed, cancelled, failed]
+audit:
+  required: true
+  record_actor: true
+  record_reason: true
+  record_timestamps: true
+outputs:
+  policy: /etc/xaac/update/update-rings.json
+  state: /var/lib/xaac-update/ring-deployment-state.json
+  runner: /usr/libexec/xaac-update-rings
+  service: /etc/systemd/system/xaac-update-rings.service

@@ -1,0 +1,27 @@
+schema_version: 1
+policy_id: xaac-file-integrity-v1
+algorithm: sha256
+monitored_paths:
+  - /etc/xaac
+  - /etc/systemd/system
+  - /etc/apparmor.d
+  - /etc/sysctl.d
+  - /etc/modprobe.d
+  - /usr/local/libexec/xaac
+exclude_patterns:
+  - '*.tmp'
+  - '*.lock'
+  - '*.log'
+  - '*~'
+alert:
+  state: /var/lib/xaac-agent/security/file-integrity.json
+  log: /var/log/xaac/file-integrity.jsonl
+repair:
+  enabled: true
+  baseline_dir: /var/lib/xaac-integrity/baseline
+outputs:
+  manifest: /var/lib/xaac-integrity/manifest.json
+  policy: /etc/xaac/security/file-integrity.json
+  verifier: /usr/local/libexec/xaac/verify-file-integrity
+  service: /etc/systemd/system/xaac-file-integrity.service
+  timer: /etc/systemd/system/xaac-file-integrity.timer

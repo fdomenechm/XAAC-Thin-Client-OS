@@ -1,0 +1,27 @@
+schema_version: 1
+groups:
+  - name: xaac-admin
+    system: true
+  - name: xaac-kiosk
+    system: true
+  - name: xaac-ipc
+    system: true
+users:
+  - name: xaac-admin
+    gecos: XAAC local administrator
+    primary_group: xaac-admin
+    supplementary_groups:
+      - sudo
+    shell: /bin/bash
+    home: /home/xaac-admin
+    system: false
+    locked: true
+  - name: xaac-kiosk
+    gecos: XAAC kiosk session
+    primary_group: xaac-kiosk
+    supplementary_groups:
+      - xaac-ipc
+    shell: /usr/sbin/nologin
+    home: /var/lib/xaac-kiosk
+    system: true
+    locked: true

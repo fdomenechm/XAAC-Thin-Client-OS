@@ -1,0 +1,37 @@
+schema_version: 2
+enabled: true
+port: 22
+allow_users:
+  - xaac-admin
+allowed_sources:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+authentication:
+  public_key: true
+  password: true
+  keyboard_interactive: false
+  authorized_keys_directory: /etc/xaac/ssh/authorized_keys
+  allowed_key_types:
+    - ssh-ed25519
+    - sk-ssh-ed25519@openssh.com
+hardening:
+  permit_root_login: false
+  x11_forwarding: false
+  tcp_forwarding: false
+  agent_forwarding: false
+  permit_tunnel: false
+  max_auth_tries: 3
+  login_grace_time: 30
+  client_alive_interval: 300
+  client_alive_count_max: 2
+temporary_activation:
+  enabled: true
+  default_duration_seconds: 900
+  minimum_duration_seconds: 60
+  maximum_duration_seconds: 3600
+  state_path: /var/lib/xaac/ssh/access-state.json
+  helper_path: /usr/local/sbin/xaac-ssh-access
+audit:
+  rules_path: /etc/audit/rules.d/45-xaac-ssh.rules
+  log_level: VERBOSE

@@ -1,0 +1,34 @@
+default_target: multi-user.target
+console_getty: true
+journald:
+  storage: persistent
+  system_max_use: 96M
+  runtime_max_use: 32M
+  max_retention_sec: 7day
+  compress: true
+tmpfiles:
+  - path: /var/lib/xaac
+    type: d
+    mode: '0755'
+    user: root
+    group: root
+    age: '-'
+  - path: /var/log/xaac
+    type: d
+    mode: '0750'
+    user: root
+    group: adm
+    age: '-'
+enable_services:
+  - systemd-journald.service
+  - systemd-tmpfiles-setup.service
+  - systemd-tmpfiles-clean.timer
+disable_services:
+  - systemd-networkd-wait-online.service
+  - apt-daily.service
+  - apt-daily-upgrade.service
+mask_services:
+  - sleep.target
+  - suspend.target
+  - hibernate.target
+  - hybrid-sleep.target

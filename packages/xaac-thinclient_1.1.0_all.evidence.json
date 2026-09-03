@@ -1,0 +1,19 @@
+{
+  "schema": "xaac-build-evidence/v1",
+  "component": "XAAC Thin Client Remote",
+  "artifact_type": "debian-package",
+  "package": "xaac-thinclient",
+  "version": "1.1.0",
+  "architecture": "all",
+  "artifact": "xaac-thinclient_1.1.0_all.deb",
+  "artifact_path": "dist/xaac-thinclient_1.1.0_all.deb",
+  "sha256": "0d3f168a10235b3a0ed8c37b250da37580f32c778340244c92b0e8c946f4890b",
+  "size_bytes": 2425692,
+  "built_at_utc": "2026-09-01T16:12:02Z",
+  "build_script": "scripts/build-deb.sh",
+  "validator": "scripts/validate-debian-package.sh",
+  "validation": {
+    "source_audit": "passed",
+    "deb_audit": "passed"
+  }
+}

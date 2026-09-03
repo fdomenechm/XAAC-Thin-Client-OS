@@ -1,0 +1,7 @@
+schema_version: 1
+hostname: xaac-thin-client
+timezone: Europe/Madrid
+locale: ca_ES.UTF-8
+fallback_locales:
+  - es_ES.UTF-8
+  - en_US.UTF-8
