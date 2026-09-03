@@ -13,6 +13,7 @@ administration of the XAAC terminal.
 
 The system is designed to operate mainly in kiosk mode, so the user accesses authorised XAAC functions
 without access to a conventional operating-system desktop.
+<img width="1287" height="807" alt="image" src="https://github.com/user-attachments/assets/f588b294-80f2-44d7-8195-e3856599984a" />
 
 ## Downloads
 
